@@ -1,0 +1,668 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Mono:wght@400;500;600&family=Roboto:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PixlPlayground Studio - Multi-Theme Support */
+
+@layer base {
+  /* Default: Godot-style dark editor theme */
+  :root,
+  :root[data-ui-theme="black"] {
+    --background: 0 0% 11%;
+    --foreground: 0 0% 82%;
+
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 84%;
+
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 84%;
+
+    --primary: 207 91% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 19%;
+    --secondary-foreground: 0 0% 84%;
+
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 62%;
+
+    --accent: 207 80% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 8%;
+    --input: 0 0% 10%;
+    --ring: 207 91% 54%;
+
+    --radius: 0.125rem;
+
+    --editor-topbar: #111111;
+    --editor-menubar: #151515;
+    --editor-toolbar: #242424;
+    --editor-panel: #282828;
+    --editor-panel-raised: #303030;
+    --editor-panel-sunken: #1d1d1d;
+    --editor-panel-header: #202020;
+    --editor-tab: #242424;
+    --editor-tab-active: #303030;
+    --editor-border-dark: #111111;
+    --editor-border-light: #363636;
+    --editor-row-selected: #4a4a4a;
+    --editor-row-hover: #353535;
+
+    /* Semantic Colors for templates */
+    --neon-purple: 270 60% 60%;
+    --neon-cyan: 185 70% 50%;
+    --neon-pink: 320 60% 55%;
+    --neon-green: 145 60% 45%;
+    --neon-orange: 25 80% 55%;
+    --neon-red: 0 70% 55%;
+
+    /* Sidebar - slightly different shade */
+    --sidebar-background: 0 0% 15%;
+    --sidebar-foreground: 0 0% 84%;
+    --sidebar-primary: 207 91% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 20%;
+    --sidebar-accent-foreground: 0 0% 84%;
+    --sidebar-border: 0 0% 8%;
+    --sidebar-ring: 207 91% 54%;
+  }
+
+  /* Classic Mode Theme */
+  :root[data-ui-theme="blue"] {
+    /* Deep Blue Dark Theme */
+    --background: 220 25% 10%;
+    --foreground: 210 20% 90%;
+
+    --card: 220 25% 14%;
+    --card-foreground: 210 20% 90%;
+
+    --popover: 220 30% 12%;
+    --popover-foreground: 210 20% 90%;
+
+    /* Vibrant Blue Primary */
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Blue-tinted Secondary */
+    --secondary: 220 25% 18%;
+    --secondary-foreground: 210 20% 90%;
+
+    --muted: 220 20% 16%;
+    --muted-foreground: 210 15% 55%;
+
+    /* Cyan Accent */
+    --accent: 185 80% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 22%;
+    --input: 220 25% 16%;
+    --ring: 210 100% 50%;
+
+    /* Sidebar for blue theme */
+    --sidebar-background: 220 30% 12%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 210 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 20%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 210 100% 50%;
+  }
+
+  /* Light Mode Theme */
+  :root[data-ui-theme="light"] {
+    /* Clean Light Theme */
+    --background: 0 0% 98%;
+    --foreground: 220 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    /* Blue Primary */
+    --primary: 210 100% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Light Secondary */
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 15% 25%;
+
+    --muted: 220 10% 94%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Teal Accent */
+    --accent: 185 70% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 10% 94%;
+    --ring: 210 100% 45%;
+
+    /* Sidebar for light theme */
+    --sidebar-background: 220 15% 96%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 210 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 10% 92%;
+    --sidebar-accent-foreground: 220 15% 25%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 210 100% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Noto Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Noto Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* Custom scrollbar for professional look */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--editor-panel-sunken);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #454545;
+    border: 2px solid var(--editor-panel-sunken);
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #5a5a5a;
+  }
+
+  code,
+  kbd,
+  pre,
+  .font-mono {
+    font-family: 'Noto Sans Mono', 'Roboto Mono', Consolas, monospace;
+  }
+}
+
+/* Menu Transparency Styles */
+@layer components {
+  /* Glass Menu Styles - Applied when transparency is ON */
+  :root[data-menu-transparency="on"] .glass-menu {
+    @apply border-white/10 backdrop-blur-2xl shadow-2xl;
+    background: rgba(0, 0, 0, 0.7) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Opaque Menu Styles - Applied when transparency is OFF */
+  :root[data-menu-transparency="off"] .glass-menu {
+    @apply border-border shadow-xl;
+    background: hsl(var(--popover)) !important;
+    backdrop-filter: none !important;
+  }
+}
+
+@layer components {
+  .editor-shell {
+    background: var(--editor-topbar);
+  }
+
+  .editor-header {
+    background: var(--editor-topbar);
+    border-bottom: 1px solid var(--editor-border-dark);
+    box-shadow: inset 0 -1px 0 var(--editor-border-light);
+  }
+
+  .editor-menubar {
+    background: var(--editor-topbar);
+    border-bottom: 1px solid var(--editor-border-dark);
+  }
+
+  .editor-toolbar-row {
+    background: var(--editor-toolbar);
+    border-top: 1px solid #2f2f2f;
+    border-bottom: 1px solid var(--editor-border-dark);
+  }
+
+  .editor-menu-dropdown {
+    background: var(--editor-panel);
+    border: 1px solid var(--editor-border-dark);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+  }
+
+  .editor-menu-item {
+    color: hsl(var(--foreground));
+  }
+
+  .editor-menu-item:hover {
+    background: var(--editor-row-hover);
+  }
+
+  .editor-command-chip {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 2px;
+  }
+
+  .editor-command-chip:hover {
+    background: var(--editor-panel-raised);
+    border-color: var(--editor-border-dark);
+  }
+
+  .engine-view-tab {
+    border-radius: 0;
+    border: 1px solid transparent;
+  }
+
+  .engine-view-tab.active {
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .editor-dock {
+    background: var(--editor-panel);
+    border-color: var(--editor-border-dark);
+    color: hsl(var(--foreground));
+  }
+
+  .editor-dock-outline {
+    box-shadow:
+      inset 1px 0 0 #343434,
+      inset -1px 0 0 #151515,
+      inset 0 1px 0 #343434;
+  }
+
+  /* Professional panel styling - Godot inspired dock panels */
+  .editor-panel {
+    background: var(--editor-panel);
+    border-color: var(--editor-border-dark);
+    box-shadow: inset 0 1px 0 var(--editor-border-light);
+  }
+
+  .panel-header {
+    @apply h-8 px-1 border-b flex items-end justify-between;
+    background: var(--editor-panel-header);
+    border-color: var(--editor-border-dark);
+    box-shadow: inset 0 1px 0 #333;
+  }
+
+  .panel-tabs-left {
+    justify-content: flex-start;
+  }
+
+  .editor-panel-tab {
+    @apply h-7 px-3 border border-transparent border-b-0 text-xs font-semibold text-muted-foreground transition-colors;
+    border-radius: 2px 2px 0 0;
+  }
+
+  .editor-panel-tab:hover {
+    background: var(--editor-row-hover);
+    color: hsl(var(--foreground));
+  }
+
+  .editor-panel-tab.active {
+    background: var(--editor-tab-active);
+    border-color: var(--editor-border-dark);
+    box-shadow: inset 0 1px 0 var(--editor-border-light);
+    color: hsl(var(--foreground));
+  }
+
+  .panel-section {
+    @apply border-b border-border;
+  }
+
+  .panel-section-header {
+    @apply flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground cursor-pointer hover:bg-secondary/50 transition-colors;
+  }
+
+  /* Scene Graph styling */
+  .scene-item {
+    @apply flex h-6 items-center gap-1.5 px-2 text-xs cursor-pointer transition-colors;
+    color: hsl(var(--foreground));
+  }
+
+  .scene-item:hover {
+    background: var(--editor-row-hover);
+  }
+
+  .scene-item.selected {
+    background: var(--editor-row-selected);
+    color: hsl(var(--foreground));
+  }
+
+  /* Inspector input fields - Unreal Style */
+  .inspector-input {
+    @apply h-7 w-full rounded-sm px-2 py-1.5 text-xs text-foreground focus:outline-none transition-colors;
+    background: var(--editor-panel-sunken);
+    border: 1px solid var(--editor-border-dark);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+  }
+
+  .inspector-input:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: none;
+  }
+
+  .inspector-input:hover:not(:focus) {
+    border-color: #444;
+  }
+
+  .inspector-label {
+    @apply text-[11px] text-muted-foreground font-medium;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .engine-section-label {
+    @apply -mx-2 mt-1 flex h-7 items-center gap-1.5 border-y px-2 text-xs font-semibold text-foreground;
+    background: var(--editor-panel-header);
+    border-color: var(--editor-border-dark);
+  }
+
+  .engine-section-label svg {
+    @apply text-muted-foreground;
+  }
+
+  .inspector-slider-row,
+  .inspector-color-row {
+    @apply border-b border-border/70 pb-2;
+  }
+
+  .inspector-slider-row .inspector-label {
+    @apply mb-1 block;
+  }
+
+  /* Toolbar styling */
+  .toolbar-button {
+    @apply p-1.5 rounded-sm transition-colors text-muted-foreground hover:text-foreground;
+  }
+
+  .toolbar-button:hover {
+    background: var(--editor-row-hover);
+  }
+
+  .toolbar-button.active {
+    @apply bg-primary/15 text-primary;
+  }
+
+  /* Property row for inspector */
+  .property-row {
+    @apply flex items-center justify-between py-1.5;
+  }
+
+  /* Collapsible section - Unreal Style */
+  .collapsible-section {
+    @apply border-b border-border;
+  }
+
+  .collapsible-header {
+    @apply flex h-7 items-center gap-2 px-2 cursor-pointer transition-colors;
+    background: var(--editor-panel-header);
+    border-top: 1px solid #333;
+    border-bottom: 1px solid var(--editor-border-dark);
+  }
+
+  .collapsible-header:hover {
+    background: var(--editor-row-hover);
+  }
+
+  /* Glass Card - Unreal Style with 95% opacity */
+  .glass-card {
+    @apply border;
+    background: var(--editor-panel);
+    border-color: var(--editor-border-dark);
+    border-radius: 2px;
+  }
+
+  .glass-card-subtle {
+    @apply border;
+    background: var(--editor-panel-sunken);
+    border-color: var(--editor-border-dark);
+    border-radius: 2px;
+  }
+
+  /* Glass Tabs - Unreal Style with 95% opacity */
+  .glass-tabs {
+    @apply border-b;
+    background: var(--editor-panel-header);
+    border-color: var(--editor-border-dark);
+  }
+
+  .glass-tab {
+    @apply flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold transition-colors text-muted-foreground;
+    border-bottom: 2px solid transparent;
+  }
+
+  .glass-tab:hover {
+    background: var(--editor-row-hover);
+    color: hsl(var(--foreground));
+  }
+
+  .glass-tab.active {
+    background: var(--editor-tab-active);
+    color: hsl(var(--foreground));
+    border-bottom-color: hsl(var(--primary));
+  }
+
+  .engine-property-callout {
+    @apply flex h-7 items-center gap-2 border px-2;
+    border-radius: 2px;
+  }
+
+  /* Glass Search - Unreal Style */
+  .glass-search {
+    @apply relative;
+  }
+  .glass-search input {
+    @apply h-7 w-full pl-8 pr-3 py-1 text-xs text-foreground;
+    background: var(--editor-panel-sunken);
+    border: 1px solid var(--editor-border-dark);
+    border-radius: 2px;
+  }
+
+  .glass-search input::placeholder {
+    @apply text-muted-foreground;
+  }
+
+  .glass-search input:focus {
+    @apply outline-none ring-0 border-primary/70;
+  }
+
+  /* Glass Object Header - Unreal Style with 95% opacity */
+  .glass-object-header {
+    @apply p-2 border-b;
+    background: var(--editor-panel);
+    border-color: var(--editor-border-dark);
+    box-shadow: inset 0 1px 0 var(--editor-border-light);
+  }
+
+  /* Glass Action Buttons - Unreal Style */
+  .glass-action-btn {
+    @apply flex h-7 w-7 items-center justify-center transition-colors text-muted-foreground;
+    background: var(--editor-panel-sunken);
+    border: 1px solid var(--editor-border-dark);
+    border-radius: 2px;
+  }
+
+  .glass-action-btn:hover {
+    background: var(--editor-row-hover);
+    color: hsl(var(--foreground));
+  }
+
+  .glass-action-btn.active {
+    background: #22364a;
+    border-color: hsl(var(--primary) / 0.65);
+    color: hsl(var(--primary));
+  }
+
+  .glass-action-btn.destructive:hover {
+    @apply bg-destructive/15 border-destructive/30 text-destructive;
+  }
+
+  /* Toggle switch professional style */
+  .toggle-switch {
+    @apply relative inline-flex h-4 w-7 items-center rounded-full transition-colors cursor-pointer;
+  }
+
+  .toggle-switch[data-state="checked"] {
+    @apply bg-primary;
+  }
+
+  .toggle-switch[data-state="unchecked"] {
+    @apply bg-muted;
+  }
+
+  /* Glass Select - Unreal Style */
+  .glass-select {
+    @apply w-full px-2 py-1.5 text-xs appearance-none cursor-pointer text-foreground;
+    background-color: var(--editor-panel-sunken);
+    border: 1px solid var(--editor-border-dark);
+    border-radius: 2px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+  }
+
+  .glass-select:focus {
+    @apply outline-none ring-0 border-primary/70;
+  }
+
+  .glass-select option {
+    background: var(--editor-panel);
+    color: hsl(var(--foreground));
+  }
+
+  /* Glass Slider - Unreal Style */
+  .glass-slider {
+    @apply w-full h-1 appearance-none cursor-pointer bg-border;
+  }
+
+  .glass-slider::-webkit-slider-thumb {
+    @apply w-3 h-3 rounded-full appearance-none cursor-pointer bg-primary;
+    box-shadow: none;
+    border: 1px solid hsl(0 0% 100% / 0.25);
+  }
+
+  .glass-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.08);
+    box-shadow: none;
+  }
+}
+
+@layer utilities {
+  .text-glow-purple {
+    color: hsl(var(--primary));
+  }
+
+  .text-glow-cyan {
+    color: hsl(var(--neon-cyan));
+  }
+
+  /* Status indicators */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-running {
+    @apply bg-neon-green;
+  }
+
+  .status-paused {
+    @apply bg-neon-orange;
+  }
+}
+
+/* Stats panel positioning - avoid header overlap */
+.stats-panel {
+  top: 44px !important;
+  left: 240px !important;
+}
+
+/* Custom range slider - Unreal Style */
+input[type="range"] {
+  @apply h-1 appearance-none cursor-pointer rounded-none;
+  background: #171717;
+  border-top: 1px solid #0c0c0c;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply w-3 h-3 rounded-full appearance-none cursor-pointer;
+  background: hsl(var(--primary));
+  box-shadow: none;
+  border: 1px solid hsl(0 0% 100% / 0.25);
+  transition: transform 0.12s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.08);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+}
+
+input[type="range"]::-moz-range-thumb {
+  @apply w-3 h-3 rounded-full cursor-pointer border-0;
+  background: hsl(var(--primary));
+  box-shadow: none;
+}
+
+/* Color input professional styling - Unreal Style */
+input[type="color"] {
+  @apply w-8 h-7 cursor-pointer bg-transparent p-0;
+  border: 1px solid var(--editor-border-dark);
+  border-radius: 2px;
+}
+
+input[type="color"]:hover {
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 3px;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+/* Number input styling - Liquid Glass */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

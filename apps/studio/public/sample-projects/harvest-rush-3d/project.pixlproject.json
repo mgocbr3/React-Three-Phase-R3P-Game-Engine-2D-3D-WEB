@@ -1,0 +1,6271 @@
+{
+  "format": "pixlplayground-project",
+  "version": 2,
+  "id": "pixl-harvest-rush-3d",
+  "slug": "harvest-rush-3d",
+  "name": "Harvest Rush 3D",
+  "createdAt": 1779309721985,
+  "savedAt": 1779309721985,
+  "engine": {
+    "name": "PixlPlayground",
+    "version": "0.1.0",
+    "schemaVersion": 2
+  },
+  "runtime": {
+    "primary": "three-3d",
+    "renderers": [
+      "three",
+      "phaser"
+    ],
+    "physics": [
+      "rapier",
+      "enable3d"
+    ]
+  },
+  "activeSceneId": "harvest-rush-main",
+  "scenes": [
+    {
+      "id": "harvest-rush-main",
+      "name": "Farm Runtime Scene",
+      "kind": "3d",
+      "units": "meters",
+      "rootObjects": [
+        {
+          "id": "world-root",
+          "name": "World",
+          "type": "group",
+          "parentId": null,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "harvest-rush",
+            "folder"
+          ],
+          "components": [
+            {
+              "id": "world-root-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "world-root",
+              "name": "World",
+              "type": "group",
+              "parentId": null,
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#6f737a",
+              "visible": false,
+              "locked": true,
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "gameplay-root",
+          "name": "Gameplay",
+          "type": "group",
+          "parentId": null,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "harvest-rush",
+            "folder"
+          ],
+          "components": [
+            {
+              "id": "gameplay-root-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "gameplay-root",
+              "name": "Gameplay",
+              "type": "group",
+              "parentId": null,
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#6f737a",
+              "visible": false,
+              "locked": true,
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "vehicles-root",
+          "name": "Vehicles",
+          "type": "group",
+          "parentId": "gameplay-root",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "harvest-rush",
+            "folder"
+          ],
+          "components": [
+            {
+              "id": "vehicles-root-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "vehicles-root",
+              "name": "Vehicles",
+              "type": "group",
+              "parentId": "gameplay-root",
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#6f737a",
+              "visible": false,
+              "locked": true,
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "fields-root",
+          "name": "Fields",
+          "type": "group",
+          "parentId": "gameplay-root",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "harvest-rush",
+            "folder"
+          ],
+          "components": [
+            {
+              "id": "fields-root-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "fields-root",
+              "name": "Fields",
+              "type": "group",
+              "parentId": "gameplay-root",
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#6f737a",
+              "visible": false,
+              "locked": true,
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "stations-root",
+          "name": "Unload Stations",
+          "type": "group",
+          "parentId": "gameplay-root",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "harvest-rush",
+            "folder"
+          ],
+          "components": [
+            {
+              "id": "stations-root-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "stations-root",
+              "name": "Unload Stations",
+              "type": "group",
+              "parentId": "gameplay-root",
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#6f737a",
+              "visible": false,
+              "locked": true,
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "folder"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "role": "hierarchy-folder"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "farm-scene-glb",
+          "name": "Farm.glb",
+          "type": "box",
+          "parentId": "world-root",
+          "transform": {
+            "position": [
+              0,
+              -0.04,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.462,
+              0.462,
+              0.462
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "farm-map",
+            "runtime-map",
+            "farm-glb"
+          ],
+          "components": [
+            {
+              "id": "farm-scene-glb-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "farm-scene-glb-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "trimesh",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "farm-scene-glb-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "farm-map",
+                  "runtime-map",
+                  "farm-glb"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeConstant": "FARM_SCENE_FILE",
+                  "runtimeLoader": "loadFarmScene",
+                  "sourceAsset": "public/assets/vendor/farm-pack/Farm.glb",
+                  "sourceScale": 0.462,
+                  "glbManifest": {
+                    "nodeCount": 11165,
+                    "meshCount": 11162,
+                    "meshNodeCount": 11165,
+                    "topNamePrefixes": [
+                      {
+                        "prefix": "plant",
+                        "count": 6322
+                      },
+                      {
+                        "prefix": "fence",
+                        "count": 1980
+                      },
+                      {
+                        "prefix": "tree",
+                        "count": 447
+                      },
+                      {
+                        "prefix": "fir",
+                        "count": 426
+                      },
+                      {
+                        "prefix": "hay",
+                        "count": 391
+                      },
+                      {
+                        "prefix": "road",
+                        "count": 230
+                      },
+                      {
+                        "prefix": "hangar",
+                        "count": 214
+                      },
+                      {
+                        "prefix": "sheep",
+                        "count": 201
+                      },
+                      {
+                        "prefix": "garden",
+                        "count": 188
+                      },
+                      {
+                        "prefix": "ground",
+                        "count": 170
+                      },
+                      {
+                        "prefix": "tower",
+                        "count": 81
+                      },
+                      {
+                        "prefix": "goat",
+                        "count": 78
+                      },
+                      {
+                        "prefix": "bush",
+                        "count": 61
+                      },
+                      {
+                        "prefix": "chicken",
+                        "count": 34
+                      },
+                      {
+                        "prefix": "truck",
+                        "count": 30
+                      },
+                      {
+                        "prefix": "mountain",
+                        "count": 30
+                      }
+                    ],
+                    "sampleNodes": [
+                      {
+                        "index": 0,
+                        "name": "ground_002.001",
+                        "mesh": 0
+                      },
+                      {
+                        "index": 1,
+                        "name": "ground_003.001",
+                        "mesh": 1
+                      },
+                      {
+                        "index": 2,
+                        "name": "ground_003.002",
+                        "mesh": 2
+                      },
+                      {
+                        "index": 3,
+                        "name": "ground_004.001",
+                        "mesh": 3
+                      },
+                      {
+                        "index": 4,
+                        "name": "ground_005.001",
+                        "mesh": 4
+                      },
+                      {
+                        "index": 5,
+                        "name": "ground_004.002",
+                        "mesh": 5
+                      },
+                      {
+                        "index": 6,
+                        "name": "ground_007.001",
+                        "mesh": 6
+                      },
+                      {
+                        "index": 7,
+                        "name": "ground_007.002",
+                        "mesh": 7
+                      },
+                      {
+                        "index": 8,
+                        "name": "ground_004.003",
+                        "mesh": 8
+                      },
+                      {
+                        "index": 9,
+                        "name": "ground_004.004",
+                        "mesh": 9
+                      },
+                      {
+                        "index": 10,
+                        "name": "ground_007.003",
+                        "mesh": 10
+                      },
+                      {
+                        "index": 11,
+                        "name": "ground_007.004",
+                        "mesh": 11
+                      },
+                      {
+                        "index": 12,
+                        "name": "ground_004.005",
+                        "mesh": 12
+                      },
+                      {
+                        "index": 13,
+                        "name": "ground_004.006",
+                        "mesh": 13
+                      },
+                      {
+                        "index": 14,
+                        "name": "ground_004.007",
+                        "mesh": 14
+                      },
+                      {
+                        "index": 15,
+                        "name": "ground_004.008",
+                        "mesh": 15
+                      },
+                      {
+                        "index": 16,
+                        "name": "ground_004.009",
+                        "mesh": 16
+                      },
+                      {
+                        "index": 17,
+                        "name": "ground_004.010",
+                        "mesh": 17
+                      },
+                      {
+                        "index": 18,
+                        "name": "ground_008.001",
+                        "mesh": 18
+                      },
+                      {
+                        "index": 19,
+                        "name": "ground_010.001",
+                        "mesh": 19
+                      },
+                      {
+                        "index": 20,
+                        "name": "ground_012.003",
+                        "mesh": 20
+                      },
+                      {
+                        "index": 21,
+                        "name": "ground_012.004",
+                        "mesh": 21
+                      },
+                      {
+                        "index": 22,
+                        "name": "ground_008.003",
+                        "mesh": 22
+                      },
+                      {
+                        "index": 23,
+                        "name": "ground_011.002",
+                        "mesh": 23
+                      },
+                      {
+                        "index": 24,
+                        "name": "ground_009.001",
+                        "mesh": 24
+                      },
+                      {
+                        "index": 25,
+                        "name": "ground_008.002",
+                        "mesh": 25
+                      },
+                      {
+                        "index": 26,
+                        "name": "ground_008.004",
+                        "mesh": 26
+                      },
+                      {
+                        "index": 27,
+                        "name": "ground_011.003",
+                        "mesh": 27
+                      },
+                      {
+                        "index": 28,
+                        "name": "ground_008.005",
+                        "mesh": 28
+                      },
+                      {
+                        "index": 29,
+                        "name": "ground_002.002",
+                        "mesh": 29
+                      },
+                      {
+                        "index": 30,
+                        "name": "ground_006.001",
+                        "mesh": 30
+                      },
+                      {
+                        "index": 31,
+                        "name": "ground_006.002",
+                        "mesh": 31
+                      }
+                    ]
+                  },
+                  "terrainRuntime": {
+                    "raycastMeshes": "terrainRaycastMeshes",
+                    "staticColliders": "buildStaticCollidersFromFarmScene",
+                    "roadNavigation": "buildRoadNavigationFromFarmScene"
+                  }
+                }
+              }
+            },
+            {
+              "id": "farm-scene-glb-pixl-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/Farm.glb",
+                "availableAnimations": [],
+                "autoPlay": false,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "farm-scene-glb",
+              "name": "Farm.glb",
+              "type": "box",
+              "parentId": "world-root",
+              "position": [
+                0,
+                -0.04,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                0.462,
+                0.462,
+                0.462
+              ],
+              "color": "#7b8d6d",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "animationSettings": {
+                "modelUrl": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/Farm.glb",
+                "availableAnimations": [],
+                "autoPlay": false,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              },
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "trimesh",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": false
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": true
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "farm-map",
+                  "runtime-map",
+                  "farm-glb"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeConstant": "FARM_SCENE_FILE",
+                  "runtimeLoader": "loadFarmScene",
+                  "sourceAsset": "public/assets/vendor/farm-pack/Farm.glb",
+                  "sourceScale": 0.462,
+                  "glbManifest": {
+                    "nodeCount": 11165,
+                    "meshCount": 11162,
+                    "meshNodeCount": 11165,
+                    "topNamePrefixes": [
+                      {
+                        "prefix": "plant",
+                        "count": 6322
+                      },
+                      {
+                        "prefix": "fence",
+                        "count": 1980
+                      },
+                      {
+                        "prefix": "tree",
+                        "count": 447
+                      },
+                      {
+                        "prefix": "fir",
+                        "count": 426
+                      },
+                      {
+                        "prefix": "hay",
+                        "count": 391
+                      },
+                      {
+                        "prefix": "road",
+                        "count": 230
+                      },
+                      {
+                        "prefix": "hangar",
+                        "count": 214
+                      },
+                      {
+                        "prefix": "sheep",
+                        "count": 201
+                      },
+                      {
+                        "prefix": "garden",
+                        "count": 188
+                      },
+                      {
+                        "prefix": "ground",
+                        "count": 170
+                      },
+                      {
+                        "prefix": "tower",
+                        "count": 81
+                      },
+                      {
+                        "prefix": "goat",
+                        "count": 78
+                      },
+                      {
+                        "prefix": "bush",
+                        "count": 61
+                      },
+                      {
+                        "prefix": "chicken",
+                        "count": 34
+                      },
+                      {
+                        "prefix": "truck",
+                        "count": 30
+                      },
+                      {
+                        "prefix": "mountain",
+                        "count": 30
+                      }
+                    ],
+                    "sampleNodes": [
+                      {
+                        "index": 0,
+                        "name": "ground_002.001",
+                        "mesh": 0
+                      },
+                      {
+                        "index": 1,
+                        "name": "ground_003.001",
+                        "mesh": 1
+                      },
+                      {
+                        "index": 2,
+                        "name": "ground_003.002",
+                        "mesh": 2
+                      },
+                      {
+                        "index": 3,
+                        "name": "ground_004.001",
+                        "mesh": 3
+                      },
+                      {
+                        "index": 4,
+                        "name": "ground_005.001",
+                        "mesh": 4
+                      },
+                      {
+                        "index": 5,
+                        "name": "ground_004.002",
+                        "mesh": 5
+                      },
+                      {
+                        "index": 6,
+                        "name": "ground_007.001",
+                        "mesh": 6
+                      },
+                      {
+                        "index": 7,
+                        "name": "ground_007.002",
+                        "mesh": 7
+                      },
+                      {
+                        "index": 8,
+                        "name": "ground_004.003",
+                        "mesh": 8
+                      },
+                      {
+                        "index": 9,
+                        "name": "ground_004.004",
+                        "mesh": 9
+                      },
+                      {
+                        "index": 10,
+                        "name": "ground_007.003",
+                        "mesh": 10
+                      },
+                      {
+                        "index": 11,
+                        "name": "ground_007.004",
+                        "mesh": 11
+                      },
+                      {
+                        "index": 12,
+                        "name": "ground_004.005",
+                        "mesh": 12
+                      },
+                      {
+                        "index": 13,
+                        "name": "ground_004.006",
+                        "mesh": 13
+                      },
+                      {
+                        "index": 14,
+                        "name": "ground_004.007",
+                        "mesh": 14
+                      },
+                      {
+                        "index": 15,
+                        "name": "ground_004.008",
+                        "mesh": 15
+                      },
+                      {
+                        "index": 16,
+                        "name": "ground_004.009",
+                        "mesh": 16
+                      },
+                      {
+                        "index": 17,
+                        "name": "ground_004.010",
+                        "mesh": 17
+                      },
+                      {
+                        "index": 18,
+                        "name": "ground_008.001",
+                        "mesh": 18
+                      },
+                      {
+                        "index": 19,
+                        "name": "ground_010.001",
+                        "mesh": 19
+                      },
+                      {
+                        "index": 20,
+                        "name": "ground_012.003",
+                        "mesh": 20
+                      },
+                      {
+                        "index": 21,
+                        "name": "ground_012.004",
+                        "mesh": 21
+                      },
+                      {
+                        "index": 22,
+                        "name": "ground_008.003",
+                        "mesh": 22
+                      },
+                      {
+                        "index": 23,
+                        "name": "ground_011.002",
+                        "mesh": 23
+                      },
+                      {
+                        "index": 24,
+                        "name": "ground_009.001",
+                        "mesh": 24
+                      },
+                      {
+                        "index": 25,
+                        "name": "ground_008.002",
+                        "mesh": 25
+                      },
+                      {
+                        "index": 26,
+                        "name": "ground_008.004",
+                        "mesh": 26
+                      },
+                      {
+                        "index": 27,
+                        "name": "ground_011.003",
+                        "mesh": 27
+                      },
+                      {
+                        "index": 28,
+                        "name": "ground_008.005",
+                        "mesh": 28
+                      },
+                      {
+                        "index": 29,
+                        "name": "ground_002.002",
+                        "mesh": 29
+                      },
+                      {
+                        "index": 30,
+                        "name": "ground_006.001",
+                        "mesh": 30
+                      },
+                      {
+                        "index": 31,
+                        "name": "ground_006.002",
+                        "mesh": 31
+                      }
+                    ]
+                  },
+                  "terrainRuntime": {
+                    "raycastMeshes": "terrainRaycastMeshes",
+                    "staticColliders": "buildStaticCollidersFromFarmScene",
+                    "roadNavigation": "buildRoadNavigationFromFarmScene"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "main-camera",
+          "name": "Main Camera",
+          "type": "camera",
+          "parentId": "world-root",
+          "transform": {
+            "position": [
+              0,
+              175,
+              54
+            ],
+            "rotation": [
+              -1.22,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "camera"
+          ],
+          "components": [
+            {
+              "id": "main-camera-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "camera"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeFunction": "updateCamera",
+                  "modes": [
+                    "chase",
+                    "top-down",
+                    "overview"
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "main-camera",
+              "name": "Main Camera",
+              "type": "camera",
+              "parentId": "world-root",
+              "position": [
+                0,
+                175,
+                54
+              ],
+              "rotation": [
+                -1.22,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#8f969f",
+              "visible": true,
+              "locked": false,
+              "cameraSettings": {
+                "mode": "third-person",
+                "distance": 7.2,
+                "height": 3.45,
+                "fov": 45,
+                "followPlayer": true,
+                "targetId": "player-harvester",
+                "lockedZ": false,
+                "lockedY": false,
+                "smoothing": 0.1
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "camera"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeFunction": "updateCamera",
+                  "modes": [
+                    "chase",
+                    "top-down",
+                    "overview"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "sun-light",
+          "name": "Sun Light",
+          "type": "sunlight",
+          "parentId": "world-root",
+          "transform": {
+            "position": [
+              0,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "lighting"
+          ],
+          "components": [
+            {
+              "id": "sun-light-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "lighting"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "runtime directional/ambient setup"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "sun-light",
+              "name": "Sun Light",
+              "type": "sunlight",
+              "parentId": "world-root",
+              "position": [
+                0,
+                10,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#fffaf0",
+              "visible": true,
+              "locked": false,
+              "lightSettings": {
+                "intensity": 0.8,
+                "distance": 0,
+                "decay": 2,
+                "temperature": 5600,
+                "useTemperature": true,
+                "angle": 0.5235987755982988,
+                "penumbra": 0.2,
+                "sunElevation": 45,
+                "sunAzimuth": 180,
+                "castShadow": true,
+                "shadowMapSize": 2048,
+                "shadowBias": -0.001,
+                "shadowNormalBias": 0.02,
+                "shadowRadius": 1,
+                "shadowCameraSize": 90,
+                "volumetric": false,
+                "volumetricIntensity": 0,
+                "helperVisible": true
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "lighting"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "runtime directional/ambient setup"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "player-harvester",
+          "name": "Player Harvester",
+          "type": "box",
+          "parentId": "vehicles-root",
+          "transform": {
+            "position": [
+              74,
+              0.035,
+              -16.6176
+            ],
+            "rotation": [
+              0,
+              3.141592653589793,
+              0
+            ],
+            "scale": [
+              0.24,
+              0.24,
+              0.24
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "runtime-model",
+            "player",
+            "vehicle",
+            "machine"
+          ],
+          "components": [
+            {
+              "id": "player-harvester-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "player-harvester-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "auto",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "player-harvester-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "runtime-model",
+                  "player",
+                  "vehicle",
+                  "machine"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "apps/portal/games-src/harvest-rush-3d/src/main.js",
+                  "sourceAsset": "public/assets/vendor/farm-pack/harvester_001.glb",
+                  "machineId": "harvester-01",
+                  "runtimeObject": "vehicleGroup.machineMount",
+                  "runtimeFunctions": [
+                    "placeVehicleAtFieldStart",
+                    "refreshMachineModel",
+                    "updateVehicleStats"
+                  ],
+                  "activeFieldId": "sunflower-east-field"
+                }
+              }
+            },
+            {
+              "id": "player-harvester-pixl-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/harvester_001.glb",
+                "availableAnimations": [],
+                "autoPlay": false,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "player-harvester",
+              "name": "Player Harvester",
+              "type": "box",
+              "parentId": "vehicles-root",
+              "position": [
+                74,
+                0.035,
+                -16.6176
+              ],
+              "rotation": [
+                0,
+                3.141592653589793,
+                0
+              ],
+              "scale": [
+                0.24,
+                0.24,
+                0.24
+              ],
+              "color": "#4caf50",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "animationSettings": {
+                "modelUrl": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/harvester_001.glb",
+                "availableAnimations": [],
+                "autoPlay": false,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              },
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "auto",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": false
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "runtime-model",
+                  "player",
+                  "vehicle",
+                  "machine"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "apps/portal/games-src/harvest-rush-3d/src/main.js",
+                  "sourceAsset": "public/assets/vendor/farm-pack/harvester_001.glb",
+                  "machineId": "harvester-01",
+                  "runtimeObject": "vehicleGroup.machineMount",
+                  "runtimeFunctions": [
+                    "placeVehicleAtFieldStart",
+                    "refreshMachineModel",
+                    "updateVehicleStats"
+                  ],
+                  "activeFieldId": "sunflower-east-field"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "player-trailer",
+          "name": "Player Trailer",
+          "type": "box",
+          "parentId": "vehicles-root",
+          "transform": {
+            "position": [
+              74,
+              0.035,
+              -14.5976
+            ],
+            "rotation": [
+              0,
+              3.141592653589793,
+              0
+            ],
+            "scale": [
+              0.27,
+              0.27,
+              0.27
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "runtime-model",
+            "vehicle",
+            "trailer",
+            "capacity"
+          ],
+          "components": [
+            {
+              "id": "player-trailer-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "player-trailer-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "auto",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "player-trailer-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "runtime-model",
+                  "vehicle",
+                  "trailer",
+                  "capacity"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "apps/portal/games-src/harvest-rush-3d/src/main.js",
+                  "sourceAsset": "public/assets/vendor/farm-pack/trailer_001.glb",
+                  "machineId": "harvester-01",
+                  "runtimeObject": "vehicleGroup.trailerMount",
+                  "runtimeFunctions": [
+                    "refreshMachineModel",
+                    "updateHarvestProgress"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "player-trailer-pixl-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/trailer_001.glb",
+                "availableAnimations": [],
+                "autoPlay": false,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "player-trailer",
+              "name": "Player Trailer",
+              "type": "box",
+              "parentId": "vehicles-root",
+              "position": [
+                74,
+                0.035,
+                -14.5976
+              ],
+              "rotation": [
+                0,
+                3.141592653589793,
+                0
+              ],
+              "scale": [
+                0.27,
+                0.27,
+                0.27
+              ],
+              "color": "#8ba66f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "animationSettings": {
+                "modelUrl": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/trailer_001.glb",
+                "availableAnimations": [],
+                "autoPlay": false,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              },
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "auto",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": false
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "runtime-model",
+                  "vehicle",
+                  "trailer",
+                  "capacity"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "apps/portal/games-src/harvest-rush-3d/src/main.js",
+                  "sourceAsset": "public/assets/vendor/farm-pack/trailer_001.glb",
+                  "machineId": "harvester-01",
+                  "runtimeObject": "vehicleGroup.trailerMount",
+                  "runtimeFunctions": [
+                    "refreshMachineModel",
+                    "updateHarvestProgress"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "runtime-script-links",
+          "name": "Runtime Script Links",
+          "type": "group",
+          "parentId": "gameplay-root",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "harvest-rush",
+            "script-links"
+          ],
+          "components": [
+            {
+              "id": "runtime-script-links-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "script-links"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeFile": "src/main.js",
+                  "styleFile": "src/styles.css",
+                  "entryFunctions": [
+                    "loadFarmScene",
+                    "loadEditorLevel",
+                    "startGame",
+                    "buildField",
+                    "initializeWorldLife",
+                    "refreshMachineModel",
+                    "updateHud"
+                  ],
+                  "hudRoots": [
+                    "hud",
+                    "contractCard",
+                    "objectiveBoard",
+                    "shopPanel",
+                    "titlePanel",
+                    "pausePanel"
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "runtime-script-links",
+              "name": "Runtime Script Links",
+              "type": "group",
+              "parentId": "gameplay-root",
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "color": "#6f737a",
+              "visible": false,
+              "locked": true,
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "script-links"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeFile": "src/main.js",
+                  "styleFile": "src/styles.css",
+                  "entryFunctions": [
+                    "loadFarmScene",
+                    "loadEditorLevel",
+                    "startGame",
+                    "buildField",
+                    "initializeWorldLife",
+                    "refreshMachineModel",
+                    "updateHud"
+                  ],
+                  "hudRoots": [
+                    "hud",
+                    "contractCard",
+                    "objectiveBoard",
+                    "shopPanel",
+                    "titlePanel",
+                    "pausePanel"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-01-sunflower-east-field",
+          "name": "Sunflower East Field",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              74,
+              0.08,
+              -24
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              36.12,
+              0.12,
+              18.919999999999998
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "sunflower"
+          ],
+          "components": [
+            {
+              "id": "field-01-sunflower-east-field-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-01-sunflower-east-field-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-01-sunflower-east-field-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "sunflower"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 0,
+                  "cropId": "sunflower",
+                  "serviceStationId": "oil-press",
+                  "cols": 42,
+                  "rows": 22,
+                  "tileSize": 0.86,
+                  "objective": "Press sunflower loads at the oil press",
+                  "growthTime": 90,
+                  "valueMultiplier": 1,
+                  "cropModel": {
+                    "file": "plant_001.glb",
+                    "scale": 0.34
+                  }
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-01-sunflower-east-field",
+              "name": "Sunflower East Field",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                74,
+                0.08,
+                -24
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                36.12,
+                0.12,
+                18.919999999999998
+              ],
+              "color": "#d8bd3e",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "sunflower"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 0,
+                  "cropId": "sunflower",
+                  "serviceStationId": "oil-press",
+                  "cols": 42,
+                  "rows": 22,
+                  "tileSize": 0.86,
+                  "objective": "Press sunflower loads at the oil press",
+                  "growthTime": 90,
+                  "valueMultiplier": 1,
+                  "cropModel": {
+                    "file": "plant_001.glb",
+                    "scale": 0.34
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-02-mill-wheat-strip",
+          "name": "Mill Wheat Strip",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -72,
+              0.08,
+              -58
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              28.38,
+              0.12,
+              29.24
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "wheat"
+          ],
+          "components": [
+            {
+              "id": "field-02-mill-wheat-strip-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-02-mill-wheat-strip-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-02-mill-wheat-strip-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "wheat"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 1,
+                  "cropId": "wheat",
+                  "serviceStationId": "grain-mill",
+                  "cols": 33,
+                  "rows": 34,
+                  "tileSize": 0.86,
+                  "objective": "Bring wheat crates to the grain mill",
+                  "growthTime": 65,
+                  "valueMultiplier": 0.92,
+                  "cropModel": {
+                    "file": "hay_001.glb",
+                    "scale": 0.34
+                  }
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-02-mill-wheat-strip",
+              "name": "Mill Wheat Strip",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -72,
+                0.08,
+                -58
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                28.38,
+                0.12,
+                29.24
+              ],
+              "color": "#caa15a",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "wheat"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 1,
+                  "cropId": "wheat",
+                  "serviceStationId": "grain-mill",
+                  "cols": 33,
+                  "rows": 34,
+                  "tileSize": 0.86,
+                  "objective": "Bring wheat crates to the grain mill",
+                  "growthTime": 65,
+                  "valueMultiplier": 0.92,
+                  "cropModel": {
+                    "file": "hay_001.glb",
+                    "scale": 0.34
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-03-soybean-trial-bed",
+          "name": "Soybean Trial Bed",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -47,
+              0.08,
+              -58
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              18.06,
+              0.12,
+              24.08
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "soybean"
+          ],
+          "components": [
+            {
+              "id": "field-03-soybean-trial-bed-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-03-soybean-trial-bed-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-03-soybean-trial-bed-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "soybean"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 2,
+                  "cropId": "soybean",
+                  "serviceStationId": "greenhouse-dock",
+                  "cols": 21,
+                  "rows": 28,
+                  "tileSize": 0.86,
+                  "objective": "Carry soybean sacks to the greenhouse dock",
+                  "growthTime": 95,
+                  "valueMultiplier": 1.02,
+                  "cropModel": null
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-03-soybean-trial-bed",
+              "name": "Soybean Trial Bed",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -47,
+                0.08,
+                -58
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                18.06,
+                0.12,
+                24.08
+              ],
+              "color": "#5da76c",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "soybean"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 2,
+                  "cropId": "soybean",
+                  "serviceStationId": "greenhouse-dock",
+                  "cols": 21,
+                  "rows": 28,
+                  "tileSize": 0.86,
+                  "objective": "Carry soybean sacks to the greenhouse dock",
+                  "growthTime": 95,
+                  "valueMultiplier": 1.02,
+                  "cropModel": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-04-tomato-packing-rows",
+          "name": "Tomato Packing Rows",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              58,
+              0.08,
+              -13
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              31.82,
+              0.12,
+              14.62
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "tomato"
+          ],
+          "components": [
+            {
+              "id": "field-04-tomato-packing-rows-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-04-tomato-packing-rows-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-04-tomato-packing-rows-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "tomato"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 3,
+                  "cropId": "tomato",
+                  "serviceStationId": "packing-shed",
+                  "cols": 37,
+                  "rows": 17,
+                  "tileSize": 0.86,
+                  "objective": "Deliver tomato crates to the packing shed",
+                  "growthTime": 105,
+                  "valueMultiplier": 1.08,
+                  "cropModel": null
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-04-tomato-packing-rows",
+              "name": "Tomato Packing Rows",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                58,
+                0.08,
+                -13
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                31.82,
+                0.12,
+                14.62
+              ],
+              "color": "#b9473e",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "tomato"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 3,
+                  "cropId": "tomato",
+                  "serviceStationId": "packing-shed",
+                  "cols": 37,
+                  "rows": 17,
+                  "tileSize": 0.86,
+                  "objective": "Deliver tomato crates to the packing shed",
+                  "growthTime": 105,
+                  "valueMultiplier": 1.08,
+                  "cropModel": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-05-lavender-west-bed",
+          "name": "Lavender West Bed",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -77,
+              0.08,
+              20
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              15.48,
+              0.12,
+              15.48
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "lavender"
+          ],
+          "components": [
+            {
+              "id": "field-05-lavender-west-bed-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-05-lavender-west-bed-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-05-lavender-west-bed-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "lavender"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 4,
+                  "cropId": "lavender",
+                  "serviceStationId": "flower-stall",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Drop lavender bunches at the flower stall",
+                  "growthTime": 130,
+                  "valueMultiplier": 1.12,
+                  "cropModel": null
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-05-lavender-west-bed",
+              "name": "Lavender West Bed",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -77,
+                0.08,
+                20
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                15.48,
+                0.12,
+                15.48
+              ],
+              "color": "#7660aa",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "lavender"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 4,
+                  "cropId": "lavender",
+                  "serviceStationId": "flower-stall",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Drop lavender bunches at the flower stall",
+                  "growthTime": 130,
+                  "valueMultiplier": 1.12,
+                  "cropModel": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-06-lettuce-east-bed",
+          "name": "Lettuce East Bed",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -55,
+              0.08,
+              20
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              15.48,
+              0.12,
+              15.48
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "lettuce"
+          ],
+          "components": [
+            {
+              "id": "field-06-lettuce-east-bed-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-06-lettuce-east-bed-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-06-lettuce-east-bed-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "lettuce"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 5,
+                  "cropId": "lettuce",
+                  "serviceStationId": "market-stand",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Take lettuce baskets to the market stand",
+                  "growthTime": 50,
+                  "valueMultiplier": 0.95,
+                  "cropModel": null
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-06-lettuce-east-bed",
+              "name": "Lettuce East Bed",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -55,
+                0.08,
+                20
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                15.48,
+                0.12,
+                15.48
+              ],
+              "color": "#6fbf62",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "lettuce"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 5,
+                  "cropId": "lettuce",
+                  "serviceStationId": "market-stand",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Take lettuce baskets to the market stand",
+                  "growthTime": 50,
+                  "valueMultiplier": 0.95,
+                  "cropModel": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-07-carrot-west-bed",
+          "name": "Carrot West Bed",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -77,
+              0.08,
+              42
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              15.48,
+              0.12,
+              15.48
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "carrot"
+          ],
+          "components": [
+            {
+              "id": "field-07-carrot-west-bed-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-07-carrot-west-bed-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-07-carrot-west-bed-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "carrot"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 6,
+                  "cropId": "carrot",
+                  "serviceStationId": "root-cellar",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Unload carrot boxes at the root cellar",
+                  "growthTime": 110,
+                  "valueMultiplier": 1.04,
+                  "cropModel": {
+                    "file": "plant_007.glb",
+                    "scale": 0.28
+                  }
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-07-carrot-west-bed",
+              "name": "Carrot West Bed",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -77,
+                0.08,
+                42
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                15.48,
+                0.12,
+                15.48
+              ],
+              "color": "#d88a36",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "carrot"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 6,
+                  "cropId": "carrot",
+                  "serviceStationId": "root-cellar",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Unload carrot boxes at the root cellar",
+                  "growthTime": 110,
+                  "valueMultiplier": 1.04,
+                  "cropModel": {
+                    "file": "plant_007.glb",
+                    "scale": 0.28
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-08-potato-east-bed",
+          "name": "Potato East Bed",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -55,
+              0.08,
+              42
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              15.48,
+              0.12,
+              15.48
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "potato"
+          ],
+          "components": [
+            {
+              "id": "field-08-potato-east-bed-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-08-potato-east-bed-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-08-potato-east-bed-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "potato"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 7,
+                  "cropId": "potato",
+                  "serviceStationId": "root-cellar",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Stack potato sacks inside the root cellar",
+                  "growthTime": 125,
+                  "valueMultiplier": 1.1,
+                  "cropModel": null
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-08-potato-east-bed",
+              "name": "Potato East Bed",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -55,
+                0.08,
+                42
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                15.48,
+                0.12,
+                15.48
+              ],
+              "color": "#9a7c50",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "potato"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 7,
+                  "cropId": "potato",
+                  "serviceStationId": "root-cellar",
+                  "cols": 18,
+                  "rows": 18,
+                  "tileSize": 0.86,
+                  "objective": "Stack potato sacks inside the root cellar",
+                  "growthTime": 125,
+                  "valueMultiplier": 1.1,
+                  "cropModel": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-09-pumpkin-south-west-field",
+          "name": "Pumpkin South West Field",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -77,
+              0.08,
+              78
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              20.64,
+              0.12,
+              41.28
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "pumpkin"
+          ],
+          "components": [
+            {
+              "id": "field-09-pumpkin-south-west-field-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-09-pumpkin-south-west-field-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-09-pumpkin-south-west-field-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "pumpkin"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 8,
+                  "cropId": "pumpkin",
+                  "serviceStationId": "dairy-yard",
+                  "cols": 24,
+                  "rows": 48,
+                  "tileSize": 0.86,
+                  "objective": "Carry pumpkins to the kitchen dock",
+                  "growthTime": 220,
+                  "valueMultiplier": 1.18,
+                  "cropModel": {
+                    "file": "plant_011.glb",
+                    "scale": 0.32
+                  }
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-09-pumpkin-south-west-field",
+              "name": "Pumpkin South West Field",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -77,
+                0.08,
+                78
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                20.64,
+                0.12,
+                41.28
+              ],
+              "color": "#c86f32",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "pumpkin"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 8,
+                  "cropId": "pumpkin",
+                  "serviceStationId": "dairy-yard",
+                  "cols": 24,
+                  "rows": 48,
+                  "tileSize": 0.86,
+                  "objective": "Carry pumpkins to the kitchen dock",
+                  "growthTime": 220,
+                  "valueMultiplier": 1.18,
+                  "cropModel": {
+                    "file": "plant_011.glb",
+                    "scale": 0.32
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-10-corn-south-east-field",
+          "name": "Corn South East Field",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              -52,
+              0.08,
+              78
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              20.64,
+              0.12,
+              41.28
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "corn"
+          ],
+          "components": [
+            {
+              "id": "field-10-corn-south-east-field-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-10-corn-south-east-field-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-10-corn-south-east-field-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "corn"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 9,
+                  "cropId": "corn",
+                  "serviceStationId": "feed-barn",
+                  "cols": 24,
+                  "rows": 48,
+                  "tileSize": 0.86,
+                  "objective": "Feed tall corn into the feed barn dryer",
+                  "growthTime": 140,
+                  "valueMultiplier": 1,
+                  "cropModel": null
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-10-corn-south-east-field",
+              "name": "Corn South East Field",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                -52,
+                0.08,
+                78
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                20.64,
+                0.12,
+                41.28
+              ],
+              "color": "#cbb532",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "corn"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 9,
+                  "cropId": "corn",
+                  "serviceStationId": "feed-barn",
+                  "cols": 24,
+                  "rows": 48,
+                  "tileSize": 0.86,
+                  "objective": "Feed tall corn into the feed barn dryer",
+                  "growthTime": 140,
+                  "valueMultiplier": 1,
+                  "cropModel": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-11-cotton-orchard-block",
+          "name": "Cotton Orchard Block",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              92,
+              0.08,
+              18
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              44.72,
+              0.12,
+              24.08
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "cotton"
+          ],
+          "components": [
+            {
+              "id": "field-11-cotton-orchard-block-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-11-cotton-orchard-block-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-11-cotton-orchard-block-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "cotton"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 10,
+                  "cropId": "cotton",
+                  "serviceStationId": "textile-shed",
+                  "cols": 52,
+                  "rows": 28,
+                  "tileSize": 0.86,
+                  "objective": "Deliver cotton bales to the textile shed",
+                  "growthTime": 180,
+                  "valueMultiplier": 1.14,
+                  "cropModel": {
+                    "file": "plant_004.glb",
+                    "scale": 0.3
+                  }
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-11-cotton-orchard-block",
+              "name": "Cotton Orchard Block",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                92,
+                0.08,
+                18
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                44.72,
+                0.12,
+                24.08
+              ],
+              "color": "#dedfd3",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "cotton"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 10,
+                  "cropId": "cotton",
+                  "serviceStationId": "textile-shed",
+                  "cols": 52,
+                  "rows": 28,
+                  "tileSize": 0.86,
+                  "objective": "Deliver cotton bales to the textile shed",
+                  "growthTime": 180,
+                  "valueMultiplier": 1.14,
+                  "cropModel": {
+                    "file": "plant_004.glb",
+                    "scale": 0.3
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "field-12-rice-south-market-rows",
+          "name": "Rice South Market Rows",
+          "type": "box",
+          "parentId": "fields-root",
+          "transform": {
+            "position": [
+              105,
+              0.08,
+              58
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              36.12,
+              0.12,
+              13.76
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "field",
+            "rice"
+          ],
+          "components": [
+            {
+              "id": "field-12-rice-south-market-rows-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "field-12-rice-south-market-rows-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "field-12-rice-south-market-rows-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "rice"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 11,
+                  "cropId": "rice",
+                  "serviceStationId": "south-market",
+                  "cols": 42,
+                  "rows": 16,
+                  "tileSize": 0.86,
+                  "objective": "Haul rice bags to the south market scale",
+                  "growthTime": 160,
+                  "valueMultiplier": 1.16,
+                  "cropModel": null
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "field-12-rice-south-market-rows",
+              "name": "Rice South Market Rows",
+              "type": "box",
+              "parentId": "fields-root",
+              "position": [
+                105,
+                0.08,
+                58
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                36.12,
+                0.12,
+                13.76
+              ],
+              "color": "#98b979",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0,
+                "roughness": 0.9,
+                "emissiveIntensity": 0,
+                "wireframe": true,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "field",
+                  "rice"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "FIELD_ANCHORS",
+                  "runtimeIndex": 11,
+                  "cropId": "rice",
+                  "serviceStationId": "south-market",
+                  "cols": 42,
+                  "rows": 16,
+                  "tileSize": 0.86,
+                  "objective": "Haul rice bags to the south market scale",
+                  "growthTime": 160,
+                  "valueMultiplier": 1.16,
+                  "cropModel": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-01-oil-press",
+          "name": "Oil Press",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              69.6,
+              0.12,
+              17.6
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              3,
+              3,
+              3
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "oil-press"
+          ],
+          "components": [
+            {
+              "id": "station-01-oil-press-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-01-oil-press-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-01-oil-press-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "oil-press"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 0,
+                  "stationId": "oil-press",
+                  "radius": 3,
+                  "triggerPosition": [
+                    69.6,
+                    0,
+                    17.6
+                  ],
+                  "visualPosition": [
+                    69.6,
+                    0,
+                    17.6
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-01-oil-press",
+              "name": "Oil Press",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                69.6,
+                0.12,
+                17.6
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                3,
+                3,
+                3
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "oil-press"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 0,
+                  "stationId": "oil-press",
+                  "radius": 3,
+                  "triggerPosition": [
+                    69.6,
+                    0,
+                    17.6
+                  ],
+                  "visualPosition": [
+                    69.6,
+                    0,
+                    17.6
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-02-grain-mill",
+          "name": "Grain Mill",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              -27.3,
+              0.12,
+              62.2
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              3.1,
+              3.1,
+              3.1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "grain-mill"
+          ],
+          "components": [
+            {
+              "id": "station-02-grain-mill-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-02-grain-mill-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-02-grain-mill-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "grain-mill"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 1,
+                  "stationId": "grain-mill",
+                  "radius": 3.1,
+                  "triggerPosition": [
+                    -27.3,
+                    0,
+                    62.2
+                  ],
+                  "visualPosition": [
+                    -27.3,
+                    0,
+                    62.2
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-02-grain-mill",
+              "name": "Grain Mill",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                -27.3,
+                0.12,
+                62.2
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                3.1,
+                3.1,
+                3.1
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "grain-mill"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 1,
+                  "stationId": "grain-mill",
+                  "radius": 3.1,
+                  "triggerPosition": [
+                    -27.3,
+                    0,
+                    62.2
+                  ],
+                  "visualPosition": [
+                    -27.3,
+                    0,
+                    62.2
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-03-greenhouse-dock",
+          "name": "Greenhouse Dock",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              44.9,
+              0.12,
+              -65.6
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              2.9,
+              2.9,
+              2.9
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "greenhouse-dock"
+          ],
+          "components": [
+            {
+              "id": "station-03-greenhouse-dock-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-03-greenhouse-dock-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-03-greenhouse-dock-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "greenhouse-dock"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 2,
+                  "stationId": "greenhouse-dock",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    44.9,
+                    0,
+                    -65.6
+                  ],
+                  "visualPosition": [
+                    44.9,
+                    0,
+                    -65.6
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-03-greenhouse-dock",
+              "name": "Greenhouse Dock",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                44.9,
+                0.12,
+                -65.6
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                2.9,
+                2.9,
+                2.9
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "greenhouse-dock"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 2,
+                  "stationId": "greenhouse-dock",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    44.9,
+                    0,
+                    -65.6
+                  ],
+                  "visualPosition": [
+                    44.9,
+                    0,
+                    -65.6
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-04-packing-shed",
+          "name": "Packing Shed",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              -12.3,
+              0.12,
+              23.2
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              2.9,
+              2.9,
+              2.9
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "packing-shed"
+          ],
+          "components": [
+            {
+              "id": "station-04-packing-shed-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-04-packing-shed-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-04-packing-shed-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "packing-shed"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 3,
+                  "stationId": "packing-shed",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    -12.3,
+                    0,
+                    16.4
+                  ],
+                  "visualPosition": [
+                    -12.3,
+                    0,
+                    23.2
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-04-packing-shed",
+              "name": "Packing Shed",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                -12.3,
+                0.12,
+                23.2
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                2.9,
+                2.9,
+                2.9
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "packing-shed"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 3,
+                  "stationId": "packing-shed",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    -12.3,
+                    0,
+                    16.4
+                  ],
+                  "visualPosition": [
+                    -12.3,
+                    0,
+                    23.2
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-05-flower-stall",
+          "name": "Flower Stall",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              11.3,
+              0.12,
+              44.7
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              2.8,
+              2.8,
+              2.8
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "flower-stall"
+          ],
+          "components": [
+            {
+              "id": "station-05-flower-stall-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-05-flower-stall-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-05-flower-stall-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "flower-stall"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 4,
+                  "stationId": "flower-stall",
+                  "radius": 2.8,
+                  "triggerPosition": [
+                    11.3,
+                    0,
+                    44.7
+                  ],
+                  "visualPosition": [
+                    11.3,
+                    0,
+                    44.7
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-05-flower-stall",
+              "name": "Flower Stall",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                11.3,
+                0.12,
+                44.7
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                2.8,
+                2.8,
+                2.8
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "flower-stall"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 4,
+                  "stationId": "flower-stall",
+                  "radius": 2.8,
+                  "triggerPosition": [
+                    11.3,
+                    0,
+                    44.7
+                  ],
+                  "visualPosition": [
+                    11.3,
+                    0,
+                    44.7
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-06-market-stand",
+          "name": "Market Stand",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              15,
+              0.12,
+              -52.5
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              2.8,
+              2.8,
+              2.8
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "market-stand"
+          ],
+          "components": [
+            {
+              "id": "station-06-market-stand-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-06-market-stand-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-06-market-stand-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "market-stand"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 5,
+                  "stationId": "market-stand",
+                  "radius": 2.8,
+                  "triggerPosition": [
+                    15,
+                    0,
+                    -52.5
+                  ],
+                  "visualPosition": [
+                    15,
+                    0,
+                    -52.5
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-06-market-stand",
+              "name": "Market Stand",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                15,
+                0.12,
+                -52.5
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                2.8,
+                2.8,
+                2.8
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "market-stand"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 5,
+                  "stationId": "market-stand",
+                  "radius": 2.8,
+                  "triggerPosition": [
+                    15,
+                    0,
+                    -52.5
+                  ],
+                  "visualPosition": [
+                    15,
+                    0,
+                    -52.5
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-07-root-cellar",
+          "name": "Root Cellar",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              -54.2,
+              0.12,
+              -46.2
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              2.9,
+              2.9,
+              2.9
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "root-cellar"
+          ],
+          "components": [
+            {
+              "id": "station-07-root-cellar-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-07-root-cellar-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-07-root-cellar-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "root-cellar"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 6,
+                  "stationId": "root-cellar",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    -54.2,
+                    0,
+                    -46.2
+                  ],
+                  "visualPosition": [
+                    -54.2,
+                    0,
+                    -46.2
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-07-root-cellar",
+              "name": "Root Cellar",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                -54.2,
+                0.12,
+                -46.2
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                2.9,
+                2.9,
+                2.9
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "root-cellar"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 6,
+                  "stationId": "root-cellar",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    -54.2,
+                    0,
+                    -46.2
+                  ],
+                  "visualPosition": [
+                    -54.2,
+                    0,
+                    -46.2
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-08-dairy-yard",
+          "name": "Kitchen Dock",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              -8.4,
+              0.12,
+              30.9
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              3,
+              3,
+              3
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "dairy-yard"
+          ],
+          "components": [
+            {
+              "id": "station-08-dairy-yard-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-08-dairy-yard-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-08-dairy-yard-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "dairy-yard"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 7,
+                  "stationId": "dairy-yard",
+                  "radius": 3,
+                  "triggerPosition": [
+                    -8.4,
+                    0,
+                    30.9
+                  ],
+                  "visualPosition": [
+                    -8.4,
+                    0,
+                    30.9
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-08-dairy-yard",
+              "name": "Kitchen Dock",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                -8.4,
+                0.12,
+                30.9
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                3,
+                3,
+                3
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "dairy-yard"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 7,
+                  "stationId": "dairy-yard",
+                  "radius": 3,
+                  "triggerPosition": [
+                    -8.4,
+                    0,
+                    30.9
+                  ],
+                  "visualPosition": [
+                    -8.4,
+                    0,
+                    30.9
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-09-feed-barn",
+          "name": "Feed Barn",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              57.1,
+              0.12,
+              60.2
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              3.1,
+              3.1,
+              3.1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "feed-barn"
+          ],
+          "components": [
+            {
+              "id": "station-09-feed-barn-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-09-feed-barn-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-09-feed-barn-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "feed-barn"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 8,
+                  "stationId": "feed-barn",
+                  "radius": 3.1,
+                  "triggerPosition": [
+                    57.1,
+                    0,
+                    60.2
+                  ],
+                  "visualPosition": [
+                    57.1,
+                    0,
+                    60.2
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-09-feed-barn",
+              "name": "Feed Barn",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                57.1,
+                0.12,
+                60.2
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                3.1,
+                3.1,
+                3.1
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "feed-barn"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 8,
+                  "stationId": "feed-barn",
+                  "radius": 3.1,
+                  "triggerPosition": [
+                    57.1,
+                    0,
+                    60.2
+                  ],
+                  "visualPosition": [
+                    57.1,
+                    0,
+                    60.2
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-10-textile-shed",
+          "name": "Textile Shed",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              1.6,
+              0.12,
+              -27.3
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              2.8,
+              2.8,
+              2.8
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "textile-shed"
+          ],
+          "components": [
+            {
+              "id": "station-10-textile-shed-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-10-textile-shed-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-10-textile-shed-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "textile-shed"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 9,
+                  "stationId": "textile-shed",
+                  "radius": 2.8,
+                  "triggerPosition": [
+                    1.6,
+                    0,
+                    -27.3
+                  ],
+                  "visualPosition": [
+                    1.6,
+                    0,
+                    -27.3
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-10-textile-shed",
+              "name": "Textile Shed",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                1.6,
+                0.12,
+                -27.3
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                2.8,
+                2.8,
+                2.8
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "textile-shed"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 9,
+                  "stationId": "textile-shed",
+                  "radius": 2.8,
+                  "triggerPosition": [
+                    1.6,
+                    0,
+                    -27.3
+                  ],
+                  "visualPosition": [
+                    1.6,
+                    0,
+                    -27.3
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "station-11-south-market",
+          "name": "South Market",
+          "type": "ring",
+          "parentId": "stations-root",
+          "transform": {
+            "position": [
+              58.8,
+              0.12,
+              -53.3
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              2.9,
+              2.9,
+              2.9
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "harvest-rush",
+            "unload-station",
+            "south-market"
+          ],
+          "components": [
+            {
+              "id": "station-11-south-market-pixl-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              }
+            },
+            {
+              "id": "station-11-south-market-pixl-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              }
+            },
+            {
+              "id": "station-11-south-market-pixl-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "south-market"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 10,
+                  "stationId": "south-market",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    58.8,
+                    0,
+                    -53.3
+                  ],
+                  "visualPosition": [
+                    58.8,
+                    0,
+                    -53.3
+                  ]
+                }
+              }
+            }
+          ],
+          "data": {
+            "editorObject": {
+              "id": "station-11-south-market",
+              "name": "South Market",
+              "type": "ring",
+              "parentId": "stations-root",
+              "position": [
+                58.8,
+                0.12,
+                -53.3
+              ],
+              "rotation": [
+                1.5707963267948966,
+                0,
+                0
+              ],
+              "scale": [
+                2.9,
+                2.9,
+                2.9
+              ],
+              "color": "#d2a64f",
+              "visible": true,
+              "locked": false,
+              "isStatic": true,
+              "physicsSettings": {
+                "bodyType": "fixed",
+                "colliderShape": "ball",
+                "mass": 1,
+                "friction": 0.75,
+                "restitution": 0.05,
+                "linearDamping": 0,
+                "angularDamping": 0,
+                "isSensor": true
+              },
+              "visualSettings": {
+                "textureUrl": "",
+                "opacity": 0.72,
+                "metalness": 0,
+                "roughness": 0.8,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false
+              },
+              "logicSettings": {
+                "tags": [
+                  "harvest-rush",
+                  "unload-station",
+                  "south-market"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "runtimeArray": "UNLOAD_STATIONS",
+                  "runtimeIndex": 10,
+                  "stationId": "south-market",
+                  "radius": 2.9,
+                  "triggerPosition": [
+                    58.8,
+                    0,
+                    -53.3
+                  ],
+                  "visualPosition": [
+                    58.8,
+                    0,
+                    -53.3
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ],
+      "camera": {
+        "id": "main-camera",
+        "name": "Main Camera",
+        "position": [
+          0,
+          175,
+          54
+        ],
+        "target": [
+          0,
+          0,
+          12
+        ],
+        "fov": 45,
+        "near": 0.1,
+        "far": 1000
+      },
+      "environment": {
+        "background": "#9fd5df",
+        "ambientLight": "#ffffff",
+        "ambientIntensity": 0.75,
+        "sunColor": "#fffaf0",
+        "sunIntensity": 0.8
+      },
+      "physics": {
+        "engine": "rapier",
+        "gravity": [
+          0,
+          -9.81,
+          0
+        ]
+      },
+      "metadata": {
+        "source": "harvest-rush-runtime",
+        "runtimeInfo": {
+          "file": "src/main.js",
+          "bytes": 217637,
+          "lines": 5336,
+          "constants": {
+            "FIELD_COLS": 60,
+            "FIELD_ROWS": 40,
+            "TILE_SIZE": 0.86,
+            "FARM_SCENE_SCALE": 0.462,
+            "START_POSITION_Z": 14.2
+          }
+        },
+        "farmManifest": {
+          "nodeCount": 11165,
+          "meshCount": 11162,
+          "meshNodeCount": 11165,
+          "topNamePrefixes": [
+            {
+              "prefix": "plant",
+              "count": 6322
+            },
+            {
+              "prefix": "fence",
+              "count": 1980
+            },
+            {
+              "prefix": "tree",
+              "count": 447
+            },
+            {
+              "prefix": "fir",
+              "count": 426
+            },
+            {
+              "prefix": "hay",
+              "count": 391
+            },
+            {
+              "prefix": "road",
+              "count": 230
+            },
+            {
+              "prefix": "hangar",
+              "count": 214
+            },
+            {
+              "prefix": "sheep",
+              "count": 201
+            },
+            {
+              "prefix": "garden",
+              "count": 188
+            },
+            {
+              "prefix": "ground",
+              "count": 170
+            },
+            {
+              "prefix": "tower",
+              "count": 81
+            },
+            {
+              "prefix": "goat",
+              "count": 78
+            },
+            {
+              "prefix": "bush",
+              "count": 61
+            },
+            {
+              "prefix": "chicken",
+              "count": 34
+            },
+            {
+              "prefix": "truck",
+              "count": 30
+            },
+            {
+              "prefix": "mountain",
+              "count": 30
+            }
+          ],
+          "sampleNodes": [
+            {
+              "index": 0,
+              "name": "ground_002.001",
+              "mesh": 0
+            },
+            {
+              "index": 1,
+              "name": "ground_003.001",
+              "mesh": 1
+            },
+            {
+              "index": 2,
+              "name": "ground_003.002",
+              "mesh": 2
+            },
+            {
+              "index": 3,
+              "name": "ground_004.001",
+              "mesh": 3
+            },
+            {
+              "index": 4,
+              "name": "ground_005.001",
+              "mesh": 4
+            },
+            {
+              "index": 5,
+              "name": "ground_004.002",
+              "mesh": 5
+            },
+            {
+              "index": 6,
+              "name": "ground_007.001",
+              "mesh": 6
+            },
+            {
+              "index": 7,
+              "name": "ground_007.002",
+              "mesh": 7
+            },
+            {
+              "index": 8,
+              "name": "ground_004.003",
+              "mesh": 8
+            },
+            {
+              "index": 9,
+              "name": "ground_004.004",
+              "mesh": 9
+            },
+            {
+              "index": 10,
+              "name": "ground_007.003",
+              "mesh": 10
+            },
+            {
+              "index": 11,
+              "name": "ground_007.004",
+              "mesh": 11
+            },
+            {
+              "index": 12,
+              "name": "ground_004.005",
+              "mesh": 12
+            },
+            {
+              "index": 13,
+              "name": "ground_004.006",
+              "mesh": 13
+            },
+            {
+              "index": 14,
+              "name": "ground_004.007",
+              "mesh": 14
+            },
+            {
+              "index": 15,
+              "name": "ground_004.008",
+              "mesh": 15
+            },
+            {
+              "index": 16,
+              "name": "ground_004.009",
+              "mesh": 16
+            },
+            {
+              "index": 17,
+              "name": "ground_004.010",
+              "mesh": 17
+            },
+            {
+              "index": 18,
+              "name": "ground_008.001",
+              "mesh": 18
+            },
+            {
+              "index": 19,
+              "name": "ground_010.001",
+              "mesh": 19
+            },
+            {
+              "index": 20,
+              "name": "ground_012.003",
+              "mesh": 20
+            },
+            {
+              "index": 21,
+              "name": "ground_012.004",
+              "mesh": 21
+            },
+            {
+              "index": 22,
+              "name": "ground_008.003",
+              "mesh": 22
+            },
+            {
+              "index": 23,
+              "name": "ground_011.002",
+              "mesh": 23
+            },
+            {
+              "index": 24,
+              "name": "ground_009.001",
+              "mesh": 24
+            },
+            {
+              "index": 25,
+              "name": "ground_008.002",
+              "mesh": 25
+            },
+            {
+              "index": 26,
+              "name": "ground_008.004",
+              "mesh": 26
+            },
+            {
+              "index": 27,
+              "name": "ground_011.003",
+              "mesh": 27
+            },
+            {
+              "index": 28,
+              "name": "ground_008.005",
+              "mesh": 28
+            },
+            {
+              "index": 29,
+              "name": "ground_002.002",
+              "mesh": 29
+            },
+            {
+              "index": 30,
+              "name": "ground_006.001",
+              "mesh": 30
+            },
+            {
+              "index": 31,
+              "name": "ground_006.002",
+              "mesh": 31
+            }
+          ]
+        },
+        "originalEditorLevel": {
+          "schema": "pixlland.level3d.v1",
+          "game": "harvest-rush-3d",
+          "engineTarget": "phaser-enable3d",
+          "sourceScene": "phaser/scenes/HarvestLevel.scene",
+          "objectCount": 22,
+          "notes": "Generated from the official Phaser Editor project in phaser/. Edit scenes/HarvestLevel.scene in Phaser Editor Desktop, then run npm run phaser:export-level."
+        },
+        "generatedFrom": [
+          "public/assets/vendor/farm-pack/Farm.glb",
+          "src/main.js",
+          "public/levels/harvest-rush.level3d.json"
+        ]
+      }
+    }
+  ],
+  "assets": {
+    "root": "Assets",
+    "folders": [
+      "Assets/3D_Models",
+      "Assets/Sprites",
+      "Assets/Textures",
+      "Assets/Audio",
+      "Assets/VFX",
+      "Assets/Materials",
+      "Assets/Prefabs",
+      "Scenes",
+      "Scripts",
+      "ProjectSettings",
+      "Builds",
+      "Dev"
+    ],
+    "entries": [
+      {
+        "id": "scene-model-1-farm-glb",
+        "name": "Farm.glb",
+        "kind": "model",
+        "path": "Assets/3D_Models/Farm.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/Farm.glb",
+        "tags": [
+          "harvest-rush",
+          "scene-model"
+        ],
+        "metadata": {
+          "sourceObjectId": "farm-scene-glb",
+          "sourceTags": [
+            "harvest-rush",
+            "farm-map",
+            "runtime-map",
+            "farm-glb"
+          ]
+        }
+      },
+      {
+        "id": "scene-model-2-player-harvester",
+        "name": "Player Harvester",
+        "kind": "model",
+        "path": "Assets/3D_Models/Player Harvester",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/harvester_001.glb",
+        "tags": [
+          "harvest-rush",
+          "scene-model"
+        ],
+        "metadata": {
+          "sourceObjectId": "player-harvester",
+          "sourceTags": [
+            "harvest-rush",
+            "runtime-model",
+            "player",
+            "vehicle",
+            "machine"
+          ]
+        }
+      },
+      {
+        "id": "scene-model-3-player-trailer",
+        "name": "Player Trailer",
+        "kind": "model",
+        "path": "Assets/3D_Models/Player Trailer",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/trailer_001.glb",
+        "tags": [
+          "harvest-rush",
+          "scene-model"
+        ],
+        "metadata": {
+          "sourceObjectId": "player-trailer",
+          "sourceTags": [
+            "harvest-rush",
+            "runtime-model",
+            "vehicle",
+            "trailer",
+            "capacity"
+          ]
+        }
+      },
+      {
+        "id": "farm-pack-3-tractor-001-glb",
+        "name": "Field Tractor",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/tractor_001.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/tractor_001.glb",
+        "tags": [
+          "harvest-rush",
+          "machine",
+          "tractor-01"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/tractor_001.glb",
+          "machineId": "tractor-01",
+          "role": "Fast row tractor",
+          "unlockField": 2,
+          "runtimeArray": "MACHINES"
+        }
+      },
+      {
+        "id": "farm-pack-4-harvester-002-glb",
+        "name": "Wide Harvester",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/harvester_002.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/harvester_002.glb",
+        "tags": [
+          "harvest-rush",
+          "machine",
+          "harvester-02"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/harvester_002.glb",
+          "machineId": "harvester-02",
+          "role": "Wide cutter",
+          "unlockField": 4,
+          "runtimeArray": "MACHINES"
+        }
+      },
+      {
+        "id": "farm-pack-5-trailer-003-glb",
+        "name": "Orchard Tractor Trailer",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/trailer_003.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/trailer_003.glb",
+        "tags": [
+          "harvest-rush",
+          "trailer",
+          "orchard-tractor"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/trailer_003.glb",
+          "machineId": "orchard-tractor",
+          "role": "Trailer",
+          "unlockField": 11,
+          "runtimeArray": "MACHINES"
+        }
+      },
+      {
+        "id": "farm-pack-6-tractor-002-glb",
+        "name": "Heavy Tractor",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/tractor_002.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/tractor_002.glb",
+        "tags": [
+          "harvest-rush",
+          "machine",
+          "heavy-tractor"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/tractor_002.glb",
+          "machineId": "heavy-tractor",
+          "role": "Heavy hauler",
+          "unlockField": 6,
+          "runtimeArray": "MACHINES"
+        }
+      },
+      {
+        "id": "farm-pack-7-trailer-004-glb",
+        "name": "Titan Harvester Trailer",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/trailer_004.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/trailer_004.glb",
+        "tags": [
+          "harvest-rush",
+          "trailer",
+          "titan-harvester"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/trailer_004.glb",
+          "machineId": "titan-harvester",
+          "role": "Trailer",
+          "unlockField": 9,
+          "runtimeArray": "MACHINES"
+        }
+      },
+      {
+        "id": "farm-pack-8-harvester-004-glb",
+        "name": "Titan Harvester",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/harvester_004.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/harvester_004.glb",
+        "tags": [
+          "harvest-rush",
+          "machine",
+          "titan-harvester"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/harvester_004.glb",
+          "machineId": "titan-harvester",
+          "role": "Premium combine",
+          "unlockField": 9,
+          "runtimeArray": "MACHINES"
+        }
+      },
+      {
+        "id": "farm-pack-9-tractor-004-glb",
+        "name": "Orchard Tractor",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/tractor_004.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/tractor_004.glb",
+        "tags": [
+          "harvest-rush",
+          "machine",
+          "orchard-tractor"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/tractor_004.glb",
+          "machineId": "orchard-tractor",
+          "role": "Precision sprinter",
+          "unlockField": 11,
+          "runtimeArray": "MACHINES"
+        }
+      },
+      {
+        "id": "farm-pack-10-plant-001-glb",
+        "name": "sunflower crop model",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/plant_001.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/plant_001.glb",
+        "tags": [
+          "harvest-rush",
+          "crop",
+          "sunflower"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/plant_001.glb",
+          "cropId": "sunflower",
+          "runtimeArray": "CROP_MODEL_ASSETS",
+          "runtimeScale": 0.34
+        }
+      },
+      {
+        "id": "farm-pack-11-hay-001-glb",
+        "name": "wheat crop model",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/hay_001.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/hay_001.glb",
+        "tags": [
+          "harvest-rush",
+          "crop",
+          "wheat"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/hay_001.glb",
+          "cropId": "wheat",
+          "runtimeArray": "CROP_MODEL_ASSETS",
+          "runtimeScale": 0.34
+        }
+      },
+      {
+        "id": "farm-pack-12-plant-007-glb",
+        "name": "carrot crop model",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/plant_007.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/plant_007.glb",
+        "tags": [
+          "harvest-rush",
+          "crop",
+          "carrot"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/plant_007.glb",
+          "cropId": "carrot",
+          "runtimeArray": "CROP_MODEL_ASSETS",
+          "runtimeScale": 0.28
+        }
+      },
+      {
+        "id": "farm-pack-13-plant-004-glb",
+        "name": "cotton crop model",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/plant_004.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/plant_004.glb",
+        "tags": [
+          "harvest-rush",
+          "crop",
+          "cotton"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/plant_004.glb",
+          "cropId": "cotton",
+          "runtimeArray": "CROP_MODEL_ASSETS",
+          "runtimeScale": 0.3
+        }
+      },
+      {
+        "id": "farm-pack-14-plant-011-glb",
+        "name": "pumpkin crop model",
+        "kind": "model",
+        "path": "Assets/3D_Models/farm-pack/plant_011.glb",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/assets/vendor/farm-pack/plant_011.glb",
+        "tags": [
+          "harvest-rush",
+          "crop",
+          "pumpkin"
+        ],
+        "metadata": {
+          "sourceAsset": "public/assets/vendor/farm-pack/plant_011.glb",
+          "cropId": "pumpkin",
+          "runtimeArray": "CROP_MODEL_ASSETS",
+          "runtimeScale": 0.32
+        }
+      },
+      {
+        "id": "harvest-rush-runtime-main-js",
+        "name": "Harvest Rush runtime",
+        "kind": "script",
+        "path": "Scripts/harvest-rush-runtime-main.js",
+        "url": "/@fs/C:/Users/PCSP/Documents/doc/pixlland-poki/apps/portal/games-src/harvest-rush-3d/src/main.js",
+        "tags": [
+          "harvest-rush",
+          "runtime",
+          "script"
+        ],
+        "metadata": {
+          "file": "src/main.js",
+          "bytes": 217637,
+          "lines": 5336,
+          "constants": {
+            "FIELD_COLS": 60,
+            "FIELD_ROWS": 40,
+            "TILE_SIZE": 0.86,
+            "FARM_SCENE_SCALE": 0.462,
+            "START_POSITION_Z": 14.2
+          }
+        }
+      }
+    ]
+  },
+  "editor": {
+    "mode": "3d",
+    "transformSpace": "world",
+    "snapEnabled": true,
+    "snapTranslate": 0.5,
+    "snapRotate": 15,
+    "snapScale": 0.1,
+    "selectedSceneId": "harvest-rush-main",
+    "layoutPreset": "default"
+  },
+  "game": {
+    "templateId": null,
+    "script": "// Harvest Rush 3D\n// This project opens the real Farm.glb runtime map plus editable gameplay proxies.\n// Runtime source: apps/portal/games-src/harvest-rush-3d/src/main.js\n",
+    "source": {
+      "game": "harvest-rush-3d",
+      "runtimeFile": "src/main.js",
+      "sceneAsset": "public/assets/vendor/farm-pack/Farm.glb",
+      "legacyLevelFile": "public/levels/harvest-rush.level3d.json",
+      "farmSceneScale": 0.462,
+      "systems": {
+        "world": [
+          "loadFarmScene",
+          "buildRoadNavigationFromFarmScene",
+          "buildStaticCollidersFromFarmScene"
+        ],
+        "gameplay": [
+          "buildField",
+          "ensureContractForField",
+          "updateHarvestProgress"
+        ],
+        "vehicle": [
+          "placeVehicleAtFieldStart",
+          "refreshMachineModel",
+          "updateVehicleStats"
+        ],
+        "ui": [
+          "updateHud",
+          "renderShop",
+          "updateDailyCard"
+        ]
+      }
+    }
+  },
+  "integrations": {
+    "pixlland": {
+      "gameSlug": "harvest-rush-3d",
+      "publishTarget": "/upload"
+    }
+  }
+}
