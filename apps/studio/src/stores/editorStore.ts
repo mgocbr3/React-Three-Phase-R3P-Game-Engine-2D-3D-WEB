@@ -10,6 +10,17 @@ export type TransformMode = 'select' | 'translate' | 'rotate' | 'scale';
 export type TransformSpace = 'world' | 'local';
 export type CameraMode = 'third-person' | 'first-person' | 'side-2d' | 'top-down' | 'fixed';
 
+// GDD §6.6 Phase 6B step 6: single source of truth for which viewport
+// the editor is showing. Toolbar 2D/3D buttons write here; Viewport reads
+// from here. URL `?kind=2d|3d` is honored as the initial value (transitional).
+export type SceneKind = '2d' | '3d';
+
+const readSceneKindFromUrl = (): SceneKind => {
+  if (typeof window === 'undefined') return '3d';
+  const k = new URLSearchParams(window.location.search).get('kind');
+  return k === '2d' ? '2d' : '3d';
+};
+
 // Light types for realistic lighting
 export type LightType = 'point' | 'directional' | 'spot' | 'area';
 
@@ -375,6 +386,7 @@ export interface EditorCameraPoseTarget {
 interface EditorState {
   currentTemplateId: TemplateId | null;
   isEditMode: boolean;
+  activeSceneKind: SceneKind;
   transformMode: TransformMode;
   transformSpace: TransformSpace;
   snapEnabled: boolean;
@@ -398,6 +410,7 @@ interface EditorState {
   loadTemplate: (templateId: TemplateId) => void;
   setEditMode: (edit: boolean) => void;
   setCameraPoseTarget: (pose: Omit<EditorCameraPoseTarget, 'timestamp'>) => void;
+  setActiveSceneKind: (kind: SceneKind) => void;
   setTransformMode: (mode: TransformMode) => void;
   setTransformSpace: (space: TransformSpace) => void;
   toggleTransformSpace: () => void;
@@ -1155,6 +1168,7 @@ const getTemplateObjects = (templateId: TemplateId): SceneObject[] => {
 export const useEditorStore = create<EditorState>((set, get) => ({
   currentTemplateId: null,
   isEditMode: true,
+  activeSceneKind: readSceneKindFromUrl(),
   transformMode: 'translate',
   transformSpace: 'world',
   snapEnabled: false,
