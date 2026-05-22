@@ -14,7 +14,7 @@ export const FlyCamera = ({
   speed = 10, 
   fastSpeed = 25, 
   lookSpeed = 0.003,
-  collisionDistance = 2 // Default 2 units away from obstacles
+  collisionDistance = 0
 }: FlyCameraProps) => {
   const { camera, gl, scene } = useThree();
   const focusTarget = useEditorStore((s) => s.focusTarget);
@@ -80,14 +80,6 @@ export const FlyCamera = ({
     };
 
     const handleMouseDown = (e: MouseEvent | PointerEvent) => {
-      // DEBUG: Log mouse events
-      console.log(` [FlyCamera] mousedown:`, {
-        button: e.button,
-        target: (e.target as HTMLElement)?.tagName,
-        isCanvas: e.target === gl.domElement,
-        pointerType: 'pointerType' in e ? e.pointerType : 'mouse',
-      });
-      
       // Only right-click (button 2) OR ctrl+click on canvas activates camera look
       // For iPad: also accept two-finger tap which may come as button 2
       const isCanvasTarget = e.target === gl.domElement || 
@@ -97,7 +89,6 @@ export const FlyCamera = ({
         e.preventDefault();
         isRightMouseDown.current = true;
         gl.domElement.style.cursor = 'grabbing';
-        console.log(` [FlyCamera] Right-click camera look ACTIVATED`);
       }
     };
 
@@ -105,8 +96,13 @@ export const FlyCamera = ({
       if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
         isRightMouseDown.current = false;
         gl.domElement.style.cursor = 'auto';
-        console.log(` [FlyCamera] Right-click camera look DEACTIVATED`);
       }
+    };
+
+    const handlePointerLeave = () => {
+      isRightMouseDown.current = false;
+      gl.domElement.style.cursor = 'auto';
+      gl.domElement.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true }));
     };
 
     const handleMouseMove = (e: MouseEvent | PointerEvent) => {
@@ -150,6 +146,7 @@ export const FlyCamera = ({
     window.addEventListener('pointermove', handleMouseMove);
     canvas.addEventListener('contextmenu', handleContextMenu);
     canvas.addEventListener('wheel', handleWheel, { passive: false });
+    canvas.addEventListener('pointerleave', handlePointerLeave);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
@@ -159,6 +156,7 @@ export const FlyCamera = ({
       window.removeEventListener('pointermove', handleMouseMove);
       canvas.removeEventListener('contextmenu', handleContextMenu);
       canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('pointerleave', handlePointerLeave);
     };
   }, [camera, gl, lookSpeed]);
 
@@ -250,6 +248,11 @@ export const FlyCamera = ({
       
       // Calculate new position
       const newPosition = camera.position.clone().addScaledVector(velocity.current, activeSpeed * delta);
+
+      if (collisionDistance <= 0) {
+        camera.position.copy(newPosition);
+        return;
+      }
       
       //  COLLISION DETECTION: Check for obstacles in movement direction
       const raycaster = new THREE.Raycaster();

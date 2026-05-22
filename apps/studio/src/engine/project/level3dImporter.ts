@@ -273,7 +273,6 @@ export const importLevel3DProject = (
     metadata: {
       originalSchema: level.schema,
       originalGame: level.game,
-      originalEngineTarget: level.engineTarget,
       originalWorld: level.world,
       originalNotes: level.notes,
     },
@@ -295,7 +294,7 @@ export const importLevel3DProject = (
     runtime: {
       primary: 'three-3d',
       renderers: ['three', 'phaser'],
-      physics: ['rapier', 'enable3d'],
+      physics: ['rapier'],
     },
     activeSceneId: sceneId,
     scenes: [scene],

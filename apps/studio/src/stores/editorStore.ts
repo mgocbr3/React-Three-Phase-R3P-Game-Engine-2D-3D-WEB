@@ -265,6 +265,8 @@ export interface AudioSettings {
 // NEW: Animation settings for GLTF skeletal animations
 export interface AnimationSettings {
   modelUrl?: string; // URL to GLTF/GLB model
+  nodeName?: string; // Optional GLTF node to render/select from a shared model
+  nodeIndex?: number; // Optional GLTF mesh traversal index fallback
   currentAnimation?: string; // Name of currently playing animation
   availableAnimations: string[]; // List populated after model load
   autoPlay: boolean;

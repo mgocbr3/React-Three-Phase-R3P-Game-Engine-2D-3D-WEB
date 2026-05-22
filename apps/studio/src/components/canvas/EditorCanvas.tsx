@@ -1,19 +1,17 @@
 import React, { Suspense, useRef, useMemo, useCallback, useState, useEffect } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { 
   Grid, 
-  GizmoHelper, 
-  GizmoViewport,
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { RapierRigidBody } from '@react-three/rapier';
-import { useEditorStore } from '@/stores/editorStore';
-import { useEngineSettings, QualityPreset } from '@/stores/engineSettingsStore';
+import { SceneObject, useEditorStore } from '@/stores/editorStore';
+import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { useAssetDragStore } from '@/stores/assetDragStore';
 import { useThreeMemoryMonitor } from '@/hooks/useThreeCleanup';
 import { EditableObject } from './EditableObject';
-import { GizmoInteractionLock } from './TransformGizmo';
+import { GizmoInteractionLock, TransformGizmo } from './TransformGizmo';
 import { MinecraftPlayer } from './primitives/MinecraftPlayer';
 import { VehicleController } from './controllers/VehicleController';
 import { FPSController } from './controllers/FPSController';
@@ -27,6 +25,14 @@ import { SceneFog } from './SceneFog';
 import { AudioListener as AudioListenerComponent } from './AudioListener';
 import { AdaptivePerformance } from './AdaptivePerformance';
 import { AutoInstancer } from './AutoInstancer';
+import {
+  StaticGltfScene,
+  getStaticGltfObjectByEditorId,
+  getStaticGltfObjectWorldTransform,
+  hasStaticGltfScene,
+  pickStaticGltfNodes,
+} from './StaticGltfScene';
+import type { StaticGltfEditorObject } from './StaticGltfScene';
 import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { AtmosphericLighting } from './AtmosphericLighting';
@@ -38,9 +44,323 @@ import { toast } from 'sonner';
 import { PhaserViewport2D } from './PhaserViewport2D';
 import { useViewportStore } from '@/stores/viewportStore';
 
+const LARGE_EDIT_SCENE_OBJECT_THRESHOLD = 2500;
+const DECOMPOSED_GLTF_STATIC_PART_THRESHOLD = 100;
+const PICK_FALLBACK_MOVE_THRESHOLD_PX = 10;
+const staticTransformPosition = new THREE.Vector3();
+const staticTransformRotation = new THREE.Euler();
+const staticTransformScale = new THREE.Vector3();
+const canvasPickRaycaster = new THREE.Raycaster();
+const canvasPickPointer = new THREE.Vector2();
+
+const getObjectPickNodeName = (object: SceneObject) => {
+  const customData = object.logicSettings?.customData ?? {};
+  const sourceNodeName = customData.sourceNodeName;
+  if (typeof sourceNodeName === 'string') return sourceNodeName;
+  return object.animationSettings?.nodeName;
+};
+
+const getObjectPickNodeIndex = (object: SceneObject) => {
+  const nodeIndex = object.logicSettings?.customData?.sourceNodeIndex;
+  return typeof nodeIndex === 'number' && Number.isInteger(nodeIndex) ? nodeIndex : undefined;
+};
+
+const getObjectPickModelUrl = (object: SceneObject) => (
+  object.animationSettings?.modelUrl
+);
+
+const getObjectSourceSceneScale = (object: SceneObject) => {
+  const customData = object.logicSettings?.customData ?? {};
+  const sourceScale = customData.sourceScale ?? customData.sceneScale;
+  if (typeof sourceScale !== 'number' || !Number.isFinite(sourceScale) || sourceScale <= 0) {
+    return null;
+  }
+  return sourceScale;
+};
+
+const isEditableGltfPartObject = (object: SceneObject) => (
+  Boolean(object.logicSettings?.customData?.editableGlbPart && object.animationSettings?.modelUrl)
+);
+
+const getObjectSelectionRole = (object: SceneObject) => {
+  const customData = object.logicSettings?.customData ?? {};
+  const role = customData.editorSelectionRole ?? customData.selectionRole;
+  return typeof role === 'string' ? role : 'default';
+};
+
+const isBackgroundSelectionRole = (role: string | undefined, type: string | undefined) => (
+  role === 'surface' ||
+  role === 'background' ||
+  type === 'plane' ||
+  type === 'platform'
+);
+
+const MavonEditorLighting = () => (
+  <>
+    <color attach="background" args={['#87ceeb']} />
+    <ambientLight color="#ffffff" intensity={0.12} />
+    <hemisphereLight color="#87ceeb" groundColor="#3d5c3d" intensity={0.18} />
+  </>
+);
+
+const EditorSelectionFallback = ({
+  enabled,
+}: {
+  enabled: boolean;
+}) => {
+  const { camera, gl, scene } = useThree();
+  const selectObject = useEditorStore((state) => state.selectObject);
+  const pointerDownRef = useRef<{
+    x: number;
+    y: number;
+    selectedId: string | null;
+    startedOnTransformControl: boolean;
+  } | null>(null);
+
+  const pointerHitsTransformControl = useCallback((clientX: number, clientY: number) => {
+    const canvas = gl.domElement;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return GizmoInteractionLock.isActive();
+
+    canvasPickPointer.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -(((clientY - rect.top) / rect.height) * 2 - 1),
+    );
+
+    return GizmoInteractionLock.isActive() || GizmoInteractionLock.raycastGizmo(canvasPickPointer);
+  }, [gl]);
+
+  const findFallbackPick = useCallback((clientX: number, clientY: number) => {
+    const canvas = gl.domElement;
+    const objects = useEditorStore.getState().objects;
+    const objectsById = new Map(objects.map((object) => [object.id, object]));
+    const rect = canvas.getBoundingClientRect();
+
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom ||
+      rect.width <= 0 ||
+      rect.height <= 0
+    ) {
+      return null;
+    }
+
+    canvasPickPointer.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -(((clientY - rect.top) / rect.height) * 2 - 1),
+    );
+    scene.updateMatrixWorld(true);
+    camera.updateMatrixWorld();
+    canvasPickRaycaster.setFromCamera(canvasPickPointer, camera);
+
+    const staticSceneUrls = new Set(
+      objects
+        .map((object) => object.animationSettings?.modelUrl)
+        .filter((url): url is string => Boolean(url && hasStaticGltfScene(url))),
+    );
+    const pickCandidates: { id: string; role: string; type: string; distance: number }[] = [];
+    pickStaticGltfNodes(staticSceneUrls, camera, canvas, clientX, clientY).forEach((staticHit) => {
+      const pickedObject = objectsById.get(staticHit.objectId);
+      if (!pickedObject || pickedObject.visible === false || pickedObject.locked) return;
+      pickCandidates.push({
+        id: pickedObject.id,
+        role: getObjectSelectionRole(pickedObject),
+        type: pickedObject.type,
+        distance: staticHit.distance,
+      });
+    });
+
+    const pickableSceneChildren = scene.children.filter((child) => !child.userData?.isStaticGltfVisualRoot);
+    const hits = canvasPickRaycaster.intersectObjects(pickableSceneChildren, true);
+    const seen = new Set<string>();
+
+    for (const hit of hits) {
+      let current: THREE.Object3D | null = hit.object;
+      while (current) {
+        if (current.userData?.isEditorInternal) break;
+
+        const objectId = current.userData?.objectId ?? current.userData?.editorObjectId;
+        if (typeof objectId === 'string' && !seen.has(objectId)) {
+          seen.add(objectId);
+          const object = objectsById.get(objectId);
+          if (!object || object.visible === false || object.locked) break;
+
+          const role = current.userData?.objectSelectionRole ?? getObjectSelectionRole(object);
+          const type = current.userData?.objectType ?? object.type;
+          pickCandidates.push({ id: objectId, role, type, distance: hit.distance });
+
+          break;
+        }
+
+        current = current.parent;
+      }
+    }
+
+    pickCandidates.sort((a, b) => a.distance - b.distance);
+    return pickCandidates.find((pick) => !isBackgroundSelectionRole(pick.role, pick.type))?.id
+      ?? pickCandidates[0]?.id
+      ?? null;
+  }, [camera, gl, scene]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const canvas = gl.domElement;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey) {
+        pointerDownRef.current = null;
+        return;
+      }
+
+      pointerDownRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        selectedId: useEditorStore.getState().selectedObjectId,
+        startedOnTransformControl: pointerHitsTransformControl(event.clientX, event.clientY),
+      };
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const pointerDown = pointerDownRef.current;
+      pointerDownRef.current = null;
+      if (!pointerDown || event.button !== 0) return;
+
+      const dx = event.clientX - pointerDown.x;
+      const dy = event.clientY - pointerDown.y;
+      if ((dx * dx) + (dy * dy) > PICK_FALLBACK_MOVE_THRESHOLD_PX * PICK_FALLBACK_MOVE_THRESHOLD_PX) return;
+
+      window.setTimeout(() => {
+        const state = useEditorStore.getState();
+        if (!state.isEditMode || pointerDown.startedOnTransformControl || pointerHitsTransformControl(event.clientX, event.clientY)) {
+          return;
+        }
+
+        const pickedId = findFallbackPick(event.clientX, event.clientY);
+        if (pickedId) {
+          selectObject(pickedId);
+        } else if (state.selectedObjectId === pointerDown.selectedId && state.selectedObjectId) {
+          selectObject(null);
+        }
+      }, 0);
+    };
+
+    canvas.addEventListener('pointerdown', handlePointerDown, { capture: true });
+    canvas.addEventListener('pointerup', handlePointerUp, { capture: true });
+
+    return () => {
+      canvas.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+      canvas.removeEventListener('pointerup', handlePointerUp, { capture: true });
+    };
+  }, [enabled, findFallbackPick, gl, pointerHitsTransformControl, selectObject]);
+
+  return null;
+};
+
+const StaticGltfSelectionHelper = ({
+  enabled,
+}: {
+  enabled: boolean;
+}) => {
+  const { scene } = useThree();
+  const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
+  const target = enabled ? getStaticGltfObjectByEditorId(selectedObjectId) : null;
+  const helperRef = useRef<THREE.BoxHelper | null>(null);
+
+  useEffect(() => {
+    if (!target) return;
+
+    const helper = new THREE.BoxHelper(target, 0xff8c00);
+    helper.userData = {
+      ...helper.userData,
+      isEditorInternal: true,
+    };
+    helper.raycast = () => null;
+    helperRef.current = helper;
+    scene.add(helper);
+
+    return () => {
+      scene.remove(helper);
+      helper.geometry.dispose();
+      helperRef.current = null;
+    };
+  }, [scene, target]);
+
+  useFrame(() => {
+    helperRef.current?.update();
+  });
+
+  return null;
+};
+
+const StaticGltfTransformBridge = ({
+  enabled,
+}: {
+  enabled: boolean;
+}) => {
+  const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
+  const selectedObject = useEditorStore((state) => (
+    state.selectedObjectId ? state.objects.find((object) => object.id === state.selectedObjectId) ?? null : null
+  ));
+  const transformMode = useEditorStore((state) => state.transformMode);
+  const transformSpace = useEditorStore((state) => state.transformSpace);
+  const updateObject = useEditorStore((state) => state.updateObject);
+  const saveToHistory = useEditorStore((state) => state.saveToHistory);
+  const targetRef = useRef<THREE.Object3D>(null!);
+  const target = enabled ? getStaticGltfObjectByEditorId(selectedObjectId) : null;
+
+  if (target) {
+    targetRef.current = target;
+  }
+
+  const handleTransformEnd = useCallback(() => {
+    GizmoInteractionLock.endDrag();
+    GizmoInteractionLock.unlock();
+
+    if (!selectedObject) return;
+    if (!getStaticGltfObjectWorldTransform(
+      selectedObject.id,
+      staticTransformPosition,
+      staticTransformRotation,
+      staticTransformScale,
+    )) {
+      return;
+    }
+
+    updateObject(selectedObject.id, {
+      position: staticTransformPosition.toArray() as [number, number, number],
+      rotation: [
+        staticTransformRotation.x,
+        staticTransformRotation.y,
+        staticTransformRotation.z,
+      ],
+      scale: staticTransformScale.toArray() as [number, number, number],
+    });
+    saveToHistory();
+  }, [saveToHistory, selectedObject, updateObject]);
+
+  if (!enabled || !selectedObject || !target || transformMode === 'select') {
+    return null;
+  }
+
+  return (
+    <TransformGizmo
+      key={selectedObject.id}
+      targetRef={targetRef}
+      mode={transformMode as 'translate' | 'rotate' | 'scale'}
+      space={transformSpace}
+      onTransformEnd={handleTransformEnd}
+    />
+  );
+};
 
 const EditorScene = () => {
-  const { objects, isEditMode, selectObject, getCamera, getPlayer, currentTemplateId } = useEditorStore();
+  const objects = useEditorStore((state) => state.objects);
+  const isEditMode = useEditorStore((state) => state.isEditMode);
+  const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
+  const currentTemplateId = useEditorStore((state) => state.currentTemplateId);
   const engineSettings = useEngineSettings();
   const isMobile = useIsMobile();
   const isTouchDevice = useIsTouchDevice();
@@ -48,13 +368,79 @@ const EditorScene = () => {
   const playerRef = useRef<THREE.Object3D>(null!);
   const rigidBodies = useRef<Map<string, RapierRigidBody>>(new Map());
   const groups = useRef<Map<string, THREE.Group>>(new Map());
+  const isLargeEditScene = isEditMode && objects.length >= LARGE_EDIT_SCENE_OBJECT_THRESHOLD;
+  const staticGltfSceneUrls = useMemo(() => {
+    if (!isLargeEditScene) return [];
+
+    const sceneInfoByUrl = new Map<string, { count: number; sceneScale: number }>();
+    objects.forEach((object) => {
+      if (!isEditableGltfPartObject(object)) return;
+
+      const modelUrl = object.animationSettings?.modelUrl;
+      if (!modelUrl) return;
+
+      const current = sceneInfoByUrl.get(modelUrl);
+      sceneInfoByUrl.set(modelUrl, {
+        count: (current?.count ?? 0) + 1,
+        sceneScale: current?.sceneScale ?? getObjectSourceSceneScale(object) ?? 1,
+      });
+    });
+
+    return Array.from(sceneInfoByUrl.entries())
+      .filter(([, info]) => info.count >= DECOMPOSED_GLTF_STATIC_PART_THRESHOLD)
+      .map(([url, info]) => ({ url, sceneScale: info.sceneScale }));
+  }, [isLargeEditScene, objects]);
+  const staticGltfSceneUrlSet = useMemo(() => new Set(staticGltfSceneUrls.map((scene) => scene.url)), [staticGltfSceneUrls]);
+  const useStaticGltfScene = staticGltfSceneUrls.length > 0;
+  const staticGltfEditorObjectsByUrl = useMemo(() => {
+    const grouped = new Map<string, StaticGltfEditorObject[]>();
+    if (!useStaticGltfScene) return grouped;
+
+    objects.forEach((object) => {
+      if (!isEditableGltfPartObject(object)) return;
+
+      const modelUrl = object.animationSettings?.modelUrl;
+      const nodeName = getObjectPickNodeName(object);
+      if (!modelUrl || !nodeName || !staticGltfSceneUrlSet.has(modelUrl)) return;
+
+      const items = grouped.get(modelUrl) ?? [];
+      items.push({
+        id: object.id,
+        type: object.type,
+        nodeName,
+        nodeIndex: getObjectPickNodeIndex(object),
+        position: object.position,
+        rotation: object.rotation,
+        scale: object.scale,
+        visible: object.visible,
+        locked: object.locked,
+        selectionRole: getObjectSelectionRole(object),
+      });
+      grouped.set(modelUrl, items);
+    });
+
+    return grouped;
+  }, [objects, staticGltfSceneUrlSet, useStaticGltfScene]);
+  const renderedObjects = useMemo(() => {
+    if (!useStaticGltfScene) {
+      return objects.filter((object) => object.visible !== false);
+    }
+
+    return objects.filter((object) => {
+      if (object.visible === false) return false;
+      if (!isEditableGltfPartObject(object)) return true;
+      const modelUrl = object.animationSettings?.modelUrl;
+      if (!modelUrl || !staticGltfSceneUrlSet.has(modelUrl)) return true;
+      return false;
+    });
+  }, [objects, staticGltfSceneUrlSet, useStaticGltfScene]);
   
   // Three.js memory monitoring
   const { gl } = useThree();
   useThreeMemoryMonitor(gl, 60); // Log memory stats every 60 seconds
   
-  const cameraObject = getCamera();
-  const playerObject = getPlayer();
+  const cameraObject = useMemo(() => objects.find((object) => object.type === 'camera'), [objects]);
+  const playerObject = useMemo(() => objects.find((object) => object.type === 'player'), [objects]);
   const cameraSettings = cameraObject?.cameraSettings;
   const playerSettings = playerObject?.playerSettings;
   
@@ -155,26 +541,25 @@ const EditorScene = () => {
       {/* Fog - Controlled by engine settings */}
       <SceneFog />
 
-      {/* Gizmo Helper - Controlled by engine settings */}
-      {engineSettings.showGizmo && isEditMode && (
-        <GizmoHelper alignment="bottom-right" margin={[80, 140]}>
-          <GizmoViewport 
-            axisColors={['#ef4444', '#22c55e', '#3b82f6']} 
-            labelColor="white"
-            axisHeadScale={1}
-          />
-        </GizmoHelper>
-      )}
-
       {/* Scene Objects */}
       <Suspense fallback={null}>
         <Physics paused={isEditMode} gravity={[0, -(playerSettings?.gravity || 20), 0]}>
           {/* Procedural Terrain - if active */}
           <ActiveTerrain />
+
+          {isEditMode && staticGltfSceneUrls.map(({ url, sceneScale }) => (
+            <StaticGltfScene
+              key={url}
+              url={url}
+              sceneScale={sceneScale}
+              editorObjects={staticGltfEditorObjectsByUrl.get(url)}
+              selectedObjectId={selectedObjectId}
+            />
+          ))}
           
           {/* Render ALL editable objects from the store */}
           {/* This includes NPCs, trees, houses, platforms, etc. that appear in the hierarchy */}
-          {objects.map((obj) => (
+          {renderedObjects.map((obj) => (
             <EditableObject
               key={obj.id}
               object={obj}
@@ -229,20 +614,29 @@ const EditorScene = () => {
           <AutoInstancer />
         </Physics>
       </Suspense>
+
+      <StaticGltfSelectionHelper
+        enabled={isEditMode && useStaticGltfScene}
+      />
+
+      <StaticGltfTransformBridge
+        enabled={isEditMode && useStaticGltfScene}
+      />
+
+      <EditorSelectionFallback
+        enabled={isEditMode}
+      />
       
       {/* Adaptive Performance Monitor */}
       <AdaptivePerformance 
-        enabled={engineSettings.autoQuality}
-        onQualityChange={(preset, reason) => {
-          console.log(`[EditorCanvas] Quality changed to ${preset}: ${reason}`);
-        }}
+        enabled={engineSettings.autoQuality && !isEditMode && !isLargeEditScene}
       />
 
-      {/* Ultra-Realistic Atmospheric Lighting */}
-      <AtmosphericLighting />
+      {/* Mavon-style editor path: keep the edit viewport direct and cheap. */}
+      {isEditMode ? <MavonEditorLighting /> : <AtmosphericLighting />}
 
-      {/* Post-Processing Effects */}
-      <PostProcessingEffects />
+      {/* Post-processing belongs to game preview, not editor transforms. */}
+      {!isEditMode && <PostProcessingEffects />}
 
       {/* WebGL Context Recovery Monitor */}
       <WebGLContextRecovery 
@@ -280,7 +674,10 @@ const getShadowMapType = (type: string) => {
 export const EditorCanvas = () => {
   const engineSettings = useEngineSettings();
   const viewportMode = useViewportStore((state) => state.viewportMode);
-  const { selectObject, isEditMode, addModelFromAsset } = useEditorStore();
+  const selectObject = useEditorStore((state) => state.selectObject);
+  const isEditMode = useEditorStore((state) => state.isEditMode);
+  const addModelFromAsset = useEditorStore((state) => state.addModelFromAsset);
+  const objectCount = useEditorStore((state) => state.objects.length);
   const { isDragging, endDrag } = useAssetDragStore();
   const [canvasKey, setCanvasKey] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -347,41 +744,14 @@ export const EditorCanvas = () => {
   }, [addModelFromAsset, endDrag]);
   
   // Handle click on empty space to deselect - ONLY in Select mode
-  const handlePointerMissed = useCallback((e?: any) => {
-    // DEBUG: Log pointer missed events
-    console.log(` [EditorCanvas] onPointerMissed:`, {
-      isEditMode,
-      gizmoActive: GizmoInteractionLock.isActive(),
-      transformMode: useEditorStore.getState().transformMode,
-      event: e ? {
-        type: e.type,
-        pointerType: e.pointerType,
-        button: e.button,
-      } : 'no event',
-    });
-    
-    if (!isEditMode) {
-      console.log(` [EditorCanvas] BLOCKED: Not in edit mode`);
-      return;
-    }
-    
-    // Block deselection if gizmo is currently in use
-    if (GizmoInteractionLock.isActive()) {
-      console.log(` [EditorCanvas] BLOCKED: Gizmo is active`);
-      return;
-    }
-
-    // Only allow deselection in "select" mode
+  const handlePointerMissed = useCallback(() => {
+    if (!isEditMode) return;
+    if (objectCount >= LARGE_EDIT_SCENE_OBJECT_THRESHOLD) return;
+    if (GizmoInteractionLock.isActive()) return;
     const { transformMode } = useEditorStore.getState();
-    if (transformMode !== 'select') {
-      console.log(` [EditorCanvas] BLOCKED: Not in select mode (mode=${transformMode})`);
-      return;
-    }
-    
-    // Deselect
-    console.log(` [EditorCanvas]  DESELECTING (clicking empty space)`);
+    if (transformMode !== 'select') return;
     selectObject(null);
-  }, [isEditMode, selectObject]);
+  }, [isEditMode, objectCount, selectObject]);
   
   const toneMappingExposure = Math.min(engineSettings.toneMappingExposure, 0.9);
 
@@ -403,11 +773,16 @@ export const EditorCanvas = () => {
     logarithmicDepthBuffer: false,
   }), [engineSettings.antialias, engineSettings.toneMapping, toneMappingExposure, engineSettings.colorSpace]);
 
-  // Calculate optimal DPR based on device
+  const disableEditorRealtimeShadows = isEditMode && objectCount >= LARGE_EDIT_SCENE_OBJECT_THRESHOLD;
+
+  // Calculate optimal DPR based on device. The editor keeps a stable crisp floor so
+  // auto-quality presets cannot leave the viewport blurry after heavy scene transitions.
   const optimalDpr = useMemo(() => {
-    const deviceDpr = Math.min(window.devicePixelRatio || 1, engineSettings.maxDpr);
-    return [Math.max(0.5, engineSettings.dpr), Math.min(deviceDpr, engineSettings.maxDpr)] as [number, number];
-  }, [engineSettings.dpr, engineSettings.maxDpr]);
+    const maxDpr = isEditMode ? Math.max(1.25, engineSettings.maxDpr) : engineSettings.maxDpr;
+    const dprFloor = Math.min(isEditMode ? Math.max(1, engineSettings.dpr) : Math.max(0.5, engineSettings.dpr), maxDpr);
+    const deviceDpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+    return [dprFloor, Math.max(dprFloor, Math.min(deviceDpr, maxDpr))] as [number, number];
+  }, [engineSettings.dpr, engineSettings.maxDpr, isEditMode]);
 
   return (
     <div 
@@ -427,14 +802,14 @@ export const EditorCanvas = () => {
           </div>
         </div>
       )}
-      
+
       {viewportMode === '2d' ? (
         <PhaserViewport2D />
       ) : (
         <CanvasErrorBoundary onReset={handleCanvasReset}>
           <Canvas
             key={canvasKey}
-            shadows={engineSettings.shadows ? { type: getShadowMapType(engineSettings.shadowMapType) } : false}
+            shadows={engineSettings.shadows && !disableEditorRealtimeShadows ? { type: getShadowMapType(engineSettings.shadowMapType) } : false}
             camera={{ position: [10, 10, 10], fov: 50 }}
             gl={glConfig}
             dpr={optimalDpr}
@@ -445,6 +820,9 @@ export const EditorCanvas = () => {
               // Additional WebGL optimizations
               gl.setPixelRatio(optimalDpr[0]);
               gl.info.autoReset = true;
+              (window as typeof window & {
+                __PIXL_EDITOR_RENDERER__?: THREE.WebGLRenderer;
+              }).__PIXL_EDITOR_RENDERER__ = gl;
             }}
           >
             {/* Audio Listener MUST be first inside Canvas */}

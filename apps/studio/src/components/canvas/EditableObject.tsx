@@ -38,6 +38,40 @@ interface EditableObjectProps {
 // Prevent decorative meshes from intercepting clicks (raycasting)
 const NO_RAYCAST = () => null;
 
+const markObjectPickHandled = () => {
+  if (typeof window === 'undefined') return;
+  (window as typeof window & { __PIXL_EDITOR_LAST_OBJECT_PICK__?: number }).__PIXL_EDITOR_LAST_OBJECT_PICK__ = performance.now();
+};
+
+const getObjectSelectionRole = (object: SceneObject) => {
+  const customData = object.logicSettings?.customData ?? {};
+  const role = customData.editorSelectionRole ?? customData.selectionRole;
+  return typeof role === 'string' ? role : 'default';
+};
+
+const isSurfaceLikeObject = (object: SceneObject) => (
+  object.type === 'plane' ||
+  object.type === 'platform' ||
+  getObjectSelectionRole(object) === 'surface' ||
+  getObjectSelectionRole(object) === 'background'
+);
+
+const gltfNodeIndexCache = new WeakMap<THREE.Object3D, Map<string, THREE.Object3D>>();
+
+const getGltfNodeIndex = (scene: THREE.Object3D) => {
+  const cached = gltfNodeIndexCache.get(scene);
+  if (cached) return cached;
+
+  const index = new Map<string, THREE.Object3D>();
+  scene.traverse((child) => {
+    if (child.name && !index.has(child.name)) {
+      index.set(child.name, child);
+    }
+  });
+  gltfNodeIndexCache.set(scene, index);
+  return index;
+};
+
 // Behavior component that handles object animations
 const ObjectBehavior = ({ 
   object, 
@@ -799,6 +833,8 @@ const ObjectMaterial = ({
 // This allows swapping placeholders with final 3D assets while keeping all physics/combat mechanics
 const GLTFModelLoader = ({
   url,
+  nodeName,
+  nodeIndex,
   entitySettings,
   onPointerDown,
   onPointerMove,
@@ -808,6 +844,8 @@ const GLTFModelLoader = ({
   receiveShadow,
 }: {
   url: string;
+  nodeName?: string;
+  nodeIndex?: number;
   entitySettings?: EntitySettings;
   onPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
   onPointerMove?: (e: ThreeEvent<PointerEvent>) => void;
@@ -817,7 +855,36 @@ const GLTFModelLoader = ({
   receiveShadow?: boolean;
 }) => {
   const { scene } = useGLTF(url);
-  const clonedScene = useMemo(() => scene.clone(true), [scene]);
+  const sourceObject = useMemo(() => {
+    if (!nodeName && nodeIndex === undefined) return scene;
+
+    const byName = nodeName ? getGltfNodeIndex(scene).get(nodeName) : null;
+    if (byName) return byName;
+
+    if (nodeIndex !== undefined) {
+      let found: THREE.Object3D | null = null;
+      let currentIndex = 0;
+      scene.traverse((child) => {
+        if (found || !(child instanceof THREE.Mesh)) return;
+        if (currentIndex === nodeIndex) found = child;
+        currentIndex += 1;
+      });
+      if (found) return found;
+    }
+
+    return scene;
+  }, [scene, nodeName, nodeIndex]);
+
+  const clonedScene = useMemo(() => {
+    const clone = sourceObject.clone(true);
+    if (sourceObject !== scene) {
+      clone.position.set(0, 0, 0);
+      clone.rotation.set(0, 0, 0);
+      clone.quaternion.identity();
+      clone.scale.set(1, 1, 1);
+    }
+    return clone;
+  }, [scene, sourceObject]);
   
   // Apply shadows and entity settings to all meshes
   useEffect(() => {
@@ -854,6 +921,8 @@ const GLTFModelLoader = ({
 // Wrapper for GLTF model with Suspense fallback (shows placeholder while loading)
 const GLTFModelWithFallback = ({
   url,
+  nodeName,
+  nodeIndex,
   entitySettings,
   fallbackGeometry,
   color,
@@ -865,6 +934,8 @@ const GLTFModelWithFallback = ({
   receiveShadow,
 }: {
   url: string;
+  nodeName?: string;
+  nodeIndex?: number;
   entitySettings?: EntitySettings;
   fallbackGeometry: React.ReactNode;
   color: string;
@@ -879,6 +950,8 @@ const GLTFModelWithFallback = ({
     <Suspense fallback={fallbackGeometry}>
       <GLTFModelLoader
         url={url}
+        nodeName={nodeName}
+        nodeIndex={nodeIndex}
         entitySettings={entitySettings}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -895,14 +968,32 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
   const groupRef = useRef<THREE.Group>(null);
   const rigidBodyRef = useRef<RapierRigidBody>(null);
   const [refReady, setRefReady] = useState(false);
-  const { selectedObjectId, isEditMode, transformMode, transformSpace, selectObject, updateObject, saveToHistory } = useEditorStore();
+  const selectIsSelected = useCallback((state: ReturnType<typeof useEditorStore.getState>) => (
+    state.isEditMode && state.selectedObjectId === object.id
+  ), [object.id]);
+  const selectTransformMode = useCallback((state: ReturnType<typeof useEditorStore.getState>) => (
+    state.selectedObjectId === object.id ? state.transformMode : 'select'
+  ), [object.id]);
+  const selectTransformSpace = useCallback((state: ReturnType<typeof useEditorStore.getState>) => (
+    state.selectedObjectId === object.id ? state.transformSpace : 'world'
+  ), [object.id]);
+  const isEditMode = useEditorStore((state) => state.isEditMode);
+  const isSelected = useEditorStore(selectIsSelected);
+  const transformMode = useEditorStore(selectTransformMode);
+  const transformSpace = useEditorStore(selectTransformSpace);
+  const selectObject = useEditorStore((state) => state.selectObject);
+  const updateObject = useEditorStore((state) => state.updateObject);
+  const saveToHistory = useEditorStore((state) => state.saveToHistory);
 
-  const isSelected = isEditMode && selectedObjectId === object.id;
   const isInstanced = useIsInstanced(object.id);
   const hideVisualInPlay = !isEditMode && isInstanced;
   const visual = object.visualSettings;
   const physics = object.physicsSettings;
   const logic = object.logicSettings;
+  const hasExternalModel = Boolean(object.animationSettings?.modelUrl);
+  const renderOnly = Boolean(logic?.customData?.renderOnly);
+  const hasBehavior = Boolean(logic?.behavior && logic.behavior !== 'none');
+  const useScreenSpacePicking = isEditMode && Boolean(logic?.customData?.editableGlbPart) && !isSelected;
 
   const isStatic = object.isStatic || object.type === 'plane' || object.type === 'platform' || physics?.bodyType === 'fixed';
   const isLight = object.type === 'light' || object.type === 'sunlight' || object.type === 'spotlight';
@@ -916,9 +1007,6 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
   // Handle selection - works with both pointer and click events for touch compatibility
   const handleSelect = useCallback(
     (e: ThreeEvent<PointerEvent | MouseEvent>) => {
-      // DEBUG: Log all pointer events on objects
-      const pointerType = (e.nativeEvent as PointerEvent).pointerType || 'unknown';
-      
       // Check gizmo state FIRST - before any other logic
       // This uses the real-time axis check to detect if pointer is over gizmo handles
       const gizmoActive = GizmoInteractionLock.isActive();
@@ -930,69 +1018,63 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
         gizmoRaycastHit = GizmoInteractionLock.raycastGizmo(e.pointer);
       }
       
-      console.log(` [EditableObject] onPointerDown:`, {
-        objectId: object.id,
-        objectType: object.type,
-        objectName: object.name,
-        pointerType,
-        button: (e.nativeEvent as MouseEvent).button,
-        isEditMode,
-        isLocked: object.locked,
-        isSelected,
-        gizmoActive,
-        gizmoRaycastHit,
-        gizmoAxis: (GizmoInteractionLock as any)._controlsRef?.axis || null,
-        intersectionCount: e.intersections?.length || 0,
-      });
-      
       if (!isEditMode || object.locked) {
-        console.log(` [EditableObject] BLOCKED: isEditMode=${isEditMode}, locked=${object.locked}`);
         return;
       }
 
       // Block selection if gizmo is actively being used (hovering axis, dragging, locked, or raycast hit)
       if (gizmoActive || gizmoRaycastHit) {
-        console.log(` [EditableObject] BLOCKED: Gizmo is active or raycast hit gizmo`);
         e.stopPropagation();
         return;
       }
       
       // If clicking on already selected object, do nothing (keep selection)
       if (isSelected) {
-        console.log(` [EditableObject] Already selected, keeping selection`);
+        markObjectPickHandled();
         e.stopPropagation();
         return;
       }
       
-      const isGroundType = object.type === 'plane' || object.type === 'platform';
+      const isSurfaceType = isSurfaceLikeObject(object);
       
-      // For non-ground objects: always select immediately
-      if (!isGroundType) {
-        console.log(` [EditableObject]  SELECTING non-ground object: ${object.id}`);
+      // For regular objects: always select immediately
+      if (!isSurfaceType) {
+        markObjectPickHandled();
         e.stopPropagation();
         selectObject(object.id);
         return;
       }
       
-      // For ground: only select if no non-ground objects also hit
+      // For broad surfaces: only select if no regular object also hit
       if (e.intersections && e.intersections.length > 0) {
         for (const intersection of e.intersections) {
           let current: THREE.Object3D | null = intersection.object;
           while (current) {
             const objId = current.userData?.objectId;
             const objType = current.userData?.objectType;
+            const objSelectionRole = current.userData?.objectSelectionRole;
+            const isSurfaceHit = (
+              objType === 'plane' ||
+              objType === 'platform' ||
+              objSelectionRole === 'surface' ||
+              objSelectionRole === 'background'
+            );
             
-            if (objId && objId !== object.id && objType && objType !== 'plane' && objType !== 'platform') {
-              console.log(` [EditableObject] Ground ignored - non-ground object exists: ${objId}`);
-              return; // Non-ground object exists - let it handle selection
+            if (
+              objId &&
+              objId !== object.id &&
+              objType &&
+              !isSurfaceHit
+            ) {
+              return; // Regular object exists - let it handle selection
             }
             current = current.parent;
           }
         }
       }
       
-      // Ground is the only thing hit - select it
-      console.log(` [EditableObject]  SELECTING ground: ${object.id}`);
+      // Surface is the only thing hit - select it
+      markObjectPickHandled();
       e.stopPropagation();
       selectObject(object.id);
     },
@@ -1001,7 +1083,12 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
 
   // Select on TAP (pointerup with minimal movement), not on pointerdown.
   // This prevents accidental selection of ground/objects behind the gizmo while starting a drag.
-  const tapSelect = useTapIntent({ onTap: handleSelect, delayMs: 100 });
+  const tapSelect = useTapIntent({ onTap: handleSelect, delayMs: 60 });
+  const pointerSelectHandlers = useScreenSpacePicking ? {} : {
+    onPointerDown: tapSelect.onPointerDown as any,
+    onPointerMove: tapSelect.onPointerMove as any,
+    onPointerUp: tapSelect.onPointerUp as any,
+  };
 
   const handleTransformStart = useCallback(() => {
     isTransforming.current = true;
@@ -1082,9 +1169,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
     if (hasCustomModel && modelUrl) {
       const fallbackGeometry = (
         <mesh
-          onPointerDown={tapSelect.onPointerDown as any}
-          onPointerMove={tapSelect.onPointerMove as any}
-          onPointerUp={tapSelect.onPointerUp as any}
+          {...pointerSelectHandlers}
           receiveShadow={receiveShadow}
           castShadow={castShadow}
         >
@@ -1097,12 +1182,14 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
       return (
         <GLTFModelWithFallback
           url={modelUrl}
+          nodeName={object.animationSettings?.nodeName}
+          nodeIndex={object.animationSettings?.nodeIndex}
           entitySettings={entitySettings}
           fallbackGeometry={fallbackGeometry}
           color={object.color}
-          onPointerDown={tapSelect.onPointerDown as any}
-          onPointerMove={tapSelect.onPointerMove as any}
-          onPointerUp={tapSelect.onPointerUp as any}
+          onPointerDown={useScreenSpacePicking ? undefined : tapSelect.onPointerDown as any}
+          onPointerMove={useScreenSpacePicking ? undefined : tapSelect.onPointerMove as any}
+          onPointerUp={useScreenSpacePicking ? undefined : tapSelect.onPointerUp as any}
           isSelected={isSelected}
           castShadow={castShadow}
           receiveShadow={receiveShadow}
@@ -1114,9 +1201,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
       case 'player':
         return (
           <group
-            onPointerDown={tapSelect.onPointerDown as any}
-            onPointerMove={tapSelect.onPointerMove as any}
-            onPointerUp={tapSelect.onPointerUp as any}
+            {...pointerSelectHandlers}
           >
             {/* Selection indicator */}
             {isSelected && (
@@ -1156,9 +1241,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
         return (
           <group>
             <mesh
-              onPointerDown={tapSelect.onPointerDown as any}
-              onPointerMove={tapSelect.onPointerMove as any}
-              onPointerUp={tapSelect.onPointerUp as any}
+              {...pointerSelectHandlers}
             >
               <boxGeometry args={[0.8, 0.5, 0.5]} />
               <meshStandardMaterial color={object.color} emissive={object.color} emissiveIntensity={0.3} />
@@ -1194,9 +1277,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
       case 'plane':
         return (
           <mesh
-            onPointerDown={tapSelect.onPointerDown as any}
-            onPointerMove={tapSelect.onPointerMove as any}
-            onPointerUp={tapSelect.onPointerUp as any}
+            {...pointerSelectHandlers}
             receiveShadow={receiveShadow}
           >
             <planeGeometry args={[1, 1]} />
@@ -1546,6 +1627,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
         ...g.userData,
         objectId: object.id,
         objectType: object.type,
+        objectSelectionRole: getObjectSelectionRole(object),
         isEditable: true,
       };
       
@@ -1555,6 +1637,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
           ...child.userData,
           objectId: object.id,
           objectType: object.type,
+          objectSelectionRole: getObjectSelectionRole(object),
           isEditable: true,
         };
       });
@@ -1638,7 +1721,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
           )}
         </group>
         {/* Run behaviors in edit mode for preview */}
-        <ObjectBehavior object={object} groupRef={groupRef} />
+        {hasBehavior && <ObjectBehavior object={object} groupRef={groupRef} />}
         {/* Professional Transform Gizmo - Unity/Unreal style */}
         {/* Only show gizmo in transform modes (not in 'select' mode, where camera has priority) */}
         {isSelected && refReady && groupRef.current && transformMode !== 'select' && (
@@ -1658,6 +1741,33 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
   // PLAY MODE
   // Camera and Player objects are not rendered in play mode (handled separately)
   if (object.type === 'camera' || object.type === 'player') return null;
+
+  if (renderOnly) {
+    return (
+      <group ref={groupRef} position={object.position as any} rotation={rotation as any} scale={scale as any}>
+        {renderVisual()}
+        {object.audioSettings?.url && (
+          <AudioSource
+            id={object.id}
+            name={object.name}
+            url={object.audioSettings.url}
+            position={[0, 0, 0]}
+            volume={object.audioSettings.volume ?? 0.8}
+            loop={object.audioSettings.loop ?? false}
+            autoplay={object.audioSettings.autoplay ?? false}
+            distance={object.audioSettings.distance ?? 50}
+            refDistance={object.audioSettings.refDistance ?? 1}
+            rolloffFactor={object.audioSettings.rolloffFactor ?? 1}
+            enabled={true}
+          />
+        )}
+        {object.particleSettings?.enabled && (
+          <ParticleEmitter settings={object.particleSettings} />
+        )}
+        {hasBehavior && <ObjectBehavior object={object} groupRef={groupRef} />}
+      </group>
+    );
+  }
 
   // Lights and rings don't need rigid bodies
   if (isLight || isRing) {
@@ -1684,7 +1794,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
         {object.particleSettings?.enabled && (
           <ParticleEmitter settings={object.particleSettings} />
         )}
-        <ObjectBehavior object={object} groupRef={groupRef} />
+        {hasBehavior && <ObjectBehavior object={object} groupRef={groupRef} />}
       </group>
     );
   }
@@ -1703,6 +1813,13 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
 
   // Determine collider based on settings or auto-detect
   const getCollider = () => {
+    // Live preview must not feed arbitrary GLB meshes into Rapier trimesh/hull generation.
+    // Complex model colliders need an explicit cooked collider asset; until then, box
+    // approximation keeps Play Mode stable and prevents WASM memory traps.
+    if (hasExternalModel && ['trimesh', 'hull', 'capsule'].includes(physicsSettings.colliderShape)) {
+      return 'cuboid' as const;
+    }
+
     if (physicsSettings.colliderShape !== 'auto') {
       switch (physicsSettings.colliderShape) {
         case 'ball': return 'ball' as const;
@@ -1720,7 +1837,6 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
   };
 
   // For kinematic bodies with behaviors/scripts, we need special handling
-  const hasBehavior = logic?.behavior && logic.behavior !== 'none';
   const hasEntityAI = object.entitySettings?.aiEnabled && object.entitySettings?.aiType !== 'none';
   const hasScripts = (object.scriptInstances || []).some(s => s.enabled);
   const hasMovementScript = (object.scriptInstances || []).some(inst => {

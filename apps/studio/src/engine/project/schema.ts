@@ -6,7 +6,7 @@ export type PixlProjectVersion = typeof PIXL_PROJECT_VERSION;
 
 export type PixlRuntimeKind = 'phaser-2d' | 'three-3d' | 'hybrid';
 export type PixlRendererKind = 'phaser' | 'three';
-export type PixlPhysicsKind = 'matter' | 'rapier' | 'enable3d' | 'none';
+export type PixlPhysicsKind = 'matter' | 'rapier' | 'none';
 export type PixlSceneKind = '2d' | '3d' | 'hybrid';
 export type PixlAssetKind =
   | 'model'

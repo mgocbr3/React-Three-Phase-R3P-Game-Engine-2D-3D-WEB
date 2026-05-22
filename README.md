@@ -6,6 +6,7 @@ Start here when continuing engine work:
 
 - [Mac handoff](./HANDOFF-MAC.md) - current state, setup, commands, open tasks and Harvest Rush 3D workflow.
 - [Architecture](./ARCHITECTURE.md) - renderer split, scene document direction and automation boundary.
+- [Reference engines](./REFERENCE-ENGINES.md) - external engine patterns to check before changing viewport behavior.
 - [Security notes](./SECURITY.md) - current and next guardrails.
 
 ## Workspace Layout
@@ -23,8 +24,7 @@ apps/portal/games-src/
     public/levels/          # level3d documents consumed by the runtime
     src/                    # Three.js runtime source
 
-tools/vendor/
-  enable3d/                 # pruned source mirror of enable3d 0.26.1 for reference
+tools/vendor/               # optional third-party source mirrors for reference only
 ```
 
 ## Commands
@@ -49,8 +49,7 @@ http://127.0.0.1:8082/editor?sampleProject=harvest-rush-3d
 
 - Editor shell: React, Vite, Zustand, Radix/shadcn base components.
 - 3D viewport: Three.js, React Three Fiber, Drei and Rapier.
-- 2D direction: Phaser 3.90.
-- Phaser 3D/export direction: Enable3D `@enable3d/phaser-extension`.
+- 2D direction: Phaser 4.
 - Project model: versioned `project.pixlproject.json` documents.
 - Local projects: File System Access API first; JSON export fallback when folder access is not available.
 
@@ -62,4 +61,4 @@ The editor should become a Pixlland-native mini engine:
 - one shared scene document for 2D and 3D;
 - visual editing in the engine, runtime code in game folders;
 - CLI and MCP surfaces for Codex, Claude Code, VS Code and future agents;
-- exporters that generate Pixlland, Three.js, Phaser and Enable3D runtime output from the same source of truth.
+- exporters that generate Pixlland, Three.js and Phaser runtime output from the same source of truth.

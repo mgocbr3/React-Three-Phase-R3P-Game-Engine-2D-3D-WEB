@@ -9,10 +9,10 @@
  * - Proper pointer capture for reliable dragging on touch devices
  */
 
-import React, { useRef, useEffect, useCallback } from 'react';
-import { TransformControls } from '@react-three/drei';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { TransformControls as ThreeTransformControls } from 'three/addons/controls/TransformControls.js';
 import { TransformSpace, useEditorStore } from '@/stores/editorStore';
 import { useIsTouchDevice } from '@/hooks/use-touch-device';
 
@@ -69,12 +69,12 @@ export const GizmoInteractionLock = {
       // They are children of the controls object
       const controls = this._controlsRef;
       
-      // The picker is stored in the "_gizmo" property which has children for each mode
+      // Three 0.184 stores pickers under _gizmo.picker[mode].
+      // Older wrappers exposed _gizmo[mode], so keep both paths for compatibility.
       const gizmo = controls._gizmo;
       if (!gizmo) return false;
       
-      // Get all picker meshes from the current mode
-      const modePickers = gizmo[controls.mode];
+      const modePickers = gizmo.picker?.[controls.mode] ?? gizmo[controls.mode];
       if (!modePickers) return false;
       
       // Collect all pickable meshes
@@ -182,9 +182,13 @@ export const TransformGizmo = ({
   onTransformEnd,
   onChange,
 }: TransformGizmoProps) => {
-  const controlsRef = useRef<any>(null);
-  const { gl, camera, raycaster } = useThree();
+  const { gl, camera, raycaster, invalidate } = useThree();
   const activePointerId = useRef<number>(-1);
+  const controls = useMemo(
+    () => new ThreeTransformControls(camera, gl.domElement),
+    [camera, gl.domElement],
+  );
+  const helper = useMemo(() => controls.getHelper(), [controls]);
   
   // Detect touch device for larger gizmo handles
   const isTouchDevice = useIsTouchDevice();
@@ -198,6 +202,47 @@ export const TransformGizmo = ({
   
   // Use store space if not overridden
   const effectiveSpace = space || transformSpace;
+
+  useEffect(() => {
+    helper.userData = {
+      ...helper.userData,
+      isEditorInternal: true,
+    };
+    helper.traverse((child) => {
+      child.userData = {
+        ...child.userData,
+        isEditorInternal: true,
+      };
+    });
+  }, [helper]);
+
+  useEffect(() => {
+    return () => {
+      controls.detach();
+      controls.dispose();
+      GizmoInteractionLock.setControlsRef(null);
+      document.body.style.cursor = 'default';
+    };
+  }, [controls]);
+
+  useEffect(() => {
+    const target = targetRef.current;
+    if (!target) return;
+
+    controls.attach(target);
+    controls.setMode(mode);
+    controls.setSpace(effectiveSpace);
+    controls.setSize(gizmoSize);
+    controls.showX = true;
+    controls.showY = true;
+    controls.showZ = true;
+    invalidate();
+
+    return () => {
+      controls.detach();
+      invalidate();
+    };
+  }, [controls, effectiveSpace, gizmoSize, invalidate, mode, targetRef]);
 
   // Handle dragging state with pointer capture
   const handleDraggingChanged = useCallback((event: any) => {
@@ -237,6 +282,14 @@ export const TransformGizmo = ({
       document.body.style.cursor = 'default';
     }
   }, []);
+
+  const handleAxisChanged = useCallback((event: any) => {
+    if (event.value) {
+      handleMouseEnter();
+      return;
+    }
+    handleMouseLeave();
+  }, [handleMouseEnter, handleMouseLeave]);
 
   // Capture pointer ID on pointer down for later use in setPointerCapture
   useEffect(() => {
@@ -303,33 +356,25 @@ export const TransformGizmo = ({
 
   // Setup event listeners for TransformControls and register controls ref
   useEffect(() => {
-    const controls = controlsRef.current;
-    if (!controls) return;
-
     // Register controls ref for axis checking and raycasting
     GizmoInteractionLock.setControlsRef(controls);
     GizmoInteractionLock.setRaycaster(raycaster, camera);
 
     controls.addEventListener('dragging-changed', handleDraggingChanged);
     controls.addEventListener('objectChange', handleObjectChange);
-    controls.addEventListener('mouseEnter', handleMouseEnter);
-    controls.addEventListener('mouseLeave', handleMouseLeave);
+    controls.addEventListener('axis-changed', handleAxisChanged);
 
     return () => {
       controls.removeEventListener('dragging-changed', handleDraggingChanged);
       controls.removeEventListener('objectChange', handleObjectChange);
-      controls.removeEventListener('mouseEnter', handleMouseEnter);
-      controls.removeEventListener('mouseLeave', handleMouseLeave);
+      controls.removeEventListener('axis-changed', handleAxisChanged);
       // Clear controls ref on unmount
       GizmoInteractionLock.setControlsRef(null);
     };
-  }, [handleDraggingChanged, handleObjectChange, handleMouseEnter, handleMouseLeave, raycaster, camera]);
+  }, [controls, handleAxisChanged, handleDraggingChanged, handleObjectChange, raycaster, camera]);
 
   // Update snap settings on controls
   useEffect(() => {
-    const controls = controlsRef.current;
-    if (!controls) return;
-
     if (snapEnabled) {
       controls.setTranslationSnap(snapTranslate);
       controls.setRotationSnap(THREE.MathUtils.degToRad(snapRotate));
@@ -339,13 +384,10 @@ export const TransformGizmo = ({
       controls.setRotationSnap(null);
       controls.setScaleSnap(null);
     }
-  }, [snapEnabled, snapTranslate, snapRotate, snapScale]);
+  }, [controls, snapEnabled, snapTranslate, snapRotate, snapScale]);
 
   // Shift key for temporary snap
   useEffect(() => {
-    const controls = controlsRef.current;
-    if (!controls) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift' && !snapEnabled) {
         controls.setTranslationSnap(snapTranslate);
@@ -369,22 +411,11 @@ export const TransformGizmo = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [snapEnabled, snapTranslate, snapRotate, snapScale]);
+  }, [controls, snapEnabled, snapTranslate, snapRotate, snapScale]);
 
   if (!targetRef.current) return null;
 
-  return (
-    <TransformControls
-      ref={controlsRef}
-      object={targetRef.current}
-      mode={mode}
-      space={effectiveSpace}
-      size={gizmoSize}
-      showX
-      showY
-      showZ
-    />
-  );
+  return <primitive object={helper} />;
 };
 
 export default TransformGizmo;

@@ -3,6 +3,9 @@ import {
   createProjectDocumentFromEditorState,
   normalizeProjectDocument,
 } from './editorProjectAdapter';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { SceneObject } from '@/stores/editorStore';
 import type { LegacyPixlProjectDocument } from './schema';
 
@@ -46,6 +49,9 @@ describe('editor project adapter', () => {
     const snapshot = createEditorSnapshotFromProjectDocument(project);
 
     expect(project.version).toBe(2);
+    expect(project.runtime.primary).toBe('three-3d');
+    expect(project.runtime.renderers).toEqual(['three', 'phaser']);
+    expect(project.runtime.physics).toEqual(['rapier']);
     expect(project.scenes[0].rootObjects).toHaveLength(1);
     expect(project.assets.entries[0].url).toBe('/models/tree.glb');
     expect(snapshot.objects[0].animationSettings?.modelUrl).toBe('/models/tree.glb');
@@ -76,8 +82,25 @@ describe('editor project adapter', () => {
     const snapshot = createEditorSnapshotFromProjectDocument(migrated);
 
     expect(migrated.version).toBe(2);
+    expect(migrated.runtime.primary).toBe('three-3d');
+    expect(migrated.runtime.physics).toEqual(['rapier']);
     expect(migrated.name).toBe('Legacy');
     expect(snapshot.objects[0].id).toBe('tree-01');
     expect(snapshot.transformSpace).toBe('local');
+  });
+
+  it('keeps the bundled Harvest Rush sample portable across machines', () => {
+    const samplePath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../../../public/sample-projects/harvest-rush-3d/project.pixlproject.json',
+    );
+    const sampleText = fs.readFileSync(samplePath, 'utf8');
+    const sample = JSON.parse(sampleText);
+
+    expect(sampleText).not.toMatch(/@fs|C:\\|C:\//);
+    expect(sample.runtime.physics).toEqual(['rapier']);
+    expect(sample.assets.entries.every((asset: { url?: string }) => (
+      !asset.url || asset.url.startsWith('/sample-projects/harvest-rush-3d/')
+    ))).toBe(true);
   });
 });

@@ -7,9 +7,10 @@ Build a Pixlland-native editor that feels like a small Godot-style workspace whi
 ## Runtime Split
 
 - `3D mode`: Three.js + React Three Fiber for visual composition, Rapier for physics previews, GLB/glTF as the asset format.
-- `2D mode`: Phaser 3.90 for sprite, tilemap, camera and arcade-style scene editing.
-- `Phaser 3D export mode`: Enable3D for Phaser-compatible 3D games that need Three.js objects and Ammo physics.
+- `2D mode`: Phaser 4 for sprite, tilemap, camera and arcade-style scene editing.
 - `Shared editor shell`: React panels, hierarchy, inspector, content browser, timeline, scripts and publish flows.
+
+Each exported game uses one runtime stack. A 3D game ships the Three.js/Rapier runtime; a 2D game ships the Phaser runtime. Do not mix the two stacks in the player bundle.
 
 ## Scene Document
 
@@ -32,9 +33,9 @@ Every viewport is just a projection of this document:
 - Inspector edits components on entities, not renderer-specific objects.
 - Exporters generate Phaser, Three.js or Pixlland package output from the same scene data.
 
-## Enable3D Boundary
+## 3D Interaction Reference
 
-Enable3D is treated as a runtime/export adapter, not as the visual editor itself. The editor viewport remains PixlPlayground Studio, then exporters can generate Enable3D-powered Phaser projects when a Pixlland game needs Phaser + Three.js + Ammo.
+Selection, raycast, highlight, fly camera and transform gizmo behavior follows the MavonEngine/Core pattern in [REFERENCE-ENGINES.md](./REFERENCE-ENGINES.md): click the real `Object3D`, select that same object, and attach transform controls to it. Avoid proxy selection when the rendered object exists in the Three.js scene.
 
 ## Vibe Coding Integration
 

@@ -12,6 +12,7 @@ import { detectConflict, resolveConflict, notifyPlatformOfResolution, type Confl
 
 const AUTO_SAVE_INTERVAL = 30000; // 30 segundos
 const CLOUD_SAVE_INTERVAL = 60000; // 60 segundos para nuvem (menos frequente)
+const LARGE_PROJECT_AUTOSAVE_OBJECT_LIMIT = 5000;
 
 export const useProjectAutoSave = () => {
   const { objects, currentTemplateId, gameScript, saveProject } = useEditorStore();
@@ -136,6 +137,11 @@ export const useProjectAutoSave = () => {
     if (objects.length === 0) return;
 
     const interval = setInterval(async () => {
+      if (objects.length > LARGE_PROJECT_AUTOSAVE_OBJECT_LIMIT) {
+        setSaveStatus('saved', ` Auto-save pausado para cena grande (${objects.length} objetos)`);
+        return;
+      }
+
       setSaveStatus('saving', ' Salvando...');
 
       try {

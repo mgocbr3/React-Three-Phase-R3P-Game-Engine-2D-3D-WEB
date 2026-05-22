@@ -23,7 +23,8 @@ const tempColor = new THREE.Color();
  * And renders them using InstancedMesh for massive performance gains
  */
 export const AutoInstancer = () => {
-  const { objects, isEditMode } = useEditorStore();
+  const objects = useEditorStore((state) => state.objects);
+  const isEditMode = useEditorStore((state) => state.isEditMode);
   const { instancingEnabled, instancingThreshold } = useEngineSettings();
   const instancedMeshRefs = useRef<Map<string, THREE.InstancedMesh>>(new Map());
   
@@ -134,11 +135,12 @@ export const AutoInstancer = () => {
 
 // Hook to check if an object is being instanced
 export const useIsInstanced = (objectId: string) => {
-  const { objects } = useEditorStore();
+  const objects = useEditorStore((state) => state.objects);
+  const isEditMode = useEditorStore((state) => state.isEditMode);
   const { instancingEnabled, instancingThreshold } = useEngineSettings();
   
   return useMemo(() => {
-    if (!instancingEnabled) return false;
+    if (!instancingEnabled || isEditMode) return false;
     
     const obj = objects.find(o => o.id === objectId);
     if (!obj) return false;
@@ -154,5 +156,5 @@ export const useIsInstanced = (objectId: string) => {
     ).length;
     
     return count >= instancingThreshold;
-  }, [objectId, objects, instancingEnabled, instancingThreshold]);
+  }, [objectId, objects, instancingEnabled, instancingThreshold, isEditMode]);
 };

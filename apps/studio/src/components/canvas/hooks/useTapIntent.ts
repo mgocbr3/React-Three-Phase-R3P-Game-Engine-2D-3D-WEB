@@ -21,7 +21,7 @@ interface TapIntentOptions {
  */
 export function useTapIntent({
   onTap,
-  delayMs = 100,
+  delayMs = 60,
 }: TapIntentOptions) {
   const pendingRef = useRef<{
     timeoutId: ReturnType<typeof setTimeout>;
@@ -55,7 +55,6 @@ export function useTapIntent({
     // Schedule selection after delay
     const timeoutId = setTimeout(() => {
       if (pendingRef.current && !pendingRef.current.cancelled) {
-        console.log(` [TapIntent] Delayed selection fired`);
         onTap(pendingRef.current.event);
         pendingRef.current = null;
       }
@@ -69,7 +68,6 @@ export function useTapIntent({
       cancelled: false,
     };
     
-    console.log(` [TapIntent] pointerDown - scheduled selection in ${delayMs}ms`);
   }, [onTap, delayMs, cancel]);
 
   const onPointerMove = useCallback((e: ThreeEvent<AnyPointerEvent>) => {
@@ -82,10 +80,9 @@ export function useTapIntent({
     const dx = x - pending.startX;
     const dy = y - pending.startY;
 
-    // If moved more than 4px, cancel the selection (it's a drag)
-    const threshold = 4;
+    // Trackpad and high-DPI mice often drift a few pixels during a normal click.
+    const threshold = 10;
     if (dx * dx + dy * dy > threshold * threshold) {
-      console.log(` [TapIntent] Movement detected - cancelling selection`);
       cancel();
     }
   }, [cancel]);
@@ -97,7 +94,6 @@ export function useTapIntent({
 
     // Fire selection immediately on pointer up (before delay completes)
     clearTimeout(pending.timeoutId);
-    console.log(` [TapIntent] pointerUp - immediate selection`);
     onTap(pending.event);
     pendingRef.current = null;
   }, [onTap]);

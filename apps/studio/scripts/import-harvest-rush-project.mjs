@@ -10,6 +10,8 @@ const levelPath = path.join(gameRoot, 'public/levels/harvest-rush.level3d.json')
 const runtimePath = path.join(gameRoot, 'src/main.js');
 const studioProjectPath = path.join(studioRoot, 'public/sample-projects/harvest-rush-3d/project.pixlproject.json');
 const gameProjectPath = path.join(gameRoot, 'pixlplayground/project.pixlproject.json');
+const studioSampleRoot = path.dirname(studioProjectPath);
+const sampleProjectPublicRoot = '/sample-projects/harvest-rush-3d';
 
 const DEFAULT_PROJECT_FOLDERS = [
   'Assets/3D_Models',
@@ -158,11 +160,18 @@ const CROP_COLORS = {
   rice: '#98b979',
 };
 
-const toFsUrl = (absolutePath) => `/@fs/${absolutePath.replace(/\\/g, '/')}`;
+const toSampleProjectUrl = (relativePath) => (
+  `${sampleProjectPublicRoot}/${relativePath.replace(/\\/g, '/').replace(/^\/+/, '')}`
+);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const slug = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const roundNumber = (value, precision = 6) => {
+  if (!Number.isFinite(value)) return 0;
+  return Number(value.toFixed(precision));
+};
 const farmPackAssetPath = (file) => path.join(gameRoot, 'public/assets/vendor/farm-pack', file);
-const farmPackAssetUrl = (file) => toFsUrl(farmPackAssetPath(file));
+const farmPackAssetRelativePath = (file) => `assets/vendor/farm-pack/${file}`;
+const farmPackAssetUrl = (file) => toSampleProjectUrl(farmPackAssetRelativePath(file));
 
 const componentFromSettings = (objectId, type, data) => {
   if (!data) return null;
@@ -202,7 +211,7 @@ const editorObjectToSceneObject = (object) => ({
   },
 });
 
-const animationSettings = (modelUrl) => ({
+const animationSettings = (modelUrl, overrides = {}) => ({
   modelUrl,
   availableAnimations: [],
   autoPlay: false,
@@ -211,6 +220,7 @@ const animationSettings = (modelUrl) => ({
   crossFadeDuration: 0.3,
   paused: false,
   currentTime: 0,
+  ...overrides,
 });
 
 const physicsSettings = ({
@@ -273,6 +283,159 @@ const groupObject = (id, name, parentId = null) => ({
     role: 'hierarchy-folder',
   }),
 });
+
+const FARM_PART_COLORS = {
+  ground: '#6d8a57',
+  road: '#62646a',
+  field: '#8aa661',
+  plant: '#5fae61',
+  tree: '#3d7f4d',
+  fir_tree: '#2f7045',
+  bush: '#4f9a55',
+  fence: '#937150',
+  house: '#b57a52',
+  hangar: '#8f969f',
+  greenhouse: '#7fc0a2',
+  tower: '#9fa5ad',
+  truck: '#d66b4a',
+  car: '#d66b4a',
+  tractor: '#d66b4a',
+  harvester: '#d66b4a',
+  trailer: '#9a744e',
+  mountain: '#8b877b',
+  sheep: '#d8d7ce',
+  cow: '#d8d7ce',
+  goat: '#d8d7ce',
+  horse: '#a57856',
+  chicken: '#e8d4a2',
+  pig: '#d68ba0',
+};
+
+const farmPartPrefix = (name) => name.match(/^[a-zA-Z]+(?:_[a-zA-Z]+)*/)?.[0] || 'mesh';
+
+const humanizeFarmPrefix = (prefix) => prefix
+  .split('_')
+  .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+  .join(' ');
+
+const quatToEuler = ([x = 0, y = 0, z = 0, w = 1]) => {
+  const test = 2 * (w * y - z * x);
+  const clampedTest = Math.max(-1, Math.min(1, test));
+  const rx = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+  const ry = Math.asin(clampedTest);
+  const rz = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+  return [roundNumber(rx), roundNumber(ry), roundNumber(rz)];
+};
+
+const sanitizeNodeTransform = (node) => {
+  const translation = node.translation ?? [0, 0, 0];
+  const scale = node.scale ?? [1, 1, 1];
+  const rotation = quatToEuler(node.rotation ?? [0, 0, 0, 1]);
+
+  return {
+    position: [
+      roundNumber((translation[0] ?? 0) * FARM_SCENE_SCALE),
+      roundNumber((translation[1] ?? 0) * FARM_SCENE_SCALE - 0.04),
+      roundNumber((translation[2] ?? 0) * FARM_SCENE_SCALE),
+    ],
+    rotation,
+    scale: [
+      roundNumber((scale[0] ?? 1) * FARM_SCENE_SCALE),
+      roundNumber((scale[1] ?? 1) * FARM_SCENE_SCALE),
+      roundNumber((scale[2] ?? 1) * FARM_SCENE_SCALE),
+    ],
+  };
+};
+
+const summarizeFarmManifest = (farmManifest) => ({
+  nodeCount: farmManifest.nodeCount,
+  meshCount: farmManifest.meshCount,
+  meshNodeCount: farmManifest.meshNodeCount,
+  topNamePrefixes: farmManifest.topNamePrefixes,
+  sampleNodes: farmManifest.sampleNodes,
+  error: farmManifest.error,
+});
+
+const createFarmSceneObjects = (farmManifest) => {
+  const meshNodes = farmManifest.meshNodes ?? [];
+  const objects = [
+    {
+      ...groupObject('farm-scene-root', 'Farm.glb Parts', 'world-root'),
+      locked: false,
+      logicSettings: logicSettings(['harvest-rush', 'farm-map', 'runtime-map', 'farm-glb', 'decomposed-glb'], {
+        runtimeConstant: 'FARM_SCENE_FILE',
+        runtimeLoader: 'loadFarmScene',
+        sourceAsset: 'public/assets/vendor/farm-pack/Farm.glb',
+        sourceScale: FARM_SCENE_SCALE,
+        decomposed: true,
+        partCount: meshNodes.length,
+        glbManifest: summarizeFarmManifest(farmManifest),
+        defaultExpanded: true,
+        terrainRuntime: {
+          raycastMeshes: 'terrainRaycastMeshes',
+          staticColliders: 'buildStaticCollidersFromFarmScene',
+          roadNavigation: 'buildRoadNavigationFromFarmScene',
+        },
+      }),
+    },
+  ];
+
+  const prefixes = [...new Set(meshNodes.map((node) => node.prefix))].sort();
+  for (const prefix of prefixes) {
+    objects.push({
+      ...groupObject(`farm-part-group-${slug(prefix)}`, humanizeFarmPrefix(prefix), 'farm-scene-root'),
+      locked: false,
+      logicSettings: logicSettings(['harvest-rush', 'folder', 'farm-glb-prefix', prefix], {
+        role: 'decomposed-glb-folder',
+        sourceAsset: 'public/assets/vendor/farm-pack/Farm.glb',
+        sourcePrefix: prefix,
+        count: meshNodes.filter((node) => node.prefix === prefix).length,
+        defaultExpanded: false,
+      }),
+    });
+  }
+
+  for (const node of meshNodes) {
+    const transform = sanitizeNodeTransform(node);
+    const prefix = node.prefix;
+    const id = `farm-node-${String(node.index).padStart(5, '0')}-${slug(node.name).slice(0, 48)}`;
+    objects.push({
+      id,
+      name: node.name,
+      type: 'box',
+      parentId: `farm-part-group-${slug(prefix)}`,
+      position: transform.position,
+      rotation: transform.rotation,
+      scale: transform.scale,
+      color: FARM_PART_COLORS[prefix] ?? '#8a8f98',
+      visible: true,
+      locked: false,
+      isStatic: true,
+      animationSettings: animationSettings(farmPackAssetUrl('Farm.glb'), {
+        nodeName: node.name,
+        nodeIndex: node.index,
+        sourceAssetName: 'Farm.glb',
+      }),
+      visualSettings: visualSettings({
+        castShadow: prefix !== 'ground' && prefix !== 'road',
+        receiveShadow: prefix === 'ground' || prefix === 'road' || prefix === 'field',
+      }),
+      logicSettings: logicSettings(['harvest-rush', 'farm-map-part', prefix], {
+        runtimeConstant: 'FARM_SCENE_FILE',
+        sourceAsset: 'public/assets/vendor/farm-pack/Farm.glb',
+        sourceNodeName: node.name,
+        sourceNodeIndex: node.index,
+        sourceMeshIndex: node.mesh,
+        sourcePrefix: prefix,
+        sourceScale: FARM_SCENE_SCALE,
+        renderOnly: true,
+        editableGlbPart: true,
+      }),
+    });
+  }
+
+  return objects;
+};
 
 const modelObject = ({
   id,
@@ -338,34 +501,7 @@ const createCoreObjects = (farmManifest) => {
     groupObject('vehicles-root', 'Vehicles', 'gameplay-root'),
     groupObject('fields-root', 'Fields', 'gameplay-root'),
     groupObject('stations-root', 'Unload Stations', 'gameplay-root'),
-    {
-      id: 'farm-scene-glb',
-      name: 'Farm.glb',
-      type: 'box',
-      parentId: 'world-root',
-      position: [0, -0.04, 0],
-      rotation: [0, 0, 0],
-      scale: [FARM_SCENE_SCALE, FARM_SCENE_SCALE, FARM_SCENE_SCALE],
-      color: '#7b8d6d',
-      visible: true,
-      locked: false,
-      isStatic: true,
-      animationSettings: animationSettings(farmPackAssetUrl('Farm.glb')),
-      physicsSettings: physicsSettings({ bodyType: 'fixed', colliderShape: 'trimesh' }),
-      visualSettings: visualSettings({ castShadow: false, receiveShadow: true }),
-      logicSettings: logicSettings(['harvest-rush', 'farm-map', 'runtime-map', 'farm-glb'], {
-        runtimeConstant: 'FARM_SCENE_FILE',
-        runtimeLoader: 'loadFarmScene',
-        sourceAsset: 'public/assets/vendor/farm-pack/Farm.glb',
-        sourceScale: FARM_SCENE_SCALE,
-        glbManifest: farmManifest,
-        terrainRuntime: {
-          raycastMeshes: 'terrainRaycastMeshes',
-          staticColliders: 'buildStaticCollidersFromFarmScene',
-          roadNavigation: 'buildRoadNavigationFromFarmScene',
-        },
-      }),
-    },
+    ...createFarmSceneObjects(farmManifest),
     {
       id: 'main-camera',
       name: 'Main Camera',
@@ -627,11 +763,14 @@ const collectSceneAssetEntries = (editorObjects) => {
     const modelUrl = object.animationSettings?.modelUrl;
     if (!modelUrl || entries.has(modelUrl)) continue;
 
+    const isFarmGlb = object.animationSettings?.sourceAssetName === 'Farm.glb';
+    const assetName = isFarmGlb ? 'Farm.glb (decomposed map source)' : object.name;
+
     entries.set(modelUrl, {
-      id: `scene-model-${entries.size + 1}-${slug(object.name)}`,
-      name: object.name,
+      id: `scene-model-${entries.size + 1}-${slug(assetName)}`,
+      name: assetName,
       kind: 'model',
-      path: `Assets/3D_Models/${object.name.replace(/[^a-z0-9_. -]/gi, '').trim() || object.id}`,
+      path: `Assets/3D_Models/${assetName.replace(/[^a-z0-9_. -]/gi, '').trim() || object.id}`,
       url: modelUrl,
       tags: ['harvest-rush', 'scene-model'],
       metadata: {
@@ -653,6 +792,30 @@ const uniqueAssets = (...assetLists) => {
     }
   }
   return [...byUrl.values()];
+};
+
+const collectSampleFarmPackFiles = () => [
+  ...new Set([
+    'Farm.glb',
+    ...MACHINES.flatMap((machine) => [machine.file, machine.trailerFile]),
+    ...Object.values(CROP_MODEL_ASSETS).map((asset) => asset.file),
+  ]),
+];
+
+const copySampleRuntimeAssets = async () => {
+  const farmPackOutDir = path.join(studioSampleRoot, 'assets/vendor/farm-pack');
+  await fs.mkdir(farmPackOutDir, { recursive: true });
+
+  await Promise.all(
+    collectSampleFarmPackFiles().map((file) => fs.copyFile(
+      farmPackAssetPath(file),
+      path.join(farmPackOutDir, file),
+    )),
+  );
+
+  const runtimeOutPath = path.join(studioSampleRoot, 'runtime/src/main.js');
+  await fs.mkdir(path.dirname(runtimeOutPath), { recursive: true });
+  await fs.copyFile(runtimePath, runtimeOutPath);
 };
 
 const readOptionalJson = async (filePath) => {
@@ -720,19 +883,23 @@ const readFarmGlbManifest = async () => {
         index,
         name: node.name || `node_${index}`,
         mesh: node.mesh,
+        prefix: farmPartPrefix(node.name || `node_${index}`),
+        translation: node.translation ?? [0, 0, 0],
+        rotation: node.rotation ?? [0, 0, 0, 1],
+        scale: node.scale ?? [1, 1, 1],
       }))
       .filter((node) => node.mesh !== undefined);
 
     const prefixCounts = new Map();
     for (const node of meshNodes) {
-      const prefix = node.name.match(/^[a-zA-Z-]+/)?.[0] || 'mesh';
-      prefixCounts.set(prefix, (prefixCounts.get(prefix) ?? 0) + 1);
+      prefixCounts.set(node.prefix, (prefixCounts.get(node.prefix) ?? 0) + 1);
     }
 
     return {
       nodeCount: gltfJson?.nodes?.length ?? 0,
       meshCount: gltfJson?.meshes?.length ?? 0,
       meshNodeCount: meshNodes.length,
+      meshNodes,
       topNamePrefixes: [...prefixCounts.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 16)
@@ -744,6 +911,7 @@ const readFarmGlbManifest = async () => {
       nodeCount: 0,
       meshCount: 0,
       meshNodeCount: 0,
+      meshNodes: [],
       topNamePrefixes: [],
       sampleNodes: [],
       error: error.message,
@@ -779,7 +947,7 @@ const buildProject = async () => {
     runtime: {
       primary: 'three-3d',
       renderers: ['three', 'phaser'],
-      physics: ['rapier', 'enable3d'],
+      physics: ['rapier'],
     },
     activeSceneId: sceneId,
     scenes: [
@@ -816,7 +984,6 @@ const buildProject = async () => {
           originalEditorLevel: legacyLevel ? {
             schema: legacyLevel.schema,
             game: legacyLevel.game,
-            engineTarget: legacyLevel.engineTarget,
             sourceScene: legacyLevel.sourceScene,
             objectCount: Array.isArray(legacyLevel.objects) ? legacyLevel.objects.length : 0,
             notes: legacyLevel.notes,
@@ -841,7 +1008,7 @@ const buildProject = async () => {
             name: 'Harvest Rush runtime',
             kind: 'script',
             path: 'Scripts/harvest-rush-runtime-main.js',
-            url: toFsUrl(runtimePath),
+            url: toSampleProjectUrl('runtime/src/main.js'),
             tags: ['harvest-rush', 'runtime', 'script'],
             metadata: runtimeInfo,
           },
@@ -862,7 +1029,7 @@ const buildProject = async () => {
       templateId: null,
       script: [
         '// Harvest Rush 3D',
-        '// This project opens the real Farm.glb runtime map plus editable gameplay proxies.',
+        '// This project opens the real Farm.glb runtime map as decomposed, editable scene parts plus gameplay proxies.',
         '// Runtime source: apps/portal/games-src/harvest-rush-3d/src/main.js',
         '',
       ].join('\n'),
@@ -892,6 +1059,7 @@ const buildProject = async () => {
 const project = await buildProject();
 const json = `${JSON.stringify(project, null, 2)}\n`;
 
+await copySampleRuntimeAssets();
 await fs.mkdir(path.dirname(studioProjectPath), { recursive: true });
 await fs.mkdir(path.dirname(gameProjectPath), { recursive: true });
 await fs.writeFile(studioProjectPath, json);

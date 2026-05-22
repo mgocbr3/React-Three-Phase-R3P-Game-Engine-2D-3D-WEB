@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+const MAX_PERSISTED_VERSION_OBJECTS = 1000;
+
+const compactVersionData = (data: any) => {
+  const objectCount = Array.isArray(data?.objects) ? data.objects.length : 0;
+  if (objectCount <= MAX_PERSISTED_VERSION_OBJECTS) return data;
+
+  return {
+    truncated: true,
+    objectCount,
+    currentTemplateId: data?.currentTemplateId ?? null,
+    gameScript: data?.gameScript,
+    timestamp: data?.timestamp ?? Date.now(),
+  };
+};
+
 export interface ProjectVersion {
   id: string;
   timestamp: number;
@@ -29,14 +44,21 @@ interface AutoSaveStore {
   clearOldVersions: (keepLast?: number) => void;
 }
 
+const getInitialAutoSaveState = (): Pick<
+  AutoSaveStore,
+  'lastSaveTime' | 'lastSaveStatus' | 'saveMessage' | 'versions' | 'currentVersionId'
+> => ({
+  lastSaveTime: null,
+  lastSaveStatus: 'unsaved',
+  saveMessage: 'Projeto não salvo',
+  versions: [],
+  currentVersionId: null,
+});
+
 export const useAutoSaveStore = create<AutoSaveStore>()(
   persist(
     (set, get) => ({
-      lastSaveTime: null,
-      lastSaveStatus: 'unsaved',
-      saveMessage: 'Projeto não salvo',
-      versions: [],
-      currentVersionId: null,
+      ...getInitialAutoSaveState(),
       
       setSaveStatus: (status, message) => {
         const timestamp = Date.now();
@@ -70,7 +92,7 @@ export const useAutoSaveStore = create<AutoSaveStore>()(
           id: versionId,
           timestamp: Date.now(),
           name,
-          data,
+          data: compactVersionData(data),
           autoSaved,
         };
         
@@ -112,7 +134,18 @@ export const useAutoSaveStore = create<AutoSaveStore>()(
     }),
     {
       name: 'pixl-autosave-store',
-      version: 1,
+      version: 2,
+      migrate: () => getInitialAutoSaveState(),
+      partialize: (state) => ({
+        lastSaveTime: state.lastSaveTime,
+        lastSaveStatus: state.lastSaveStatus,
+        saveMessage: state.saveMessage,
+        versions: state.versions.map((version) => ({
+          ...version,
+          data: compactVersionData(version.data),
+        })),
+        currentVersionId: state.currentVersionId,
+      }),
     }
   )
 );

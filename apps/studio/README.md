@@ -3,8 +3,9 @@
 PixlPlayground Studio is the Pixlland visual editor. It keeps the existing editor interface and adds a dual-viewport direction:
 
 - `3D`: Three.js, React Three Fiber and Rapier.
-- `2D`: Phaser 3.90.
-- `Phaser 3D export`: Enable3D for Phaser + Three.js + Ammo runtime builds.
+- `2D`: Phaser 4.
+
+3D and 2D exports stay separate: a 3D game does not load Phaser, and a 2D game does not load Three.js.
 
 ## Local Development
 

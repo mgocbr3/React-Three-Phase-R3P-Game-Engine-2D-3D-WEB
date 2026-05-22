@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, Box, Circle, Layers, Eye, EyeOff, Lock, Unlock, Trash2, Camera, User, Lightbulb, Search, MoreHorizontal, Link, Unlink, Sun, Cone, Mountain, Cylinder, Copy, Edit3, Focus, Play } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useEditorStore, ObjectType, SceneObject } from '@/stores/editorStore';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,47 @@ const hasMovementAttached = (object: SceneObject): boolean => {
   }
   return false;
 };
+
+const SEARCH_RESULT_LIMIT = 300;
+
+const objectMatchesSearch = (object: SceneObject, query: string): boolean => {
+  if (!query) return true;
+
+  const customData = object.logicSettings?.customData ?? {};
+  const searchableValues = [
+    object.name,
+    object.id,
+    object.type,
+    object.logicSettings?.tags?.join(' '),
+    customData.sourceNodeName,
+    customData.sourcePrefix,
+    customData.sourceAsset,
+  ];
+
+  return searchableValues
+    .filter((value) => value !== undefined && value !== null)
+    .map(String)
+    .join(' ')
+    .toLowerCase()
+    .includes(query);
+};
+
+const getObjectPath = (object: SceneObject, objectsById: Map<string, SceneObject>): string => {
+  const names: string[] = [];
+  let parentId: string | null | undefined = object.parentId;
+  let guard = 0;
+
+  while (parentId && guard < 16) {
+    const parent = objectsById.get(parentId);
+    if (!parent) break;
+    names.unshift(parent.name);
+    parentId = parent.parentId;
+    guard += 1;
+  }
+
+  return names.join(' / ');
+};
+
 // Context Menu Component
 interface ContextMenuProps {
   x: number;
@@ -155,11 +196,26 @@ interface SceneObjectItemProps {
   focusOnObject: (id: string) => void;
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
   deleteObject: (id: string) => void;
-  objects: SceneObject[];
+  childrenByParent: Map<string, SceneObject[]>;
+  descendantCountByParent: Map<string, number>;
+  childrenHidden?: boolean;
+  pathLabel?: string;
 }
 
-const SceneObjectItem = ({ object, depth, selectedObjectId, selectObject, focusOnObject, updateObject, deleteObject, objects }: SceneObjectItemProps) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+const SceneObjectItem = ({
+  object,
+  depth,
+  selectedObjectId,
+  selectObject,
+  focusOnObject,
+  updateObject,
+  deleteObject,
+  childrenByParent,
+  descendantCountByParent,
+  childrenHidden = false,
+  pathLabel,
+}: SceneObjectItemProps) => {
+  const [isExpanded, setIsExpanded] = useState(() => object.logicSettings?.customData?.defaultExpanded !== false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(object.name);
   const [lastClickTime, setLastClickTime] = useState(0);
@@ -170,8 +226,9 @@ const SceneObjectItem = ({ object, depth, selectedObjectId, selectObject, focusO
   const typeColor = getTypeColor(object.type);
   
   // Find children of this object
-  const children = objects.filter(o => o.parentId === object.id);
+  const children = childrenByParent.get(object.id) ?? [];
   const hasChildren = children.length > 0;
+  const descendantCount = descendantCountByParent.get(object.id) ?? children.length;
 
   const handleRename = () => {
     if (editName.trim() && editName !== object.name) {
@@ -302,6 +359,24 @@ const SceneObjectItem = ({ object, depth, selectedObjectId, selectObject, focusO
         {object.parentId && (
           <Link className="w-3 h-3 text-muted-foreground" />
         )}
+
+        {hasChildren && (
+          <span
+            className="text-[10px] text-muted-foreground tabular-nums"
+            title={`${descendantCount} objetos dentro deste grupo`}
+          >
+            {descendantCount}
+          </span>
+        )}
+
+        {pathLabel && (
+          <span
+            className="max-w-24 truncate text-[10px] text-muted-foreground"
+            title={pathLabel}
+          >
+            {pathLabel}
+          </span>
+        )}
         
         {/* Quick actions */}
         <div className="hidden group-hover:flex items-center gap-0.5">
@@ -346,7 +421,7 @@ const SceneObjectItem = ({ object, depth, selectedObjectId, selectObject, focusO
       </div>
       
       {/* Render children */}
-      {hasChildren && isExpanded && (
+      {hasChildren && isExpanded && !childrenHidden && (
         <div className="border-l border-border/50 ml-4">
           {children.map((child) => (
             <SceneObjectItem
@@ -358,7 +433,8 @@ const SceneObjectItem = ({ object, depth, selectedObjectId, selectObject, focusO
               focusOnObject={focusOnObject}
               updateObject={updateObject}
               deleteObject={deleteObject}
-              objects={objects}
+              childrenByParent={childrenByParent}
+              descendantCountByParent={descendantCountByParent}
             />
           ))}
         </div>
@@ -371,12 +447,67 @@ export const SceneGraphPanel = () => {
   const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, deleteObject } = useEditorStore();
   const [expanded, setExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const query = searchQuery.trim().toLowerCase();
 
-  // Filter objects and only show root-level (no parent) objects in the main list
-  const filteredObjects = objects.filter(obj => 
-    obj.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    !obj.parentId // Only show root objects
-  );
+  const childrenByParent = useMemo(() => {
+    const byParent = new Map<string, SceneObject[]>();
+    for (const object of objects) {
+      if (!object.parentId) continue;
+      const siblings = byParent.get(object.parentId) ?? [];
+      siblings.push(object);
+      byParent.set(object.parentId, siblings);
+    }
+    return byParent;
+  }, [objects]);
+
+  const objectsById = useMemo(() => {
+    const byId = new Map<string, SceneObject>();
+    for (const object of objects) {
+      byId.set(object.id, object);
+    }
+    return byId;
+  }, [objects]);
+
+  const rootObjects = useMemo(() => objects.filter((object) => !object.parentId), [objects]);
+
+  const descendantCountByParent = useMemo(() => {
+    const cache = new Map<string, number>();
+    const countDescendants = (objectId: string, visiting = new Set<string>()): number => {
+      const cached = cache.get(objectId);
+      if (cached !== undefined) return cached;
+      if (visiting.has(objectId)) return 0;
+
+      const nextVisiting = new Set(visiting);
+      nextVisiting.add(objectId);
+      const children = childrenByParent.get(objectId) ?? [];
+      const total = children.reduce((sum, child) => sum + 1 + countDescendants(child.id, nextVisiting), 0);
+      cache.set(objectId, total);
+      return total;
+    };
+
+    for (const object of objects) {
+      countDescendants(object.id);
+    }
+
+    return cache;
+  }, [childrenByParent, objects]);
+
+  const searchResults = useMemo(() => {
+    if (!query) return [];
+    return objects
+      .filter((object) => objectMatchesSearch(object, query))
+      .slice(0, SEARCH_RESULT_LIMIT);
+  }, [objects, query]);
+
+  const searchResultCount = useMemo(() => {
+    if (!query) return 0;
+    return objects.reduce(
+      (count, object) => count + (objectMatchesSearch(object, query) ? 1 : 0),
+      0,
+    );
+  }, [objects, query]);
+
+  const isSearching = query.length > 0;
 
   return (
     <div className="editor-dock editor-dock-outline w-full h-full border-r flex flex-col overflow-hidden">
@@ -400,7 +531,7 @@ export const SceneGraphPanel = () => {
             placeholder="Buscar..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full border border-[#111] bg-[#1d1d1d] pl-7 pr-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full border border-border bg-[var(--editor-panel-sunken)] pl-7 pr-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
       </div>
@@ -425,19 +556,46 @@ export const SceneGraphPanel = () => {
 
           {expanded && (
             <div className="ml-1">
-              {filteredObjects.map((obj) => (
-                <SceneObjectItem
-                  key={obj.id}
-                  object={obj}
-                  depth={0}
-                  selectedObjectId={selectedObjectId}
-                  selectObject={selectObject}
-                  focusOnObject={focusOnObject}
-                  updateObject={updateObject}
-                  deleteObject={deleteObject}
-                  objects={objects}
-                />
-              ))}
+              {isSearching ? (
+                <>
+                  <div className="px-2 py-1.5 text-[10px] text-muted-foreground">
+                    {searchResultCount === 0
+                      ? 'Nenhum resultado'
+                      : `${Math.min(searchResultCount, SEARCH_RESULT_LIMIT)} de ${searchResultCount} resultados`}
+                  </div>
+                  {searchResults.map((obj) => (
+                    <SceneObjectItem
+                      key={obj.id}
+                      object={obj}
+                      depth={0}
+                      selectedObjectId={selectedObjectId}
+                      selectObject={selectObject}
+                      focusOnObject={focusOnObject}
+                      updateObject={updateObject}
+                      deleteObject={deleteObject}
+                      childrenByParent={childrenByParent}
+                      descendantCountByParent={descendantCountByParent}
+                      childrenHidden
+                      pathLabel={getObjectPath(obj, objectsById)}
+                    />
+                  ))}
+                </>
+              ) : (
+                rootObjects.map((obj) => (
+                  <SceneObjectItem
+                    key={obj.id}
+                    object={obj}
+                    depth={0}
+                    selectedObjectId={selectedObjectId}
+                    selectObject={selectObject}
+                    focusOnObject={focusOnObject}
+                    updateObject={updateObject}
+                    deleteObject={deleteObject}
+                    childrenByParent={childrenByParent}
+                    descendantCountByParent={descendantCountByParent}
+                  />
+                ))
+              )}
             </div>
           )}
         </div>

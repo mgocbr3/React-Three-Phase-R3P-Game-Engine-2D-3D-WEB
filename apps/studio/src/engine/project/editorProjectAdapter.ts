@@ -256,7 +256,7 @@ export const createProjectDocumentFromEditorState = (
     runtime: {
       primary: 'three-3d',
       renderers: ['three', 'phaser'],
-      physics: ['rapier', 'enable3d'],
+      physics: ['rapier'],
     },
     activeSceneId: sceneId,
     scenes: [scene],

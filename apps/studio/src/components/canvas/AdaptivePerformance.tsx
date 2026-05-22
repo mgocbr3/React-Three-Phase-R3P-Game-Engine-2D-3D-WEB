@@ -76,7 +76,6 @@ export const AdaptivePerformance = ({
       const newPreset = QUALITY_ORDER[newIndex];
       applyQualityPreset(newPreset);
       onQualityChange?.(newPreset, reason);
-      console.log(`[Performance] Quality ${direction === 'up' ? '↑' : '↓'} to ${newPreset}: ${reason}`);
     }
   }, [getCurrentQualityIndex, applyQualityPreset, onQualityChange]);
   

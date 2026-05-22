@@ -81,27 +81,13 @@ export const TouchCameraController = ({
     };
     
     const handlePointerDown = (e: PointerEvent) => {
-      // DEBUG: Log all pointer events
-      console.log(` [TouchCamera] pointerdown:`, {
-        pointerType: e.pointerType,
-        pointerId: e.pointerId,
-        button: e.button,
-        target: (e.target as HTMLElement)?.tagName,
-        gizmoActive: GizmoInteractionLock.isActive(),
-        currentPointers: pointers.current.size,
-        isOrbitEnabled,
-        isCameraEnabled,
-      });
-      
       // CRITICAL: Don't start camera control if gizmo is active
       if (GizmoInteractionLock.isActive()) {
-        console.log(` [TouchCamera] BLOCKED: Gizmo is active`);
         return;
       }
       
       // Only handle touch pointers for camera (mouse is handled by FlyCamera)
       if (e.pointerType !== 'touch') {
-        console.log(` [TouchCamera] IGNORED: Not a touch event (pointerType=${e.pointerType})`);
         return;
       }
 
@@ -119,12 +105,9 @@ export const TouchCameraController = ({
         startY: e.clientY,
       });
       
-      console.log(` [TouchCamera] Touch registered, pointer count: ${pointers.current.size}`);
-      
       if (pointers.current.size === 2) {
         startDistance.current = getDistance();
         startCenter.current = getCenter();
-        console.log(` [TouchCamera] 2-finger gesture started`);
       }
     };
     

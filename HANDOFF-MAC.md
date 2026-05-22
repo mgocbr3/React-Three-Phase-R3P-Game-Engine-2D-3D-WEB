@@ -6,6 +6,8 @@ Remote: `origin` -> `https://github.com/mgocbr3/pixlland-poki.git`
 
 This handoff is for continuing PixlPlayground Studio engine work on a Mac without needing the full Codex conversation.
 
+Update 2026-05-22: Enable3D is legacy context only. The current engine direction is Three.js for 3D runtime/editor work and Phaser 4 for 2D runtime/editor work.
+
 ## What This Branch Contains
 
 - A separated engine workspace at `engine/`.
@@ -26,9 +28,10 @@ This handoff is for continuing PixlPlayground Studio engine work on a Mac withou
   - bundled sample copy at `engine/apps/studio/public/sample-projects/harvest-rush-3d/project.pixlproject.json`;
   - runtime level document at `apps/portal/games-src/harvest-rush-3d/public/levels/harvest-rush.level3d.json`;
   - full `Farm.glb` visible in the engine sample, not only 2D proxy boxes.
-- Enable3D reference:
-  - npm dependency `@enable3d/phaser-extension`;
-  - source mirror under `tools/vendor/enable3d` for API reference and future exporters.
+- Runtime target update:
+  - Three.js owns the 3D editor/runtime path.
+  - Phaser 4 owns the 2D editor/runtime path.
+  - Enable3D-era notes are historical reference only.
 
 ## Mac Setup
 
@@ -105,15 +108,16 @@ apps/portal/games-src/harvest-rush-3d/
   pixlplayground/project.pixlproject.json
   phaser/
 
-tools/vendor/enable3d/
+tools/vendor/
+  # historical third-party references only
 ```
 
 ## Current Architecture Decisions
 
 1. PixlPlayground is the visual editor, not a new copy of Phaser Editor.
-2. Phaser and Enable3D are runtime/export targets.
+2. Three.js 3D and Phaser 4 2D are runtime/export targets.
 3. The editor source of truth is a local `project.pixlproject.json`.
-4. The runtime can still be Three.js, Phaser 2D or Phaser + Enable3D depending on the game.
+4. Runtime bundles should stay stack-specific: Three.js for 3D scenes, Phaser 4 for 2D scenes.
 5. Harvest Rush 3D currently edits a visual representation of the game scene and asset layout; gameplay systems remain in the game runtime.
 6. The full game scene, scripts, UI and logic are not yet round-tripped as editable engine components. That is the next big milestone.
 7. Cloud/Supabase code from the original Studio exists as legacy code, but engine local mode is the default and the visible editor chrome no longer presents cloud sync as the main workflow.
@@ -186,7 +190,7 @@ Important distinction:
   - runtime collision volumes;
   - prefab variants.
 - Proper 2D Phaser viewport editor.
-- Enable3D exporter from `project.pixlproject.json`.
+- Phaser 4 exporter from `project.pixlproject.json`.
 - CLI commands for validate/import/export/snapshot.
 - MCP server for agents.
 - VS Code extension / scene diagnostics.
@@ -206,8 +210,7 @@ Important distinction:
    - `pixl engine validate <project>`;
    - `pixl engine import-harvest-rush`;
    - `pixl engine export-three`;
-   - `pixl engine export-phaser`;
-   - `pixl engine export-enable3d`.
+   - `pixl engine export-phaser`.
 3. Implement real dock manager:
    - draggable panels;
    - split panes;
