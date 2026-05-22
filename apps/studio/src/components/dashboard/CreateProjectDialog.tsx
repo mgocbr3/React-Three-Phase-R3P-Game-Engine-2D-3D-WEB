@@ -12,10 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateProject } from '@/hooks/useProjects';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { useProjectStore } from '@/stores/projectStore';
-import { isPixllandConfigured } from '@/integrations/pixlland/client';
-import { ENGINE_LOCAL_ONLY } from '@/config/engineMode';
+import { isPixllandConfigured } from '@/legacy/cloud/integrations/pixlland/client';
+import { ENGINE_CLOUD_ENABLED, ENGINE_LOCAL_ONLY } from '@/config/engineMode';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { Sparkles, FolderPlus, Loader2, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
@@ -40,8 +40,8 @@ export const CreateProjectDialog = ({
   const createLocalProject = useProjectStore((state) => state.createProject);
   const createProjectMutation = useCreateProject();
 
-  const isEmbedded = new URLSearchParams(window.location.search).get('embedded') === 'true';
-  const canCreateLocalProject = ENGINE_LOCAL_ONLY || !isPixllandConfigured || user?.id === 'pixlland-dev-user';
+  const isEmbedded = ENGINE_CLOUD_ENABLED && new URLSearchParams(window.location.search).get('embedded') === 'true';
+  const canCreateLocalProject = !ENGINE_CLOUD_ENABLED || ENGINE_LOCAL_ONLY || !isPixllandConfigured || user?.id === 'pixlland-dev-user';
 
   const handleCreate = async () => {
     const name = projectName.trim() || (templateName ? `${templateName} - Meu Projeto` : 'Novo Projeto');
@@ -76,7 +76,7 @@ export const CreateProjectDialog = ({
       return;
     }
 
-    if (!user) {
+    if (ENGINE_CLOUD_ENABLED && !user) {
       setAuthModalOpen(true);
       return;
     }
@@ -135,7 +135,7 @@ export const CreateProjectDialog = ({
             </DialogDescription>
           </DialogHeader>
 
-          {!user && !isEmbedded && !canCreateLocalProject ? (
+          {ENGINE_CLOUD_ENABLED && !user && !isEmbedded && !canCreateLocalProject ? (
             <div className="py-6 text-center">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <LogIn className="w-6 h-6 text-primary" />
@@ -204,7 +204,7 @@ export const CreateProjectDialog = ({
         </DialogContent>
       </Dialog>
       
-      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
+      {ENGINE_CLOUD_ENABLED && <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />}
     </>
   );
 };

@@ -29,6 +29,101 @@ export interface PixlTransform {
   scale: PixlVec3;
 }
 
+export interface PixlTransform2D {
+  position: PixlVec2;
+  rotation: number;
+  scale: PixlVec2;
+}
+
+export const PIXL_3D_COMPONENT_TYPES = [
+  'pixl.visual',
+  'pixl.physics',
+  'pixl.logic',
+  'pixl.entity',
+  'pixl.animation',
+  'pixl.audio',
+  'pixl.particles',
+  'pixl.terrain',
+  'pixl.mesh',
+  'pixl.transform3d',
+  'pixl.light3d',
+  'pixl.camera3d',
+  'pixl.player',
+] as const;
+
+export const PIXL_2D_COMPONENT_TYPES = [
+  'pixl.sprite',
+  'pixl.transform2d',
+  'pixl.physics2d',
+  'pixl.tilemap',
+  'pixl.animation2d',
+  'pixl.camera2d',
+] as const;
+
+export const PIXL_SHARED_COMPONENT_TYPES = [
+  'pixl.script',
+  'pixl.audio',
+  'pixl.ui',
+  'pixl.tag',
+] as const;
+
+export type Pixl3DComponentType = typeof PIXL_3D_COMPONENT_TYPES[number];
+export type Pixl2DComponentType = typeof PIXL_2D_COMPONENT_TYPES[number];
+export type PixlSharedComponentType = typeof PIXL_SHARED_COMPONENT_TYPES[number];
+
+export interface PixlSpriteComponentData {
+  textureId: string;
+  centered?: boolean;
+  flipH?: boolean;
+  flipV?: boolean;
+  hframes?: number;
+  vframes?: number;
+  frame?: number;
+  tint?: string;
+}
+
+export interface PixlPhysics2DComponentData {
+  engine: 'arcade' | 'matter';
+  bodyType: 'dynamic' | 'static' | 'kinematic';
+  velocity?: PixlVec2;
+  angularVelocity?: number;
+  mass?: number;
+  gravityScale?: number;
+  friction?: number;
+  restitution?: number;
+  isSensor?: boolean;
+}
+
+export interface PixlTileMapComponentData {
+  tilesetId: string;
+  tileWidth: number;
+  tileHeight: number;
+  layers: Array<{
+    id: string;
+    zIndex: number;
+    data: number[][];
+  }>;
+}
+
+export interface PixlAnimation2DComponentData {
+  clips: Array<{
+    name: string;
+    frames: number[];
+    frameDuration: number;
+    loop: boolean;
+  }>;
+  defaultClip?: string;
+  playing?: boolean;
+}
+
+export interface PixlCamera2DComponentData {
+  zoom: number;
+  followTargetId?: string | null;
+  smoothing?: boolean;
+  smoothFactor?: number;
+  bounds?: { minX: number; minY: number; maxX: number; maxY: number };
+}
+
 export interface PixlComponentInstance {
   id: string;
   type: string;
@@ -135,6 +230,10 @@ export interface PixlProjectDocument {
     name: 'PixlPlayground';
     version: string;
     schemaVersion: PixlProjectVersion;
+    runtimeManifest?: {
+      runtime: PixlRuntimeKind;
+      dependencies: Record<string, string>;
+    };
   };
   runtime: PixlRuntimeSettings;
   activeSceneId: string;

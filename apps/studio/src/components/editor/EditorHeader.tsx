@@ -8,6 +8,7 @@ import {
   Download,
   ExternalLink,
   Eye,
+  FileArchive,
   FolderOpen,
   Gamepad2,
   Github,
@@ -40,10 +41,11 @@ import {
   MessageSquare,
   Book,
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo.png';
 import { useEditorStore } from '@/stores/editorStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { GAME_TEMPLATES } from '@/stores/gameStore';
 import { EngineSettingsModal } from './EngineSettingsModal';
@@ -57,13 +59,22 @@ import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { cn } from '@/lib/utils';
 import { ProjectVersionHistory } from './ProjectVersionHistory';
-import { ENGINE_LOCAL_ONLY } from '@/config/engineMode';
+import { ENGINE_CLOUD_ENABLED, ENGINE_LOCAL_ONLY } from '@/config/engineMode';
 import {
-  createProjectDocumentFromEditor,
+  getCurrentProjectWorkspace,
   openProjectDocumentFromDirectory,
-  saveProjectDocumentToDirectory,
+  saveActiveProjectDocumentToDirectory,
 } from '@/services/localProjectFiles';
+import {
+  announcePixlOpen,
+  announcePixlSave,
+  openPixlPackageFromDisk,
+  saveCurrentProjectAsPixl,
+} from '@/services/pixlPackageIO';
+import { FilePickerBusyError } from '@/services/filePickerLock';
 import { EditorToolbar } from './EditorToolbar';
+import { toggleRuntimePreviewFromEditor } from '@/engine/runtime/runtimePreviewControls';
+import { getRuntimeAdapterLabel } from '@/engine/runtime/runtimePreview';
 
 const PIXLLAND_PLATFORM_ORIGIN = import.meta.env.VITE_PIXLLAND_PLATFORM_ORIGIN || 'http://localhost:3000';
 
@@ -86,15 +97,17 @@ export const EditorHeader = () => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [localWorkspace, setLocalWorkspace] = useState(() => getCurrentProjectWorkspace());
   const menuRef = useRef<HTMLDivElement>(null);
   const isEmbedded = usePixllandStore((s) => s.isEmbedded);
   const { publishToPixlland } = usePixllandBridge();
-  const cloudProjectId = new URLSearchParams(window.location.search).get('project') || new URLSearchParams(window.location.search).get('projectId');
+  const cloudProjectId = ENGINE_CLOUD_ENABLED
+    ? new URLSearchParams(window.location.search).get('project') || new URLSearchParams(window.location.search).get('projectId')
+    : null;
 
   const {
     currentTemplateId,
     isEditMode,
-    setEditMode,
     undo,
     redo,
     canUndo,
@@ -122,6 +135,9 @@ export const EditorHeader = () => {
   const { interfaceMode, setInterfaceMode } = useInterfaceStore();
   const localProjectId = useProjectStore((s) => s.currentProjectId);
   const localProject = useProjectStore((s) => s.projects.find((project) => project.id === localProjectId));
+  const previewSession = useRuntimeGameStore((s) => s.previewSession);
+  const previewDisplayMode = useRuntimeGameStore((s) => s.previewDisplayMode);
+  const togglePreviewFullscreen = useRuntimeGameStore((s) => s.togglePreviewFullscreen);
   const panels = useEditorLayoutStore((s) => s.panels);
   const togglePanel = useEditorLayoutStore((s) => s.togglePanel);
   const resetLayout = useEditorLayoutStore((s) => s.resetLayout);
@@ -129,6 +145,31 @@ export const EditorHeader = () => {
 
   const currentTemplate = GAME_TEMPLATES.find((template) => template.id === currentTemplateId);
   const projectName = localProject?.name || (currentTemplate ? currentTemplate.name : 'Untitled Project');
+  const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
+  const isRuntimeFullscreen = previewDisplayMode === 'fullscreen';
+  const runtimeLabel = previewSession?.launchTarget.kind === 'web-runtime'
+    ? 'Runtime real'
+    : previewSession
+      ? getRuntimeAdapterLabel(previewSession.runtime)
+      : null;
+
+  const handleRuntimeToggle = useCallback(() => {
+    try {
+      const result = toggleRuntimePreviewFromEditor(projectName);
+
+      if (result.action === 'started') {
+        const runtimeLabel = result.session.launchTarget.kind === 'web-runtime'
+          ? 'Runtime real'
+          : getRuntimeAdapterLabel(result.session.runtime);
+        toast.success(`Play Mode: ${runtimeLabel}`, { duration: 1600 });
+      } else {
+        toast.success('Play Mode encerrado.', { duration: 1200 });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Nao foi possivel iniciar o runtime.';
+      toast.error(message);
+    }
+  }, [projectName]);
 
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
   const toggleStats = () => updateSettings({ showStats: !showStats });
@@ -170,18 +211,54 @@ export const EditorHeader = () => {
 
   const handleSaveToDisk = async () => {
     try {
-      saveProject();
-      await saveProjectDocumentToDirectory(createProjectDocumentFromEditor(projectName));
+      const workspace = await saveActiveProjectDocumentToDirectory(projectName);
+      setLocalWorkspace(workspace);
       toast.success('Projeto salvo no disco.');
     } catch (error) {
+      if ((error as DOMException)?.name === 'AbortError') return;
+      if (error instanceof FilePickerBusyError) {
+        toast.warning('Aguarde o diálogo de arquivo atual fechar.', { duration: 1800 });
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Nao foi possivel salvar no disco.';
+      toast.error(message);
+    }
+  };
+
+  const handleSaveAsPixl = async () => {
+    try {
+      const manifest = await saveCurrentProjectAsPixl(projectName);
+      announcePixlSave(manifest);
+    } catch (error) {
+      if ((error as DOMException)?.name === 'AbortError') return;
+      if (error instanceof FilePickerBusyError) {
+        toast.warning('Aguarde o diálogo de arquivo atual fechar.', { duration: 1800 });
+        return;
+      }
+      const message = error instanceof Error ? error.message : 'Nao foi possivel salvar o .pixl.';
+      toast.error(message);
+    }
+  };
+
+  const handleOpenPixl = async () => {
+    try {
+      const opened = await openPixlPackageFromDisk();
+      announcePixlOpen(opened.manifest);
+    } catch (error) {
+      if ((error as DOMException)?.name === 'AbortError') return;
+      if (error instanceof FilePickerBusyError) {
+        toast.warning('Aguarde o diálogo de arquivo atual fechar.', { duration: 1800 });
+        return;
+      }
+      const message = error instanceof Error ? error.message : 'Nao foi possivel abrir o .pixl.';
       toast.error(message);
     }
   };
 
   const handleOpenProjectFolder = async () => {
     try {
-      const { document } = await openProjectDocumentFromDirectory();
+      const { document, workspace } = await openProjectDocumentFromDirectory();
+      setLocalWorkspace(workspace);
       toast.success(`Projeto aberto: ${document.name}`);
 
       const url = new URL(window.location.href);
@@ -189,6 +266,11 @@ export const EditorHeader = () => {
       url.search = `?localProject=${encodeURIComponent(document.id)}`;
       window.history.replaceState({}, '', url.toString());
     } catch (error) {
+      if ((error as DOMException)?.name === 'AbortError') return;
+      if (error instanceof FilePickerBusyError) {
+        toast.warning('Aguarde o diálogo de arquivo atual fechar.', { duration: 1800 });
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Nao foi possivel abrir o projeto.';
       toast.error(message);
     }
@@ -214,6 +296,28 @@ export const EditorHeader = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey;
+      if (!mod) return;
+      const key = event.key.toLowerCase();
+      if (key === 'p') {
+        event.preventDefault();
+        handleRuntimeToggle();
+        return;
+      }
+      // Save As .pixl Package — Ctrl+Shift+S. (Plain Ctrl+S is handled by
+      // EditorPage.tsx, which saves into the active project folder.)
+      if (event.shiftKey && key === 's') {
+        event.preventDefault();
+        handleSaveAsPixl();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleRuntimeToggle]);
 
   const handleTerrainSettingsChange = (settings: TerrainSettings) => {
     updateTerrainSettings(settings);
@@ -245,13 +349,13 @@ export const EditorHeader = () => {
     File: [
       { label: 'New Project', shortcut: 'Ctrl+N', icon: Plus, action: newProject },
       { label: 'Open Project Folder', shortcut: 'Ctrl+O', icon: FolderOpen, action: handleOpenProjectFolder },
+      { label: 'Open .pixl Package', icon: FileArchive, action: handleOpenPixl },
       { label: 'Load Local Autosave', icon: History, action: loadLocalAutosave, disabled: !hasSavedProject() },
       { label: '', divider: true },
-      { label: 'Save', shortcut: 'Ctrl+S', icon: Save, action: saveProject },
-      { label: 'Save to Disk', icon: Save, action: handleSaveToDisk },
+      { label: 'Save', shortcut: 'Ctrl+S', icon: Save, action: handleSaveToDisk },
+      { label: 'Save as .pixl Package', shortcut: 'Ctrl+Shift+S', icon: FileArchive, action: handleSaveAsPixl },
       { label: 'Version History', icon: History, action: () => setShowVersionHistory(true), disabled: ENGINE_LOCAL_ONLY || !cloudProjectId },
       { label: '', divider: true },
-      { label: 'Export Project', icon: Download },
       { label: 'Exit to Hub', action: () => navigate('/') },
     ],
     Edit: [
@@ -288,8 +392,19 @@ export const EditorHeader = () => {
       { label: 'Engine Settings', icon: Wrench, action: () => setIsSettingsOpen(true) },
     ],
     Build: [
-      { label: isEditMode ? 'Play' : 'Stop', shortcut: 'Ctrl+P', icon: isEditMode ? Play : Pause, action: () => setEditMode(!isEditMode) },
-      { label: 'Publish to Pixlland', icon: Upload, action: handlePublish },
+      {
+        label: isRuntimePreviewActive ? 'Stop Runtime' : 'Play Runtime',
+        shortcut: 'Ctrl+P',
+        icon: isRuntimePreviewActive ? Pause : Play,
+        action: handleRuntimeToggle,
+      },
+      {
+        label: isRuntimeFullscreen ? 'Play In Frame' : 'Play Fullscreen',
+        icon: isRuntimeFullscreen ? Minimize2 : Maximize2,
+        action: togglePreviewFullscreen,
+        disabled: !previewSession,
+      },
+      ...(ENGINE_CLOUD_ENABLED ? [{ label: 'Publish to Pixlland', icon: Upload, action: handlePublish }] : []),
     ],
     Window: [
       { label: panels.scene ? 'Hide Scene Dock' : 'Show Scene Dock', icon: PanelLeft, action: () => togglePanel('scene') },
@@ -334,8 +449,8 @@ export const EditorHeader = () => {
                   className={cn(
                     'flex h-full items-center px-2.5 text-xs font-semibold transition-colors',
                     activeMenu === menu
-                      ? 'bg-[#2b2b2b] text-foreground'
-                      : 'text-muted-foreground hover:bg-[#252525] hover:text-foreground'
+                      ? 'bg-[var(--editor-tab-active)] text-foreground'
+                      : 'text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground'
                   )}
                 >
                   {menu}
@@ -376,20 +491,38 @@ export const EditorHeader = () => {
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
+            {previewSession && (
+              <div
+                className="editor-command-chip hidden h-7 items-center gap-1.5 px-2 text-xs font-semibold text-primary md:flex"
+                title={`Play Mode: ${runtimeLabel}`}
+              >
+                <Gamepad2 className="h-3.5 w-3.5" />
+                <span className="max-w-[120px] truncate">{runtimeLabel}</span>
+              </div>
+            )}
+
             <button
-              onClick={() => setEditMode(!isEditMode)}
+              onClick={handleRuntimeToggle}
               className={cn(
                 'editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold transition-colors',
-                isEditMode ? 'text-foreground' : 'text-primary'
+                isRuntimePreviewActive ? 'text-primary' : 'text-foreground'
               )}
             >
-              {isEditMode ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-              {isEditMode ? 'Play' : 'Stop'}
+              {isRuntimePreviewActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              {isRuntimePreviewActive ? 'Stop' : 'Play'}
             </button>
 
-            {isEmbedded ? (
+            {previewSession && (
+              <IconButton
+                icon={isRuntimeFullscreen ? Minimize2 : Maximize2}
+                label={isRuntimeFullscreen ? 'Play In Frame' : 'Play Fullscreen'}
+                onClick={togglePreviewFullscreen}
+              />
+            )}
+
+            {ENGINE_CLOUD_ENABLED && isEmbedded ? (
               <EmbeddedActions variant="header" />
-            ) : (
+            ) : ENGINE_CLOUD_ENABLED ? (
               <button
                 onClick={handlePublish}
                 className="editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground"
@@ -399,14 +532,14 @@ export const EditorHeader = () => {
                 Publish
                 <ExternalLink className="h-3 w-3 opacity-70" />
               </button>
-            )}
+            ) : null}
             <IconButton icon={Settings} label="Settings" onClick={() => setIsSettingsOpen(true)} />
             <IconButton
               icon={isFullscreen ? Minimize2 : Maximize2}
-              label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+              label={isFullscreen ? 'Exit Editor Fullscreen' : 'Editor Fullscreen'}
               onClick={toggleFullscreen}
             />
-            <IconButton icon={User} label="User" />
+            {ENGINE_CLOUD_ENABLED && <IconButton icon={User} label="User" />}
           </div>
         </div>
 
@@ -414,12 +547,24 @@ export const EditorHeader = () => {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => navigate('/')}
-              className="mr-1 flex h-[33px] max-w-[220px] items-center gap-1.5 border border-[#111] border-b-transparent bg-[#2b2b2b] px-3 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_#3a3a3a]"
+              className="mr-1 flex h-[33px] max-w-[220px] items-center gap-1.5 border border-[var(--editor-border-dark)] border-b-transparent bg-[var(--editor-tab-active)] px-3 text-xs font-semibold text-foreground"
+              style={{ boxShadow: 'inset 0 1px 0 var(--editor-border-light)' }}
               title={projectName}
             >
               <span className="truncate">{projectName}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
+            {localWorkspace.directoryName && (
+              <div
+                className="hidden min-w-0 max-w-[300px] items-center gap-1.5 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-[11px] text-muted-foreground md:flex"
+                title={`${localWorkspace.directoryName}/${localWorkspace.projectFilePath}`}
+              >
+                <FolderOpen className="h-3 w-3 flex-shrink-0 text-primary" />
+                <span className="truncate text-foreground">{localWorkspace.directoryName}</span>
+                <span className="text-muted-foreground/50">/</span>
+                <span className="truncate">{localWorkspace.projectFilePath}</span>
+              </div>
+            )}
             <CommandButton icon={FolderOpen} label="Open" onClick={handleOpenProjectFolder} />
             <CommandButton icon={Save} label="Save" onClick={handleSaveToDisk} />
             <HeaderSeparator />
@@ -437,7 +582,7 @@ export const EditorHeader = () => {
         onGenerate={handleTerrainGenerate}
       />
 
-      {cloudProjectId && (
+      {ENGINE_CLOUD_ENABLED && cloudProjectId && (
         <ProjectVersionHistory
           projectId={cloudProjectId}
           open={showVersionHistory}
@@ -485,4 +630,4 @@ const IconButton = ({ icon: Icon, label, onClick, disabled }: IconButtonProps) =
   </button>
 );
 
-const HeaderSeparator = () => <div className="mx-1 h-6 w-px bg-[#151515] shadow-[1px_0_0_#333]" />;
+const HeaderSeparator = () => <div className="mx-1 h-6 w-px bg-border" />;

@@ -1,6 +1,8 @@
 import { Activity, Box, Triangle } from 'lucide-react';
 import { useEditorStore } from '@/stores/editorStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
+import { getRuntimeAdapterLabel } from '@/engine/runtime/runtimePreview';
 import { useEffect, useState, useRef } from 'react';
 // Hook to track real FPS
 const useFPS = (enabled: boolean) => {
@@ -55,9 +57,15 @@ const getFpsColor = (fps: number) => {
 
 export const EditorStatusBar = () => {
   const { objects } = useEditorStore();
+  const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const { showStats } = useEngineSettings();
   const { fps, avgFps } = useFPS(showStats);
   const fpsColor = getFpsColor(fps);
+  const runtimeLabel = previewSession?.launchTarget.kind === 'web-runtime'
+    ? 'Runtime real'
+    : previewSession
+      ? getRuntimeAdapterLabel(previewSession.runtime)
+      : null;
   
   // Estimate triangle count (rough estimate based on primitive types)
   const estimatedTris = objects.reduce((total, obj) => {
@@ -77,7 +85,10 @@ export const EditorStatusBar = () => {
   };
   
   return (
-    <footer className="h-6 flex flex-shrink-0 items-center justify-between border-t border-[#111] bg-[#1d1d1d] px-3 shadow-[inset_0_1px_0_#333]">
+    <footer
+      className="h-6 flex flex-shrink-0 items-center justify-between border-t border-border bg-[var(--editor-panel-sunken)] px-3"
+      style={{ boxShadow: 'inset 0 1px 0 var(--editor-border-light)' }}
+    >
       {/* Left - Performance Stats */}
       <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
         {/* FPS Counter - only shown if showStats is enabled */}
@@ -108,7 +119,13 @@ export const EditorStatusBar = () => {
         </span>
       </div>
 
-      <div />
+      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+        {previewSession && (
+          <span className="font-semibold text-primary">
+            Play Mode · {runtimeLabel}
+          </span>
+        )}
+      </div>
     </footer>
   );
 };

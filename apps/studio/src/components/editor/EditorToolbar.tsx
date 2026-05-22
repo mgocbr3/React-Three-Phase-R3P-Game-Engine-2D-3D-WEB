@@ -136,12 +136,12 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
           'flex items-center gap-0.5',
           isInline
             ? 'h-7 border-0 bg-transparent p-0 shadow-none'
-            : 'border border-[#111] bg-[#242424]/95 p-1 shadow-xl shadow-black/35 backdrop-blur-md'
+            : 'border border-border bg-[var(--editor-toolbar)] p-1 shadow-xl'
         )}
       >
         {isInline && (
           <>
-            <div className="mr-1 flex h-7 items-center border border-[#111] bg-[#1b1b1b]">
+            <div className="mr-1 flex h-7 items-center border border-border bg-[var(--editor-panel-sunken)]">
               <ModeButton
                 icon={Grid3X3}
                 label="2D"
@@ -201,7 +201,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
         <div className="relative">
           <button
             onClick={() => setShowAddMenu(!showAddMenu)}
-            className="editor-command-chip flex h-7 items-center gap-1.5 border border-[#111] bg-[#242424] px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-[#303030]"
+            className="editor-command-chip flex h-7 items-center gap-1.5 border border-border bg-[var(--editor-toolbar)] px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-[var(--editor-panel-raised)]"
           >
             <span className="text-sm font-semibold leading-none">+</span>
             Add
@@ -297,7 +297,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
 };
 
 // Helper Components
-const Separator = () => <div className="mx-1 h-5 w-px bg-[#151515] shadow-[1px_0_0_#333]" />;
+const Separator = () => <div className="mx-1 h-5 w-px bg-border" />;
 
 interface ModeButtonProps {
   icon: typeof Box;
@@ -313,7 +313,7 @@ const ModeButton = ({ icon: Icon, label, active, onClick }: ModeButtonProps) => 
       'engine-view-tab flex h-[26px] items-center gap-1 px-2 text-xs font-semibold transition-colors',
       active
         ? 'active'
-        : 'text-muted-foreground hover:bg-[#2b2b2b] hover:text-foreground'
+        : 'text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground'
     )}
   >
     <Icon className="h-3.5 w-3.5" />
@@ -337,7 +337,7 @@ const ToolButton = ({ icon: Icon, active, disabled, onClick, tooltip }: ToolButt
       'flex h-7 w-7 items-center justify-center border border-transparent transition-colors',
       active && 'border-primary bg-primary text-primary-foreground',
       disabled && 'opacity-30 cursor-not-allowed',
-      !active && !disabled && 'text-muted-foreground hover:border-[#111] hover:bg-[#303030] hover:text-foreground'
+      !active && !disabled && 'text-muted-foreground hover:border-border hover:bg-[var(--editor-row-hover)] hover:text-foreground'
     )}
     title={tooltip}
   >

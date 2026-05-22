@@ -293,7 +293,7 @@ export const importLevel3DProject = (
     },
     runtime: {
       primary: 'three-3d',
-      renderers: ['three', 'phaser'],
+      renderers: ['three'],
       physics: ['rapier'],
     },
     activeSceneId: sceneId,

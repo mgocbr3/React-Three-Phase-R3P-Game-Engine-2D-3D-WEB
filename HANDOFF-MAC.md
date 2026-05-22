@@ -1,12 +1,186 @@
 # PixlPlayground Engine Handoff - Mac
 
-Date: 2026-05-20  
-Branch used on Windows: `fix/admin-auth-and-metrics`  
+Date: 2026-05-20
+Branch used on Windows: `fix/admin-auth-and-metrics`
+Active review branch: `claude/review-codex-engine-I1E8y`
 Remote: `origin` -> `https://github.com/mgocbr3/pixlland-poki.git`
 
 This handoff is for continuing PixlPlayground Studio engine work on a Mac without needing the full Codex conversation.
 
 Update 2026-05-22: Enable3D is legacy context only. The current engine direction is Three.js for 3D runtime/editor work and Phaser 4 for 2D runtime/editor work.
+
+> Antes de qualquer outra tarefa, leia [`engine/PLAN.md`](./PLAN.md) — ordem priorizada de ataque pós-review.
+
+## Phase 1 done 2026-05-22 — `.pixl` package round-trip
+
+Novo workspace package `@pixlland/engine-core` em [`engine/packages/core/`](./packages/core/). Empacota um projeto em ZIP com manifest sha256-hashado.
+
+```bash
+# CLI
+pixl-engine pack    apps/portal/games-src/harvest-rush-3d/pixlplayground /tmp/harvest-rush.pixl
+pixl-engine unpack  /tmp/harvest-rush.pixl /tmp/harvest-rush-restored
+pixl-engine inspect /tmp/harvest-rush.pixl
+
+# Editor
+# File menu: "Open .pixl Package" / "Save as .pixl Package".
+```
+
+Validado end-to-end no Harvest Rush 3D (11.243 objetos, 60 FPS):
+- CLI pack → unpack → re-pack: hash idêntico (round-trip determinístico).
+- Editor save → bytes → open: 11.243 objetos preservados, mesmo hash.
+- 5 testes vitest no CLI + 8 testes no `@pixlland/engine-core` (todos verdes).
+
+Padrão de assets adaptado de `tools/vendor/three-game-engine/src/assets/` (MIT WesUnwin) — `AssetSource` aceita `string | FileSystemDirectoryHandle`, mesma API que o runtime preview vai usar quando Phase 2 (`export-three`) produzir bundles self-contained servidos do OPFS.
+
+Notas de porting em [`engine/REFERENCE-ENGINES.md`](./REFERENCE-ENGINES.md).
+
+
+## Review pass 2026-05-21 (iPhone session 3, A+B+C+D: round-trip + scaffold + Enable3D out + CI)
+
+Continuação do PR #171. Quatro blocos:
+
+**C — Enable3D removido do repositório.** Decisão da `ARCHITECTURE.md` cumprida:
+- `@enable3d/phaser-extension` removida de `engine/apps/studio/package.json` e `apps/portal/games-src/harvest-rush-3d/package.json` (zero imports em ambos).
+- Pasta `tools/vendor/enable3d/` deletada.
+- A string `'enable3d'` no union `PixlPhysicsKind` no schema fica preservada — adapter opt-in pode entrar no futuro sem mudar schema.
+
+**D — GitHub Actions CI** em `.github/workflows/engine-ci.yml`:
+- Roda em push pra main e PR que mexem em `engine/**` ou no workspace.
+- `pnpm engine:test` + `pnpm --filter @pixlland/engine-cli build` + CLI vitest + smoke do CLI contra Harvest Rush.
+- Studio typecheck rodando informativamente (95 erros baseline; vira gate quando o item 4 do PLAN bumpar as deps).
+- Antes desta sessão: zero CI no engine. Vercel preview era o único check.
+
+**B — `pixl-engine new <dir> --kind 2d|3d [--name X]`** (scaffold):
+- Cria diretório com `project.pixlproject.json` + `Assets/...` + `Scenes/` + `Scripts/` + `ProjectSettings/` + `.gitignore`.
+- Lê o manifest em runtime e embeda as deps abençoadas no `engine.runtimeManifest` do projeto criado.
+- Smoke: cria projeto 3D + 2D, ambos passam no `validate`. 5 testes vitest cobrem `buildProjectDocument`.
+
+**A — `pixl-engine import-level3d` + `export-level3d`** (round-trip):
+- `import-level3d <src.level3d.json> <out.pixlproject.json>` — extraído como código novo no CLI, **sem leak `data.editorObject`**. Cria objetos com componentes limpos `pixl.mesh/physics/logic`.
+- `export-level3d <src.pixlproject.json> <out.level3d.json>` — caminho reverso. Filtra só objetos que tem `customData.assetKey` (i.e., originados de level3d) — exclui qualquer objeto sintético tipo câmera/sun/ground.
+- **Round-trip identity comprovado contra dado real:** Harvest Rush `harvest-rush.level3d.json` (22 objetos, 19 assets) → project doc → level3d.json reconstruído. `schema`, `game`, `engineTarget`, `sourceScene`, `notes`, `camera`, `assetLibrary`, todos os objetos com `id/assetKey/layer/collider/transform` — todos preservados.
+- 7 testes vitest cobrem importer + exporter + round-trip + casos de erro.
+
+CLI cresceu de 3 pra **6 comandos** + 1 helper compartilhado:
+- validate, outdated, migrate (já existiam)
+- new, import-level3d, export-level3d (novos)
+
+Tests: **27/27 vitest verdes** (era 15; +12).
+
+Importante: o novo `import-level3d` do CLI é um **modelo de referência** pro refactor do item 1 do PLAN (`data.editorObject` leak). Ele mostra como o studio's `level3dImporter.ts` deveria ficar quando o `PixlSceneDocument` virar fonte de verdade — componentes estruturados, zero blob legacy.
+
+Baseline preservado:
+- Engine typecheck: **95 erros pré-existentes** (inalterado)
+- Engine vitest: **3/3** (inalterado)
+- Engine build: OK (inalterado)
+- CLI vitest: **27/27** (+12)
+
+## Review pass 2026-05-21 (iPhone session 2, arquitetura + manifest + CLI)
+
+Continuação do PR #171, mesma branch. Foco: estabelecer fundação 2D+3D e sistema de update sem mexer no editor (zero QA visual necessário).
+
+Novo: **manifesto de versões abençoadas** em [`engine/engine.versions.json`](./engine.versions.json). Single source of truth pras versões pinned por runtime. Verificadas direto em npm:
+
+- 3D: Three `0.184.0`, R3F `9.6.1`, Drei `10.7.7`, @react-three/rapier `2.2.0`, @dimforge/rapier3d-compat `0.19.3`
+- 2D: Phaser `4.1.0` (GA confirmado), @dimforge/rapier2d-compat `0.19.3`
+- UI: React `19.2.3`, react-dom `19.2.3`
+
+Schema estendido (aditivo, sem breaking change pro 3D atual):
+- Família de componentes 2D declarada: `pixl.sprite`, `pixl.transform2d`, `pixl.physics2d`, `pixl.tilemap`, `pixl.animation2d`, `pixl.camera2d`
+- Famílias 3D e compartilhados também declarados como constantes (`PIXL_3D_COMPONENT_TYPES`, `PIXL_SHARED_COMPONENT_TYPES`) — ficam disponíveis pro inspector filtrar por kind.
+- Interfaces tipadas pros dados de cada componente 2D (`PixlSpriteComponentData`, `PixlPhysics2DComponentData`, etc.).
+- `PixlTransform2D` (Vec2 + rotation float) ao lado do `PixlTransform` 3D existente.
+- Novo campo opcional `engine.runtimeManifest` no project document (snapshot das versões usadas pra produzir aquele projeto).
+
+CLI ampliado (de 1 pra 3 comandos):
+- `validate` agora checa coerência scene.kind ↔ componentes (componente 3D em cena 2D = erro de schema).
+- `outdated <project>` — compara o projeto contra o manifest da engine; reporta drift, missing, extra.
+- `migrate <project> [--dry]` — alinha o projeto com o manifest (atualiza `engine.version`, `schemaVersion`, `runtimeManifest`). Backup é o próprio git; escreve no JSON original.
+- Manifest loader compartilhado (`commands/manifest-loader.ts`) — DRY entre outdated e migrate.
+
+Testes: **13/13 vitest verdes** (4 validate + 5 outdated + 4 migrate).
+
+Smoke contra dados reais (Harvest Rush 3D project):
+- `validate` → 0 erros, 34 warnings de `editorObject` leak. Inalterado.
+- `outdated` → engine version `0.1.0 → 0.2.0`, 6 deps faltando no `runtimeManifest`. Era esperado: o sample foi gerado antes do manifest existir.
+
+`engine/ARCHITECTURE.md` **reescrito do zero** com a arquitetura efetiva:
+- Dois runtimes paralelos (Three+Rapier+DOM pra 3D, Phaser 4+DOM pra 2D), nunca misturados no bundle.
+- UI/HUD sempre DOM React+CSS (decisão do usuário) — bundle 3D não carrega Phaser.
+- Scene.kind dirige o editor: viewport, inspector, content browser.
+- Enable3D oficialmente fora do roadmap padrão (opt-in pra casos raros).
+- Sistema de update: project carrega seu runtimeManifest; editor compara com engine.versions.json; CLI executa migration.
+- Editor desktop com auto-update: alvo Tauri, planejado pro item 7 do PLAN.
+
+`engine/PLAN.md` atualizado: versões alvo no topo, item 4 reformulado como "alinhar deps", item 6 novo (família 2D no editor), item 7 novo (editor desktop com auto-update), KPIs adicionados (`validate warnings`, `outdated drift`).
+
+Baseline preservado:
+- Engine typecheck: **95 erros pré-existentes** (conflito `@types/three`). Inalterado.
+- Engine vitest: **3/3**. Inalterado.
+- Engine build: OK. Inalterado.
+- CLI vitest: **13/13** (de 4, +9 novos).
+
+Próxima sessão Mac deve atacar nesta ordem:
+1. Promover `PixlSceneDocument` à fonte de verdade (matar `data.editorObject`).
+2. Fechar round-trip Harvest Rush.
+3. Carve-out cloud Supabase.
+4. **Bump deps pro manifest** (Three 0.184, R3F 9.6.1, Phaser 4.1.0, Rapier compat 0.19.3) — provavelmente zera os 95 erros TS de baseline.
+5. Construir famíılia de componentes 2D no editor (inspector + content browser).
+6. Editor desktop Tauri com auto-update.
+
+## Review pass 2026-05-20 (iPhone session, low-risk cleanup)
+
+Mudanças mecânicas feitas **sem QA visual** (validadas por typecheck + vitest + build). Branch `claude/review-codex-engine-I1E8y`.
+
+Removido do `engine/apps/studio/package.json` (zero usos no `src/` confirmados antes da remoção):
+- `recharts`, `embla-carousel-react`, `cmdk`, `vaul`, `react-day-picker`, `input-otp`
+- `lovable-tagger` (devDep). Removido também do `vite.config.ts`.
+
+Wrappers UI órfãos deletados (nenhum import referencia):
+- `src/components/ui/chart.tsx`, `carousel.tsx`, `command.tsx`, `drawer.tsx`, `calendar.tsx`, `input-otp.tsx`
+
+**Mantido** (uso real confirmado):
+- `@mediapipe/*` → `src/hooks/useHandTracking.ts` (motion control).
+- `@mlc-ai/web-llm` → `src/services/ai/providers/WebLLMProvider.ts` (aiStore).
+- Decisão sobre manter ou mover essas duas features pra portal está no `PLAN.md` item 4.
+
+Limpeza de ruído em logs:
+- `src/components/canvas/EditorCanvas.tsx` — removida instrumentação debug do `onPointerMissed` (rodava a cada clique).
+- `src/pages/EditorPage.tsx` — removidos `console.log` informativos de carga de nuvem (toast já avisa). `console.error` mantido.
+
+Novo workspace package: `engine/packages/cli` (`@pixlland/engine-cli`).
+- Comando inicial: `pixl-engine validate <project.pixlproject.json>`.
+- 4 testes vitest (`src/commands/validate.test.ts`).
+- Detecta o leak `data.editorObject` no schema (warning, não erro).
+- Quando rodado contra `apps/portal/games-src/harvest-rush-3d/pixlplayground/project.pixlproject.json` reporta hoje **34 warnings** — vira o KPI do refactor descrito em `PLAN.md` item 1.
+
+Baseline antes/depois desta sessão:
+- Engine typecheck: **95 erros pré-existentes** (conflito `@types/three` 0.171 vs 0.184 hoistado pelo workspace). Inalterado por esta sessão.
+- Engine vitest: **3/3 passa**. Inalterado.
+- Engine `pnpm engine:build`: **succeeds**. Inalterado.
+- CLI vitest: **4/4 passa** (novo).
+
+Comandos de verificação:
+
+```bash
+pnpm install
+pnpm engine:typecheck   # 95 erros pré-existentes, sem regressões
+pnpm engine:test        # 3/3
+pnpm engine:build       # OK
+
+pnpm --filter @pixlland/engine-cli build
+pnpm --filter @pixlland/engine-cli test  # 4/4
+
+node engine/packages/cli/dist/index.js validate \
+  apps/portal/games-src/harvest-rush-3d/pixlplayground/project.pixlproject.json
+```
+
+Não toquei nesta sessão (precisa de Mac + browser):
+- Refactor do `editorStore`/adapter pra promover `PixlSceneDocument` à fonte de verdade.
+- Carve-out das pastas `supabase/`/`integrations/supabase/` etc.
+- Conserto do conflito `@types/three`.
+- Round-trip de Harvest Rush.
+- Move/arquive da pilha de MDs do studio (decisão estética, deixa pra quando houver mais sinal).
 
 ## What This Branch Contains
 

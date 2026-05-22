@@ -97,7 +97,7 @@ export const InspectorPanel = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <div className="flex flex-col items-center">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center border border-[#111] bg-[#202020]">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center border border-border bg-[var(--editor-panel-sunken)]">
                 <Box className="w-5 h-5 text-muted-foreground/50" />
               </div>
               <p className="text-xs font-semibold text-foreground/80 mb-1">Nenhum objeto selecionado</p>
@@ -158,7 +158,7 @@ const PropertiesPanel = ({ object, objects, updateObject, deleteObject, duplicat
       {/* Object Header */}
       <div className="glass-object-header">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center border border-[#111] bg-[#202020]">
+          <div className="flex h-7 w-7 items-center justify-center border border-border bg-[var(--editor-panel-sunken)]">
             {getObjectIcon()}
           </div>
           <div className="flex-1 min-w-0">
@@ -344,7 +344,7 @@ const CollapsibleSection = ({ title, icon: Icon, defaultOpen = false, children }
       >
         <div className={cn(
           "w-4 h-4 flex items-center justify-center rounded transition-all",
-          isOpen ? "bg-[#303030]" : "group-hover:bg-[#353535]"
+          isOpen ? "bg-[var(--editor-panel-raised)]" : "group-hover:bg-[var(--editor-row-hover)]"
         )}>
           {isOpen ? (
             <ChevronDown className="w-3 h-3 text-muted-foreground" />
@@ -364,7 +364,7 @@ const CollapsibleSection = ({ title, icon: Icon, defaultOpen = false, children }
         </span>
       </button>
       {isOpen && (
-        <div className="px-3 pb-3 pt-1 bg-[#282828]">
+        <div className="px-3 pb-3 pt-1 bg-[var(--editor-panel)]">
           {children}
         </div>
       )}
@@ -1476,7 +1476,7 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
         <div className="border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('health')}
-            className="w-full flex items-center justify-between p-2 bg-[#151516] text-foreground text-[10px] font-medium"
+            className="w-full flex items-center justify-between p-2 bg-[var(--editor-panel-header)] text-foreground text-[10px] font-medium"
           >
             <span className="flex items-center gap-2">
               <span className="text-base"></span> Vida e Dano
@@ -1539,7 +1539,7 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
         <div className="border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('combat')}
-            className="w-full flex items-center justify-between p-2 bg-[#151516] text-foreground text-[10px] font-medium"
+            className="w-full flex items-center justify-between p-2 bg-[var(--editor-panel-header)] text-foreground text-[10px] font-medium"
           >
             <span className="flex items-center gap-2">
               <span className="text-base"></span> Combate
@@ -1593,7 +1593,7 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
         <div className="border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('ai')}
-            className="w-full flex items-center justify-between p-2 bg-[#151516] text-foreground text-[10px] font-medium"
+            className="w-full flex items-center justify-between p-2 bg-[var(--editor-panel-header)] text-foreground text-[10px] font-medium"
           >
             <span className="flex items-center gap-2">
               <Brain className="w-3 h-3" /> Inteligência Artificial
@@ -1680,7 +1680,7 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
       <div className="border border-border rounded-lg overflow-hidden">
         <button
           onClick={() => toggleSection('model')}
-          className="w-full flex items-center justify-between p-2 bg-[#151516] text-foreground text-[10px] font-medium"
+          className="w-full flex items-center justify-between p-2 bg-[var(--editor-panel-header)] text-foreground text-[10px] font-medium"
         >
           <span className="flex items-center gap-2">
             <Box className="w-3 h-3" /> Modelo 3D (Offset)
@@ -1773,7 +1773,7 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
         <div className="border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('pickup')}
-            className="w-full flex items-center justify-between p-2 bg-[#151516] text-foreground text-[10px] font-medium"
+            className="w-full flex items-center justify-between p-2 bg-[var(--editor-panel-header)] text-foreground text-[10px] font-medium"
           >
             <span className="flex items-center gap-2">
               <span className="text-base">⭐</span> Coletável
@@ -2160,7 +2160,7 @@ const SettingsGroup = ({ title, icon, defaultOpen = false, children }: {
     <div className="border-b border-border/70">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-7 w-full items-center gap-1.5 bg-[#151516] px-2 text-left transition-colors hover:bg-secondary/70"
+        className="flex h-7 w-full items-center gap-1.5 bg-[var(--editor-panel-header)] px-2 text-left transition-colors hover:bg-secondary/70"
       >
         {isOpen ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
         {Icon ? (
@@ -2358,7 +2358,7 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
 
       {/* Camera Mode Indicator - Shows current mode, edit in Main Camera */}
       {cameraObject && (
-        <div className="border-b border-border/70 bg-[#151516] px-2 py-2">
+        <div className="border-b border-border/70 bg-[var(--editor-panel-header)] px-2 py-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-muted-foreground font-medium">Câmera Atual:</span>
             <span className="text-[11px] font-semibold flex items-center gap-1.5 text-foreground">
@@ -2743,7 +2743,7 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
       </SettingsGroup>
 
       {/* Controls Reference */}
-      <div className="space-y-1 border-t border-border/70 bg-[#151516] px-2 py-2 text-[10px] text-muted-foreground">
+      <div className="space-y-1 border-t border-border/70 bg-[var(--editor-panel-header)] px-2 py-2 text-[10px] text-muted-foreground">
         <div className="font-semibold text-foreground">Controles</div>
         {isRacing ? (
           <>

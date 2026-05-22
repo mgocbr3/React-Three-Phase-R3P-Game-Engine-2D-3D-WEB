@@ -5,7 +5,7 @@ export type ShadowMapType = 'basic' | 'percentage' | 'soft' | 'variance';
 export type ToneMappingType = 'aces' | 'cineon' | 'reinhard' | 'linear' | 'none';
 export type ColorSpaceType = 'srgb' | 'linear';
 export type QualityPreset = 'ultra-low' | 'low' | 'medium' | 'high' | 'ultra' | 'custom';
-export type UITheme = 'blue' | 'black' | 'light';
+export type UITheme = 'black' | 'light';
 
 export interface EngineSettings {
   // Rendering
@@ -112,7 +112,6 @@ export interface EngineSettings {
   
   // UI Appearance
   uiTheme: UITheme;
-  menuTransparency: boolean;
 }
 
 interface EngineSettingsStore extends EngineSettings {
@@ -279,7 +278,7 @@ const defaultSettings: EngineSettings = {
   showTouchControls: true,
   
   // Performance Monitoring
-  autoQuality: true,
+  autoQuality: false,
   targetFps: 60,
   minFps: 30,
   currentQualityPreset: 'high',
@@ -294,7 +293,26 @@ const defaultSettings: EngineSettings = {
   
   // UI Appearance
   uiTheme: 'black',
-  menuTransparency: true,
+};
+
+export const normalizeUITheme = (theme: unknown): UITheme => (
+  theme === 'light' ? 'light' : 'black'
+);
+
+const sanitizePersistedSettings = (persistedState: unknown): Partial<EngineSettings> => {
+  if (!persistedState || typeof persistedState !== 'object') {
+    return {};
+  }
+
+  const settings = { ...(persistedState as Record<string, unknown>) };
+  const { uiTheme } = settings;
+  delete settings.uiTheme;
+  delete settings.menuTransparency;
+
+  return {
+    ...settings,
+    uiTheme: normalizeUITheme(uiTheme),
+  } as Partial<EngineSettings>;
 };
 
 export const useEngineSettings = create<EngineSettingsStore>()(
@@ -302,7 +320,11 @@ export const useEngineSettings = create<EngineSettingsStore>()(
     (set) => ({
       ...defaultSettings,
       
-      updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
+      updateSettings: (settings) => set((state) => ({
+        ...state,
+        ...settings,
+        uiTheme: normalizeUITheme(settings.uiTheme ?? state.uiTheme),
+      })),
       
       resetToDefaults: () => set(defaultSettings),
       
@@ -314,7 +336,12 @@ export const useEngineSettings = create<EngineSettingsStore>()(
     }),
     {
       name: 'pixl-engine-settings',
-      version: 1,
+      version: 2,
+      migrate: (persistedState) => sanitizePersistedSettings(persistedState),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...sanitizePersistedSettings(persistedState),
+      }),
       partialize: (state) => {
         // Exclude functions from persistence
         const { updateSettings, resetToDefaults, applyQualityPreset, ...settings } = state;

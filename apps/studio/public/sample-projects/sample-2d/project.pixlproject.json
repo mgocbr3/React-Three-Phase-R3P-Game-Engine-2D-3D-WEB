@@ -1,0 +1,105 @@
+{
+  "format": "pixlplayground-project",
+  "version": 2,
+  "id": "pixl-sample-2d",
+  "slug": "sample-2d",
+  "name": "Sample 2D",
+  "createdAt": 1779361108740,
+  "savedAt": 1779361108740,
+  "engine": {
+    "name": "PixlPlayground",
+    "version": "0.2.0",
+    "schemaVersion": 2,
+    "runtimeManifest": {
+      "runtime": "phaser-2d",
+      "dependencies": { "phaser": "4.1.0" }
+    }
+  },
+  "runtime": { "primary": "phaser-2d", "renderers": ["phaser"], "physics": ["arcade"] },
+  "activeSceneId": "main",
+  "scenes": [
+    {
+      "id": "main",
+      "name": "Sample 2D Scene",
+      "kind": "2d",
+      "rootObjects": [
+        {
+          "id": "player",
+          "name": "Player",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": {
+            "position": [200, 200, 0],
+            "rotation": [0, 0, 0],
+            "scale": [1, 1, 1]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": ["player"],
+          "components": [],
+          "data": { "color": "#4caf50", "width": 60, "height": 60 }
+        },
+        {
+          "id": "enemy",
+          "name": "Enemy",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": {
+            "position": [500, 300, 0],
+            "rotation": [0, 0, 0],
+            "scale": [1, 1, 1]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": ["enemy"],
+          "components": [],
+          "data": { "color": "#f44336", "width": 40, "height": 40 }
+        },
+        {
+          "id": "platform",
+          "name": "Platform",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": {
+            "position": [400, 500, 0],
+            "rotation": [0, 0, 0],
+            "scale": [1, 1, 1]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": ["static"],
+          "components": [],
+          "data": { "color": "#9e9e9e", "width": 400, "height": 30 }
+        },
+        {
+          "id": "coin",
+          "name": "Coin",
+          "type": "circle",
+          "parentId": null,
+          "transform": {
+            "position": [400, 400, 0],
+            "rotation": [0, 0, 0],
+            "scale": [1, 1, 1]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": ["collectible"],
+          "components": [],
+          "data": { "color": "#ffeb3b", "radius": 15 }
+        }
+      ],
+      "camera": {
+        "id": "main-camera-2d",
+        "name": "Main Camera 2D",
+        "position": [0, 0, 0],
+        "target": [0, 0, 0],
+        "zoom": 1
+      },
+      "environment": { "background": "#1c2333" },
+      "physics": { "engine": "arcade", "gravity": [0, 980] }
+    }
+  ],
+  "assets": { "root": "Assets", "folders": [], "entries": [] },
+  "editor": { "mode": "2d" },
+  "game": { "templateId": null, "script": "// Sample 2D game script\n" }
+}

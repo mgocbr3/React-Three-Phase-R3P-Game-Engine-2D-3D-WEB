@@ -1,0 +1,38 @@
+{
+  "name": "@pixlland/three-runtime",
+  "private": true,
+  "version": "0.0.1",
+  "description": "PixlPlayground 3D runtime — Game/Scene/GameObject/Component/AssetStore. Adapted from WesUnwin/three-game-engine (MIT).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.19.3",
+    "@pixlland/engine-core": "workspace:*",
+    "three": "0.184.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/three": "0.184.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

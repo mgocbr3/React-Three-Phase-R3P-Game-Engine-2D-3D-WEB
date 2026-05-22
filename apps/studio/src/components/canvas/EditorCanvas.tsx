@@ -95,11 +95,13 @@ const isBackgroundSelectionRole = (role: string | undefined, type: string | unde
   type === 'platform'
 );
 
+// Sober neutral scene-view lighting, Unity/Godot-style. Replaces the
+// previous sky-blue default that bled into every empty editor view.
 const MavonEditorLighting = () => (
   <>
-    <color attach="background" args={['#87ceeb']} />
-    <ambientLight color="#ffffff" intensity={0.12} />
-    <hemisphereLight color="#87ceeb" groundColor="#3d5c3d" intensity={0.18} />
+    <color attach="background" args={['#3c3c3c']} />
+    <ambientLight color="#ffffff" intensity={0.35} />
+    <hemisphereLight color="#aaaaaa" groundColor="#3a3a3a" intensity={0.45} />
   </>
 );
 

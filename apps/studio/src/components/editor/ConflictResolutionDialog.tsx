@@ -32,8 +32,8 @@ import { ptBR } from 'date-fns/locale';
 import type {
   ConflictInfo,
   ConflictResolutionStrategy,
-} from '@/services/conflictResolution';
-import { getConflictSummary } from '@/services/conflictResolution';
+} from '@/legacy/cloud/services/conflictResolution';
+import { getConflictSummary } from '@/legacy/cloud/services/conflictResolution';
 
 interface ConflictResolutionDialogProps {
   conflict: ConflictInfo | null;

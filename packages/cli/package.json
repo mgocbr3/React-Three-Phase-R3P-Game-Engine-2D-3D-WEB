@@ -1,0 +1,32 @@
+{
+  "name": "@pixlland/engine-cli",
+  "private": true,
+  "version": "0.0.1",
+  "description": "PixlPlayground engine CLI — deterministic commands for validate/import/export of pixlproject documents.",
+  "type": "module",
+  "bin": {
+    "pixl-engine": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@pixlland/engine-core": "workspace:*",
+    "@pixlland/engine-ops": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

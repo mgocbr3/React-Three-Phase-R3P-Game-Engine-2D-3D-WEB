@@ -6,7 +6,7 @@ Start here when continuing engine work:
 
 - [Mac handoff](./HANDOFF-MAC.md) - current state, setup, commands, open tasks and Harvest Rush 3D workflow.
 - [Architecture](./ARCHITECTURE.md) - renderer split, scene document direction and automation boundary.
-- [Reference engines](./REFERENCE-ENGINES.md) - external engine patterns to check before changing viewport behavior.
+- [Reference engines](./REFERENCE-ENGINES.md) - external engine patterns to check before changing editor/runtime behavior.
 - [Security notes](./SECURITY.md) - current and next guardrails.
 
 ## Workspace Layout

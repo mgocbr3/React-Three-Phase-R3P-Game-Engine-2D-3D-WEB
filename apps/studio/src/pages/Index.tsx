@@ -8,6 +8,7 @@ import { EmbeddedProjectsSection } from '@/components/dashboard/EmbeddedProjects
 import { MyProjectsSection } from '@/components/dashboard/MyProjectsSection';
 import { NewProjectSection } from '@/components/dashboard/NewProjectSection';
 import { TemplateCard } from '@/components/dashboard/TemplateCard';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { openProjectDocumentFromDirectory } from '@/services/localProjectFiles';
 import { GAME_TEMPLATES, GameTemplate } from '@/stores/gameStore';
 
@@ -16,7 +17,7 @@ const Index = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<GameTemplate | null>(null);
 
-  const isEmbedded = new URLSearchParams(window.location.search).get('embedded') === 'true';
+  const isEmbedded = ENGINE_CLOUD_ENABLED && new URLSearchParams(window.location.search).get('embedded') === 'true';
 
   const handleCreateBlank = () => {
     setSelectedTemplate(null);

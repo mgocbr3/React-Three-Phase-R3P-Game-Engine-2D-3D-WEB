@@ -7,6 +7,9 @@ import {
   DEFAULT_PROJECT_FOLDERS,
   PixlVec3,
   PixlProjectDocument,
+  PixlAssetEntry,
+  PixlSceneDocument,
+  cloneJson,
 } from '@/engine/project/schema';
 import {
   createEditorSnapshotFromProjectDocument,
@@ -14,6 +17,7 @@ import {
   createProjectDocumentFromEditorState,
   normalizeProjectDocument,
 } from '@/engine/project/editorProjectAdapter';
+import { withFilePicker } from './filePickerLock';
 
 export const PIXL_PROJECT_FILE = 'project.pixlproject.json';
 
@@ -51,6 +55,238 @@ declare global {
 }
 
 let currentProjectDirectory: FileSystemDirectoryHandle | null = null;
+let currentProjectFilePath = [PIXL_PROJECT_FILE];
+let currentProjectDocument: PixlProjectDocument | null = null;
+let currentProjectAssetBaseUrl: string | null = null;
+const objectUrlByProjectPath = new Map<string, string>();
+const projectPathByObjectUrl = new Map<string, string>();
+
+export interface LocalProjectWorkspace {
+  directoryName: string | null;
+  projectFilePath: string;
+  projectId: string | null;
+  writable: boolean;
+}
+
+interface ApplyProjectDocumentOptions {
+  assetBaseUrl?: string | null;
+  workspace?: {
+    directory: FileSystemDirectoryHandle | null;
+    projectFilePath?: string[];
+  };
+}
+
+const ASSET_URL_KEYS = new Set([
+  'url',
+  'src',
+  'href',
+  'modelUrl',
+  'textureUrl',
+  'thumbnail',
+  'thumbnailUrl',
+  'audioUrl',
+]);
+
+const ASSET_PATH_KEYS = new Set([
+  'path',
+]);
+
+const ASSET_REFERENCE_RE = /\.(?:glb|gltf|fbx|obj|png|jpe?g|webp|svg|mp3|wav|ogg|opus|json|js|mjs|css)(?:[?#].*)?$/i;
+const GAMES_SRC_RE = /(?:^|\/)apps\/portal\/games-src\/[^/]+\/(.+)$/i;
+const SAMPLE_PROJECT_RE = /(?:^|\/)engine\/apps\/studio\/public\/sample-projects\/[^/]+\/(.+)$/i;
+const WORKSPACE_DB_NAME = 'pixlplayground-local-workspaces';
+const WORKSPACE_STORE_NAME = 'workspaces';
+
+const normalizeSlashes = (value: string) => value.replace(/\\/g, '/');
+
+const stripQueryAndHash = (value: string) => value.replace(/[?#].*$/, '');
+
+const isExternalUrl = (value: string) => /^(?:https?:|data:)/i.test(value);
+
+export const getPortableAssetPath = (value: string): string | null => {
+  if (!value) return null;
+
+  const mappedPath = projectPathByObjectUrl.get(value);
+  if (mappedPath) return mappedPath;
+  if (isExternalUrl(value)) return null;
+
+  let candidate = normalizeSlashes(value.trim());
+  if (!candidate || candidate.startsWith('blob:')) return null;
+
+  try {
+    candidate = decodeURI(candidate);
+  } catch {
+    // Keep the original value when it is not a URI-encoded path.
+  }
+
+  if (candidate.startsWith('/@fs/')) {
+    candidate = candidate.slice('/@fs/'.length);
+  }
+
+  candidate = normalizeSlashes(candidate);
+
+  const gameSourceMatch = candidate.match(GAMES_SRC_RE);
+  if (gameSourceMatch?.[1]) return gameSourceMatch[1];
+
+  const sampleProjectMatch = candidate.match(SAMPLE_PROJECT_RE);
+  if (sampleProjectMatch?.[1]) return sampleProjectMatch[1];
+
+  const withoutPrefix = candidate.replace(/^\.\//, '').replace(/^\/+/, '');
+  if (/^[a-z]:\//i.test(withoutPrefix)) return null;
+  if (!ASSET_REFERENCE_RE.test(stripQueryAndHash(withoutPrefix))) return null;
+
+  return withoutPrefix;
+};
+
+const joinUrl = (baseUrl: string, projectPath: string) => (
+  `${baseUrl.replace(/\/+$/, '')}/${projectPath.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/')}`
+    .replace(/%2F/g, '/')
+);
+
+const resolveFileHandle = async (
+  directory: FileSystemDirectoryHandle,
+  pathParts: string[],
+  options?: { create?: boolean },
+) => {
+  if (!pathParts.length || pathParts.some((part) => !part || part === '..' || part === '.')) {
+    throw new Error('Caminho de arquivo invalido dentro do projeto.');
+  }
+
+  let current = directory;
+  for (const part of pathParts.slice(0, -1)) {
+    current = await current.getDirectoryHandle(part, options);
+  }
+
+  return current.getFileHandle(pathParts[pathParts.length - 1], options);
+};
+
+const tryResolveFileHandle = async (
+  directory: FileSystemDirectoryHandle,
+  pathParts: string[],
+) => {
+  try {
+    return await resolveFileHandle(directory, pathParts);
+  } catch {
+    return null;
+  }
+};
+
+const revokeResolvedAssetUrls = () => {
+  objectUrlByProjectPath.forEach((url) => URL.revokeObjectURL(url));
+  objectUrlByProjectPath.clear();
+  projectPathByObjectUrl.clear();
+};
+
+const resolveProjectPathToObjectUrl = async (
+  directory: FileSystemDirectoryHandle,
+  projectPath: string,
+) => {
+  const normalizedPath = projectPath.replace(/^\.\//, '').replace(/^\/+/, '');
+  const cachedUrl = objectUrlByProjectPath.get(normalizedPath);
+  if (cachedUrl) return cachedUrl;
+
+  const fileHandle = await tryResolveFileHandle(directory, normalizedPath.split('/'));
+  if (!fileHandle) return null;
+
+  const file = await fileHandle.getFile();
+  const objectUrl = URL.createObjectURL(file);
+  objectUrlByProjectPath.set(normalizedPath, objectUrl);
+  projectPathByObjectUrl.set(objectUrl, normalizedPath);
+  return objectUrl;
+};
+
+const shouldTransformAssetReference = (key: string, value: string) => {
+  if (ASSET_URL_KEYS.has(key)) return Boolean(getPortableAssetPath(value));
+  if (ASSET_PATH_KEYS.has(key)) return Boolean(projectPathByObjectUrl.has(value));
+  return false;
+};
+
+const transformProjectAssetReferences = async (
+  value: unknown,
+  transform: (path: string, currentValue: string) => Promise<string | null>,
+  key = '',
+): Promise<unknown> => {
+  if (typeof value === 'string') {
+    if (!shouldTransformAssetReference(key, value)) return value;
+
+    const portablePath = getPortableAssetPath(value);
+    if (!portablePath) return value;
+
+    return (await transform(portablePath, value)) ?? value;
+  }
+
+  if (Array.isArray(value)) {
+    return Promise.all(value.map((item) => transformProjectAssetReferences(item, transform)));
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = await Promise.all(
+      Object.entries(value as Record<string, unknown>).map(async ([entryKey, entryValue]) => [
+        entryKey,
+        await transformProjectAssetReferences(entryValue, transform, entryKey),
+      ]),
+    );
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+};
+
+const transformProjectAssetReferencesSync = (
+  value: unknown,
+  transform: (path: string, currentValue: string) => string | null,
+  key = '',
+): unknown => {
+  if (typeof value === 'string') {
+    if (!shouldTransformAssetReference(key, value)) return value;
+
+    const portablePath = getPortableAssetPath(value);
+    if (!portablePath) return value;
+
+    return transform(portablePath, value) ?? value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => transformProjectAssetReferencesSync(item, transform));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([entryKey, entryValue]) => [
+        entryKey,
+        transformProjectAssetReferencesSync(entryValue, transform, entryKey),
+      ]),
+    );
+  }
+
+  return value;
+};
+
+export const resolveProjectDocumentAssetUrls = async (
+  document: PixlProjectDocument,
+  options: {
+    directory?: FileSystemDirectoryHandle;
+    assetBaseUrl?: string;
+  } = {},
+): Promise<PixlProjectDocument> => {
+  const resolved = await transformProjectAssetReferences(document, async (projectPath) => {
+    if (options.directory) {
+      return resolveProjectPathToObjectUrl(options.directory, projectPath);
+    }
+
+    if (options.assetBaseUrl) {
+      return joinUrl(options.assetBaseUrl, projectPath);
+    }
+
+    return null;
+  });
+
+  return resolved as PixlProjectDocument;
+};
+
+export const makeProjectDocumentPortable = (document: PixlProjectDocument): PixlProjectDocument => (
+  transformProjectAssetReferencesSync(document, (projectPath) => projectPath) as PixlProjectDocument
+);
 
 export const supportsLocalProjectFolders = () => (
   typeof window !== 'undefined' &&
@@ -59,6 +295,76 @@ export const supportsLocalProjectFolders = () => (
 );
 
 export const getCurrentProjectDirectoryName = () => currentProjectDirectory?.name || null;
+
+export const getCurrentProjectWorkspace = (): LocalProjectWorkspace => ({
+  directoryName: getCurrentProjectDirectoryName(),
+  projectFilePath: currentProjectFilePath.join('/'),
+  projectId: currentProjectDocument?.id ?? null,
+  writable: Boolean(currentProjectDirectory),
+});
+
+export const hasActiveProjectWorkspace = () => Boolean(currentProjectDirectory);
+
+const openWorkspaceDb = (): Promise<IDBDatabase | null> => {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(WORKSPACE_DB_NAME, 1);
+
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(WORKSPACE_STORE_NAME, { keyPath: 'projectId' });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error('Nao foi possivel abrir o indice de projetos locais.'));
+  });
+};
+
+const withWorkspaceStore = async <T,>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T | null> => {
+  const db = await openWorkspaceDb();
+  if (!db) return null;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(WORKSPACE_STORE_NAME, mode);
+    const request = run(transaction.objectStore(WORKSPACE_STORE_NAME));
+
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error ?? new Error('Falha ao acessar projeto local.'));
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error ?? new Error('Falha ao salvar referencia local do projeto.'));
+    };
+  });
+};
+
+const persistCurrentProjectWorkspace = async (project: PixlProjectDocument) => {
+  if (!currentProjectDirectory) return;
+
+  try {
+    await withWorkspaceStore('readwrite', (store) => store.put({
+      projectId: project.id,
+      directory: currentProjectDirectory,
+      directoryName: currentProjectDirectory.name,
+      projectFilePath: [...currentProjectFilePath],
+      updatedAt: Date.now(),
+    }));
+  } catch (error) {
+    console.warn('[localProjectFiles] Could not persist local workspace handle:', error);
+  }
+};
+
+const getStoredProjectWorkspace = async (projectId: string) => (
+  await withWorkspaceStore<{
+    projectId: string;
+    directory: FileSystemDirectoryHandle;
+    directoryName: string;
+    projectFilePath: string[];
+    updatedAt: number;
+  }>('readonly', (store) => store.get(projectId))
+);
 
 export const createProjectDocumentFromEditor = (name = 'Untitled Project'): PixlProjectDocument => {
   const {
@@ -72,7 +378,8 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     snapScale,
   } = useEditorStore.getState();
 
-  return createProjectDocumentFromEditorState({
+  const now = Date.now();
+  const stateDocument = createProjectDocumentFromEditorState({
     objects,
     currentTemplateId,
     gameScript,
@@ -82,8 +389,73 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     snapRotate,
     snapScale,
   }, {
-    name,
+    id: currentProjectDocument?.id,
+    name: name || currentProjectDocument?.name,
+    slug: currentProjectDocument?.slug,
+    createdAt: currentProjectDocument?.createdAt,
+    savedAt: now,
   });
+
+  if (!currentProjectDocument) return stateDocument;
+
+  const activeSceneId = currentProjectDocument.activeSceneId || stateDocument.activeSceneId;
+  const editedScene = stateDocument.scenes[0];
+  const existingScene = currentProjectDocument.scenes.find((scene) => scene.id === activeSceneId);
+  const nextScene: PixlSceneDocument = {
+    ...(existingScene ?? editedScene),
+    rootObjects: editedScene.rootObjects,
+  };
+  const existingScenes = currentProjectDocument.scenes.length ? currentProjectDocument.scenes : [editedScene];
+  const replacedActiveScene = existingScenes.some((scene) => scene.id === activeSceneId);
+  const scenes = replacedActiveScene
+    ? existingScenes.map((scene) => scene.id === activeSceneId ? nextScene : scene)
+    : [nextScene, ...existingScenes];
+  const entriesByKey = new Map<string, PixlAssetEntry>();
+
+  [...(currentProjectDocument.assets?.entries ?? []), ...(stateDocument.assets.entries ?? [])].forEach((entry) => {
+    const key = entry.id || entry.url || entry.path;
+    entriesByKey.set(key, { ...entry });
+  });
+
+  return {
+    ...cloneJson(currentProjectDocument),
+    name: name?.trim() || currentProjectDocument.name,
+    savedAt: now,
+    activeSceneId,
+    scenes,
+    assets: {
+      root: currentProjectDocument.assets?.root ?? stateDocument.assets.root,
+      folders: currentProjectDocument.assets?.folders?.length
+        ? [...currentProjectDocument.assets.folders]
+        : [...stateDocument.assets.folders],
+      entries: [...entriesByKey.values()],
+    },
+    editor: {
+      ...currentProjectDocument.editor,
+      ...stateDocument.editor,
+      selectedSceneId: activeSceneId,
+    },
+    game: {
+      ...currentProjectDocument.game,
+      templateId: stateDocument.game.templateId,
+      script: stateDocument.game.script,
+    },
+  };
+};
+
+export const prepareProjectDocumentForRuntimePreview = (document: PixlProjectDocument): PixlProjectDocument => {
+  if (!currentProjectAssetBaseUrl) return document;
+
+  return {
+    ...cloneJson(document),
+    game: {
+      ...document.game,
+      source: {
+        ...(document.game.source ?? {}),
+        runtimeBaseUrl: currentProjectAssetBaseUrl,
+      },
+    },
+  };
 };
 
 const getSceneFocus = (objects: Array<{ position: PixlVec3; scale?: PixlVec3 }>) => {
@@ -122,13 +494,30 @@ const getSceneFocus = (objects: Array<{ position: PixlVec3; scale?: PixlVec3 }>)
   };
 };
 
-export const applyProjectDocumentToEditor = (document: AnyPixlProjectDocument) => {
+export const applyProjectDocumentToEditor = (
+  document: AnyPixlProjectDocument,
+  options: ApplyProjectDocumentOptions = {},
+) => {
   const project = normalizeProjectDocument(document);
   const snapshot = createEditorSnapshotFromProjectDocument(project);
+  const portableProject = makeProjectDocumentPortable(project);
   const focus = getSceneFocus(snapshot.objects.map((object) => ({
     position: object.position,
     scale: object.scale,
   })));
+
+  useAssetStore.getState().clearCache();
+
+  if ('workspace' in options) {
+    currentProjectDirectory = options.workspace?.directory ?? null;
+    currentProjectFilePath = options.workspace?.projectFilePath ?? [PIXL_PROJECT_FILE];
+  } else {
+    currentProjectDirectory = null;
+    currentProjectFilePath = [PIXL_PROJECT_FILE];
+  }
+
+  currentProjectDocument = portableProject;
+  currentProjectAssetBaseUrl = options.assetBaseUrl ?? null;
 
   useEditorStore.setState({
     objects: snapshot.objects,
@@ -161,8 +550,8 @@ export const applyProjectDocumentToEditor = (document: AnyPixlProjectDocument) =
     updatedAt: project.savedAt,
   });
 
-  localStorage.setItem('pixl-project-document', JSON.stringify(project));
-  localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(project)));
+  localStorage.setItem('pixl-project-document', JSON.stringify(portableProject));
+  localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableProject)));
 };
 
 const ensurePermission = async (directory: FileSystemDirectoryHandle) => {
@@ -186,9 +575,11 @@ const ensureProjectFolders = async (directory: FileSystemDirectoryHandle) => {
   }
 };
 
-export const saveProjectDocumentToDirectory = async (document: PixlProjectDocument) => {
+export const saveProjectDocumentToDirectory = async (document: PixlProjectDocument): Promise<LocalProjectWorkspace> => {
+  const portableDocument = makeProjectDocumentPortable(document);
+
   if (!supportsLocalProjectFolders()) {
-    const blob = new Blob([JSON.stringify(document, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(portableDocument, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = window.document.createElement('a');
     anchor.href = url;
@@ -196,14 +587,17 @@ export const saveProjectDocumentToDirectory = async (document: PixlProjectDocume
     anchor.click();
     URL.revokeObjectURL(url);
     toast.success('Projeto exportado como arquivo JSON.');
-    return;
+    return getCurrentProjectWorkspace();
   }
 
   if (!currentProjectDirectory) {
-    currentProjectDirectory = await window.showDirectoryPicker!({
-      id: 'pixlplayground-project',
-      mode: 'readwrite',
-    });
+    currentProjectDirectory = await withFilePicker('open project folder', () => (
+      window.showDirectoryPicker!({
+        id: 'pixlplayground-project',
+        mode: 'readwrite',
+      })
+    ));
+    currentProjectFilePath = [PIXL_PROJECT_FILE];
   }
 
   const permitted = await ensurePermission(currentProjectDirectory);
@@ -212,13 +606,47 @@ export const saveProjectDocumentToDirectory = async (document: PixlProjectDocume
   }
 
   await ensureProjectFolders(currentProjectDirectory);
-  const fileHandle = await currentProjectDirectory.getFileHandle(PIXL_PROJECT_FILE, { create: true });
+  const fileHandle = await resolveFileHandle(currentProjectDirectory, currentProjectFilePath, { create: true });
   const writable = await fileHandle.createWritable();
-  await writable.write(JSON.stringify(document, null, 2));
+  await writable.write(JSON.stringify(portableDocument, null, 2));
   await writable.close();
 
-  localStorage.setItem('pixl-project-document', JSON.stringify(document));
-  localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(document)));
+  currentProjectDocument = portableDocument;
+  await persistCurrentProjectWorkspace(portableDocument);
+  useProjectStore.getState().upsertProject({
+    id: portableDocument.id,
+    name: portableDocument.name,
+    templateId: portableDocument.game.templateId,
+    createdAt: portableDocument.createdAt,
+    updatedAt: portableDocument.savedAt,
+  });
+  localStorage.setItem('pixl-project-document', JSON.stringify(portableDocument));
+  localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableDocument)));
+
+  return getCurrentProjectWorkspace();
+};
+
+export const saveActiveProjectDocumentToDirectory = async (name?: string): Promise<LocalProjectWorkspace> => (
+  saveProjectDocumentToDirectory(createProjectDocumentFromEditor(name ?? currentProjectDocument?.name ?? 'Untitled Project'))
+);
+
+const findProjectFile = async (directory: FileSystemDirectoryHandle) => {
+  const candidates = [
+    [PIXL_PROJECT_FILE],
+    ['pixlplayground', PIXL_PROJECT_FILE],
+  ];
+
+  for (const candidate of candidates) {
+    const fileHandle = await tryResolveFileHandle(directory, candidate);
+    if (fileHandle) {
+      return {
+        fileHandle,
+        path: candidate,
+      };
+    }
+  }
+
+  throw new Error(`Pasta sem ${PIXL_PROJECT_FILE}. Escolha a pasta raiz do projeto ou a pasta pixlplayground.`);
 };
 
 export const openProjectDocumentFromDirectory = async () => {
@@ -226,19 +654,60 @@ export const openProjectDocumentFromDirectory = async () => {
     throw new Error('Seu navegador atual nao permite abrir pastas. Use Chrome/Edge ou a futura versao desktop.');
   }
 
-  const directory = await window.showDirectoryPicker!({
-    id: 'pixlplayground-project',
-    mode: 'readwrite',
-  });
-  const fileHandle = await directory.getFileHandle(PIXL_PROJECT_FILE);
+  const directory = await withFilePicker('open project folder', () => (
+    window.showDirectoryPicker!({
+      id: 'pixlplayground-project',
+      mode: 'readwrite',
+    })
+  ));
+  const { fileHandle, path } = await findProjectFile(directory);
   const file = await fileHandle.getFile();
   const document = normalizeProjectDocument(JSON.parse(await file.text()) as AnyPixlProjectDocument);
 
-  currentProjectDirectory = directory;
-  applyProjectDocumentToEditor(document);
+  revokeResolvedAssetUrls();
+  const resolvedDocument = await resolveProjectDocumentAssetUrls(document, { directory });
+  applyProjectDocumentToEditor(resolvedDocument, {
+    workspace: {
+      directory,
+      projectFilePath: path,
+    },
+  });
+  await persistCurrentProjectWorkspace(makeProjectDocumentPortable(resolvedDocument));
 
   return {
     directory,
-    document,
+    document: resolvedDocument,
+    workspace: getCurrentProjectWorkspace(),
+  };
+};
+
+export const openStoredProjectWorkspace = async (projectId: string) => {
+  const stored = await getStoredProjectWorkspace(projectId);
+  if (!stored?.directory) {
+    throw new Error('Projeto local nao encontrado neste navegador. Abra a pasta do projeto novamente.');
+  }
+
+  const permitted = await ensurePermission(stored.directory);
+  if (!permitted) {
+    throw new Error('Permissao negada para reabrir a pasta do projeto.');
+  }
+
+  const fileHandle = await resolveFileHandle(stored.directory, stored.projectFilePath);
+  const file = await fileHandle.getFile();
+  const document = normalizeProjectDocument(JSON.parse(await file.text()) as AnyPixlProjectDocument);
+
+  revokeResolvedAssetUrls();
+  const resolvedDocument = await resolveProjectDocumentAssetUrls(document, { directory: stored.directory });
+  applyProjectDocumentToEditor(resolvedDocument, {
+    workspace: {
+      directory: stored.directory,
+      projectFilePath: stored.projectFilePath,
+    },
+  });
+
+  return {
+    directory: stored.directory,
+    document: resolvedDocument,
+    workspace: getCurrentProjectWorkspace(),
   };
 };

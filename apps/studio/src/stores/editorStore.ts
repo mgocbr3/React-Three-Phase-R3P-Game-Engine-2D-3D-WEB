@@ -266,7 +266,8 @@ export interface AudioSettings {
 export interface AnimationSettings {
   modelUrl?: string; // URL to GLTF/GLB model
   nodeName?: string; // Optional GLTF node to render/select from a shared model
-  nodeIndex?: number; // Optional GLTF mesh traversal index fallback
+  nodeIndex?: number; // GLTF node index used for traversal fallback and round-trip refs
+  sourceAssetName?: string; // Friendly source asset name shown by importers/tools
   currentAnimation?: string; // Name of currently playing animation
   availableAnimations: string[]; // List populated after model load
   autoPlay: boolean;
@@ -364,6 +365,13 @@ export interface SceneObject {
   terrainSettings?: TerrainSettings; // NEW: Terrain generation settings
 }
 
+export interface EditorCameraPoseTarget {
+  position: [number, number, number];
+  quaternion: [number, number, number, number];
+  fov?: number;
+  timestamp: number;
+}
+
 interface EditorState {
   currentTemplateId: TemplateId | null;
   isEditMode: boolean;
@@ -381,6 +389,7 @@ interface EditorState {
   
   // Camera focus target for double-click in hierarchy
   focusTarget: { position: [number, number, number]; timestamp: number; distance?: number } | null;
+  cameraPoseTarget: EditorCameraPoseTarget | null;
   
   // Undo/Redo history
   history: SceneObject[][];
@@ -388,6 +397,7 @@ interface EditorState {
   
   loadTemplate: (templateId: TemplateId) => void;
   setEditMode: (edit: boolean) => void;
+  setCameraPoseTarget: (pose: Omit<EditorCameraPoseTarget, 'timestamp'>) => void;
   setTransformMode: (mode: TransformMode) => void;
   setTransformSpace: (space: TransformSpace) => void;
   toggleTransformSpace: () => void;
@@ -1157,6 +1167,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showStats: true,
   gameScript: '// Game Script\n// Escreva sua lógica aqui\n',
   focusTarget: null,
+  cameraPoseTarget: null,
   
   // Undo/Redo state
   history: [],
@@ -1172,10 +1183,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       history: [JSON.parse(JSON.stringify(objects))],
       historyIndex: 0,
       focusTarget: null,
+      cameraPoseTarget: null,
     });
   },
   
   setEditMode: (edit) => set({ isEditMode: edit, selectedObjectId: edit ? get().selectedObjectId : null }),
+  setCameraPoseTarget: (pose) => set({
+    cameraPoseTarget: {
+      ...pose,
+      timestamp: Date.now(),
+    },
+    focusTarget: null,
+  }),
   setTransformMode: (mode) => set({ transformMode: mode }),
   setTransformSpace: (space) => set({ transformSpace: space }),
   toggleTransformSpace: () => set({ transformSpace: get().transformSpace === 'world' ? 'local' : 'world' }),

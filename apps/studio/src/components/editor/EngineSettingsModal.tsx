@@ -124,19 +124,9 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
                     value={settings.uiTheme}
                     options={[
                       { value: 'black', label: 'Dark Mode' },
-                      { value: 'blue', label: 'Classic Mode' },
                       { value: 'light', label: 'Light Mode' },
                     ]}
                     onChange={(v) => updateSettings({ uiTheme: v as UITheme })}
-                  />
-                </SettingGroup>
-
-                <SettingGroup title="Menus Flutuantes">
-                  <ToggleSetting
-                    label="Transparência nos Menus"
-                    description="Ativa efeito de vidro translúcido nos menus suspensos"
-                    value={settings.menuTransparency}
-                    onChange={(v) => updateSettings({ menuTransparency: v })}
                   />
                 </SettingGroup>
               </div>

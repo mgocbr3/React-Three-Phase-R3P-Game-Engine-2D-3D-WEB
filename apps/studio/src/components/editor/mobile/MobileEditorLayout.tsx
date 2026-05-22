@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EditorCanvas } from '@/components/canvas/EditorCanvas';
 import { MobileHeader } from './MobileHeader';
 import { MobileToolbar } from './MobileToolbar';
@@ -11,10 +11,14 @@ import { MobileVibeCodePanel } from './MobileVibeCodePanel';
 import { MobileSettingsSheet } from './MobileSettingsSheet';
 import { MobileGameControls } from '@/components/canvas/MobileGameControls';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
+import { RuntimePreviewOverlay } from '@/components/editor/RuntimePreviewOverlay';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useEditorStore } from '@/stores/editorStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { TerrainSettingsModal } from '@/components/terrain/TerrainSettingsModal';
 import { useTerrainStore, defaultTerrainSettings, TerrainSettings } from '@/stores/terrainStore';
+import { startRuntimePreviewFromEditor, stopRuntimePreview } from '@/engine/runtime/runtimePreviewControls';
+import { toast } from 'sonner';
 
 export const MobileEditorLayout = () => {
   const [activeTab, setActiveTab] = useState<MobileTab>('editor');
@@ -24,15 +28,24 @@ export const MobileEditorLayout = () => {
   const [showVibeCode, setShowVibeCode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [modalSettings, setModalSettings] = useState<TerrainSettings>(defaultTerrainSettings);
-  const { isEditMode, toggleEditMode } = useEditorStore();
+  const isEditMode = useEditorStore((s) => s.isEditMode);
+  const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const { isModalOpen, setModalOpen, createTerrain, updateTerrainSettings } = useTerrainStore();
 
   const handleTabChange = (tab: MobileTab) => {
-    setActiveTab(tab);
     if (tab === 'play') {
-      if (isEditMode) toggleEditMode();
+      try {
+        if (isEditMode) startRuntimePreviewFromEditor();
+        setActiveTab('play');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Nao foi possivel iniciar o runtime.';
+        toast.error(message);
+      }
     } else if (tab === 'editor') {
-      if (!isEditMode) toggleEditMode();
+      if (!isEditMode || previewSession) stopRuntimePreview();
+      setActiveTab('editor');
+    } else {
+      setActiveTab(tab);
     }
   };
 
@@ -41,12 +54,19 @@ export const MobileEditorLayout = () => {
     setModalOpen(false);
   };
 
+  useEffect(() => {
+    if (!previewSession && isEditMode && activeTab === 'play') {
+      setActiveTab('editor');
+    }
+  }, [activeTab, isEditMode, previewSession]);
+
   return (
     <div className="fixed inset-0 bg-background flex flex-col touch-none overflow-hidden">
       <MobileHeader />
 
       <div className="flex-1 relative overflow-hidden">
         <EditorCanvas />
+        <RuntimePreviewOverlay />
         <MobileToolbar onOpenSettings={() => setShowSettings(true)} onOpenHierarchy={() => setShowHierarchy(true)} />
         <MobileFloatingActions />
         <MobileBottomNav 

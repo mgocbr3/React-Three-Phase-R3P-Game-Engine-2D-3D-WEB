@@ -1,6 +1,7 @@
 import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { cn } from '@/lib/utils';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 
 interface CloudSyncBadgeProps {
   className?: string;
@@ -15,7 +16,7 @@ interface CloudSyncBadgeProps {
 export const CloudSyncBadge = ({ className, showLabel = true }: CloudSyncBadgeProps) => {
   const { user, isLoading } = useAuthStore();
 
-  if (isLoading) {
+  if (ENGINE_CLOUD_ENABLED && isLoading) {
     return (
       <div className={cn('flex items-center gap-1.5', className)}>
         <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
@@ -24,7 +25,7 @@ export const CloudSyncBadge = ({ className, showLabel = true }: CloudSyncBadgePr
     );
   }
 
-  if (user) {
+  if (ENGINE_CLOUD_ENABLED && user) {
     return (
       <div className={cn('flex items-center gap-1.5', className)}>
         <Cloud className="w-4 h-4 text-emerald-500" />

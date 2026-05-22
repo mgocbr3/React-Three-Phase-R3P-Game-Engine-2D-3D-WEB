@@ -15,7 +15,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { TimelinePanel } from './TimelinePanel';
 import { UIEditorPanel } from './UIEditorPanel';
 import { usePixllandBridge } from '@/hooks/usePixllandBridge';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { useUserInventory, useProjectAssets, useAddAssetToProject, useRemoveAssetFromProject } from '@/hooks/useProjects';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -108,6 +108,10 @@ const STORE_ASSETS: StoreAsset[] = [
 type BottomTabId = 'assets' | 'ui' | 'console' | 'store' | 'timeline';
 
 const BOTTOM_TAB_ORDER_KEY = 'pixlplayground.bottomTabOrder';
+const CONTENT_BROWSER_SIDEBAR_WIDTH_KEY = 'pixlplayground.contentBrowserSidebarWidth';
+const CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH = 188;
+const CONTENT_BROWSER_SIDEBAR_MIN_WIDTH = 132;
+const CONTENT_BROWSER_SIDEBAR_MAX_WIDTH = 360;
 
 const BOTTOM_TABS: { id: BottomTabId; label: string; icon: LucideIcon }[] = [
   { id: 'assets', label: 'Content Browser', icon: FolderOpen },
@@ -127,6 +131,105 @@ const getAssetIcon = (type: ProjectAsset['type']) => {
   }
 };
 
+const clampContentBrowserSidebarWidth = (width: number) => Math.min(
+  CONTENT_BROWSER_SIDEBAR_MAX_WIDTH,
+  Math.max(CONTENT_BROWSER_SIDEBAR_MIN_WIDTH, width),
+);
+
+const FOLDER_PREFIXES: Record<string, string[]> = {
+  assets: ['Assets/'],
+  '3d_models': ['Assets/3D_Models'],
+  sprites: ['Assets/Sprites'],
+  audio: ['Assets/Audio'],
+  vfx: ['Assets/VFX'],
+  dev: ['Scripts/', 'Dev/'],
+};
+
+const getAssetFileName = (asset: ProjectAsset) => {
+  const source = asset.url || asset.name;
+  return source.split('/').pop() || asset.name;
+};
+
+const getAssetFormat = (asset: ProjectAsset) => {
+  const metadataFormat = typeof asset.metadata?.format === 'string' ? asset.metadata.format : undefined;
+  const fileFormat = getAssetFileName(asset).split('.').pop();
+  return (metadataFormat || fileFormat || asset.type).replace(/[^a-z0-9]/gi, '').toUpperCase();
+};
+
+const getAssetFolderLabel = (asset: ProjectAsset) => asset.folder.replace(/^Assets\//, '') || 'Project';
+
+const getAssetMetadataLabel = (asset: ProjectAsset) => {
+  const tags = Array.isArray(asset.metadata?.sourceTags)
+    ? asset.metadata.sourceTags.filter((tag): tag is string => typeof tag === 'string')
+    : [];
+  const role = typeof asset.metadata?.role === 'string' ? asset.metadata.role : undefined;
+  const cropId = typeof asset.metadata?.cropId === 'string' ? asset.metadata.cropId : undefined;
+  const runtimeArray = typeof asset.metadata?.runtimeArray === 'string' ? asset.metadata.runtimeArray : undefined;
+
+  return role || cropId || tags.find((tag) => tag !== 'harvest-rush') || runtimeArray || getAssetFileName(asset);
+};
+
+const getAssetPreviewStyle = (asset: ProjectAsset) => {
+  const text = `${asset.name} ${getAssetFileName(asset)} ${getAssetMetadataLabel(asset)}`.toLowerCase();
+  if (asset.type === 'texture') return 'from-sky-500/35 via-cyan-300/20 to-slate-950';
+  if (asset.type === 'audio') return 'from-emerald-500/35 via-lime-300/20 to-slate-950';
+  if (asset.type === 'script') return 'from-violet-500/35 via-fuchsia-300/20 to-slate-950';
+  if (text.includes('tractor') || text.includes('harvester')) return 'from-amber-500/35 via-lime-300/20 to-stone-950';
+  if (text.includes('trailer') || text.includes('truck') || text.includes('vehicle')) return 'from-orange-500/35 via-slate-400/20 to-stone-950';
+  if (text.includes('crop') || text.includes('plant') || text.includes('hay') || text.includes('farm')) return 'from-green-500/35 via-yellow-300/20 to-stone-950';
+  return 'from-blue-500/30 via-slate-300/15 to-slate-950';
+};
+
+const assetMatchesFolder = (asset: ProjectAsset, selectedFolder: string) => {
+  if (selectedFolder === 'project') return true;
+  const prefixes = FOLDER_PREFIXES[selectedFolder];
+  if (!prefixes) return asset.folder === selectedFolder;
+  return prefixes.some((prefix) => asset.folder === prefix || asset.folder.startsWith(`${prefix}/`));
+};
+
+const AssetPreview = ({ asset, size = 'md' }: { asset: ProjectAsset; size?: 'sm' | 'md' }) => {
+  const AssetIcon = getAssetIcon(asset.type);
+  const format = getAssetFormat(asset);
+  const label = getAssetMetadataLabel(asset);
+
+  if (asset.thumbnail || asset.type === 'texture') {
+    const imageUrl = asset.thumbnail || asset.url;
+    return (
+      <div className={cn(
+        'relative overflow-hidden border border-border bg-[var(--editor-panel-sunken)]',
+        size === 'sm' ? 'h-8 w-10 rounded-sm' : 'h-[68px] w-full rounded-sm'
+      )}>
+        <img src={imageUrl} alt={asset.name} className="h-full w-full object-cover" />
+        <span className="absolute left-1 top-1 rounded-[2px] bg-black/65 px-1 text-[8px] font-semibold uppercase text-white/80">
+          {format}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(
+      'relative overflow-hidden border border-border bg-gradient-to-br',
+      getAssetPreviewStyle(asset),
+      size === 'sm' ? 'h-8 w-10 rounded-sm' : 'h-[68px] w-full rounded-sm'
+    )}>
+      <div className="absolute inset-x-1 bottom-1 h-1/3 rounded-[2px] bg-black/25" />
+      <div className="absolute inset-x-0 top-0 h-px bg-white/25" />
+      <div className="absolute right-1 top-1 rounded-[2px] bg-black/55 px-1 text-[8px] font-semibold uppercase text-white/75">
+        {format}
+      </div>
+      <div className="relative flex h-full flex-col items-center justify-center gap-1 px-2 text-center">
+        <AssetIcon className={cn('text-white/80 drop-shadow', size === 'sm' ? 'h-4 w-4' : 'h-6 w-6')} />
+        {size === 'md' && (
+          <span className="max-w-full truncate text-[9px] font-medium text-white/75">
+            {label}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const BottomPanel = () => {
   const [activeTab, setActiveTab] = useState<BottomTabId>('assets');
   const [tabOrder, setTabOrder] = useState<BottomTabId[]>(() => BOTTOM_TABS.map((tab) => tab.id));
@@ -141,8 +244,22 @@ export const BottomPanel = () => {
   const [storeSearch, setStoreSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [storeTab, setStoreTab] = useState<'library' | 'project'>('library');
+  const [isResizingFolderTree, setIsResizingFolderTree] = useState(false);
+  const [contentBrowserSidebarWidth, setContentBrowserSidebarWidth] = useState(() => {
+    try {
+      const savedWidth = Number(localStorage.getItem(CONTENT_BROWSER_SIDEBAR_WIDTH_KEY));
+      if (Number.isFinite(savedWidth)) {
+        return clampContentBrowserSidebarWidth(savedWidth);
+      }
+    } catch {
+      localStorage.removeItem(CONTENT_BROWSER_SIDEBAR_WIDTH_KEY);
+    }
+
+    return CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH;
+  });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderTreeResizeRef = useRef({ startX: 0, startWidth: CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH });
   const { projectAssets, loadingAssets, addProjectAsset, removeProjectAsset } = useAssetStore();
   const { 
     isEmbedded, 
@@ -222,9 +339,45 @@ export const BottomPanel = () => {
     localStorage.setItem(BOTTOM_TAB_ORDER_KEY, JSON.stringify(tabOrder));
   }, [tabOrder]);
 
+  useEffect(() => {
+    localStorage.setItem(CONTENT_BROWSER_SIDEBAR_WIDTH_KEY, String(contentBrowserSidebarWidth));
+  }, [contentBrowserSidebarWidth]);
+
   const tabs = tabOrder
     .map((id) => BOTTOM_TABS.find((tab) => tab.id === id))
     .filter((tab): tab is { id: BottomTabId; label: string; icon: LucideIcon } => Boolean(tab));
+
+  const handleFolderTreeResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+
+    folderTreeResizeRef.current = {
+      startX: event.clientX,
+      startWidth: contentBrowserSidebarWidth,
+    };
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    setIsResizingFolderTree(true);
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const delta = moveEvent.clientX - folderTreeResizeRef.current.startX;
+      setContentBrowserSidebarWidth(
+        clampContentBrowserSidebarWidth(folderTreeResizeRef.current.startWidth + delta),
+      );
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      setIsResizingFolderTree(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp, { once: true });
+  }, [contentBrowserSidebarWidth]);
 
   const handleTabDragStart = (tab: BottomTabId) => {
     draggedTabRef.current = tab;
@@ -261,7 +414,7 @@ export const BottomPanel = () => {
 
   const filteredProjectAssets = projectAssets.filter(
     a => a.name.toLowerCase().includes(assetSearch.toLowerCase()) &&
-         (selectedFolder === 'project' || a.folder === selectedFolder)
+         assetMatchesFolder(a, selectedFolder)
   );
   
   // Filter user inventory from Supabase (Minha Biblioteca)
@@ -458,7 +611,10 @@ export const BottomPanel = () => {
         {activeTab === 'assets' && (
           <div className="h-full flex">
             {/* Folder Tree */}
-            <div className="w-48 border-r border-border overflow-y-auto py-2">
+            <div
+              className="shrink-0 overflow-y-auto py-2"
+              style={{ width: contentBrowserSidebarWidth }}
+            >
               <div className="px-2 mb-2">
                 <div className="relative">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
@@ -467,7 +623,7 @@ export const BottomPanel = () => {
                     placeholder="Buscar..."
                     value={assetSearch}
                     onChange={(e) => setAssetSearch(e.target.value)}
-                    className="w-full border border-[#111] bg-[#1d1d1d] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full border border-border bg-[var(--editor-panel-sunken)] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
               </div>
@@ -480,8 +636,8 @@ export const BottomPanel = () => {
                   <button
                     onClick={() => setSelectedFolder(folder.id)}
                     className={cn(
-                      'w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-[#353535] transition-colors',
-                      selectedFolder === folder.id && 'bg-[#4a4a4a] text-foreground'
+                      'w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-[var(--editor-row-hover)] transition-colors',
+                      selectedFolder === folder.id && 'bg-[var(--editor-row-selected)] text-foreground'
                     )}
                   >
                     {folder.children ? <ChevronRight className="w-3 h-3" /> : <span className="w-3" />}
@@ -497,8 +653,8 @@ export const BottomPanel = () => {
                           key={child.id}
                           onClick={() => setSelectedFolder(child.id)}
                           className={cn(
-                            'w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-[#353535] transition-colors',
-                            selectedFolder === child.id && 'bg-[#4a4a4a] text-foreground'
+                            'w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-[var(--editor-row-hover)] transition-colors',
+                            selectedFolder === child.id && 'bg-[var(--editor-row-selected)] text-foreground'
                           )}
                         >
                           <ChevronRight className="w-3 h-3 opacity-0" />
@@ -513,16 +669,33 @@ export const BottomPanel = () => {
                 );
               })}
             </div>
+            <div
+              role="separator"
+              aria-label="Resize content browser explorer"
+              aria-orientation="vertical"
+              title="Arraste para redimensionar. Duplo clique para restaurar."
+              onPointerDown={handleFolderTreeResizeStart}
+              onDoubleClick={() => setContentBrowserSidebarWidth(CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH)}
+              className={cn(
+                'group relative z-10 h-full w-2 shrink-0 cursor-col-resize border-l border-r border-border bg-[var(--editor-panel-header)] touch-none transition-colors hover:bg-[var(--editor-row-hover)]',
+                isResizingFolderTree && 'bg-primary/25 border-primary/50'
+              )}
+            >
+              <div className={cn(
+                'absolute left-1/2 top-1/2 h-10 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground/25 transition-colors group-hover:bg-primary/70',
+                isResizingFolderTree && 'bg-primary'
+              )} />
+            </div>
 
             {/* Asset Grid */}
             <div className="flex-1 flex flex-col">
               {/* Toolbar */}
-              <div className="flex items-center justify-between border-b border-[#111] bg-[#242424] px-3 py-1.5">
+              <div className="flex items-center justify-between border-b border-border bg-[var(--editor-toolbar)] px-3 py-1.5">
                 <div className="flex items-center gap-2">
-                  <button className="p-1 hover:bg-[#353535] text-muted-foreground" title="Voltar">
+                  <button className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground" title="Voltar">
                     <ChevronRight className="w-3.5 h-3.5 rotate-180" />
                   </button>
-                  <button className="p-1 hover:bg-[#353535] text-muted-foreground" title="Atualizar">
+                  <button className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground" title="Atualizar">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                   <input
@@ -535,12 +708,12 @@ export const BottomPanel = () => {
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1 px-2 py-1 hover:bg-[#353535] text-muted-foreground text-xs"
+                    className="flex items-center gap-1 px-2 py-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground text-xs"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     Import
                   </button>
-                  <button className="p-1 hover:bg-[#353535] text-muted-foreground" title="Nova pasta">
+                  <button className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground" title="Nova pasta">
                     <FolderPlus className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -552,18 +725,22 @@ export const BottomPanel = () => {
                       placeholder="Buscar..."
                       value={assetSearch}
                       onChange={(e) => setAssetSearch(e.target.value)}
-                      className="w-40 border border-[#111] bg-[#1d1d1d] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-40 border border-border bg-[var(--editor-panel-sunken)] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={cn("p-1", viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-[#353535]')}
+                    className={cn("p-1", viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-[var(--editor-row-hover)]')}
+                    aria-label="Grid view"
+                    title="Grid view"
                   >
                     <Grid className="w-3.5 h-3.5" />
                   </button>
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={cn("p-1", viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-[#353535]')}
+                    className={cn("p-1", viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-[var(--editor-row-hover)]')}
+                    aria-label="Column list view"
+                    title="Column list view"
                   >
                     <List className="w-3.5 h-3.5" />
                   </button>
@@ -596,36 +773,32 @@ export const BottomPanel = () => {
               {filteredProjectAssets.length > 0 ? (
                 <div className="flex-1 overflow-y-auto p-3">
                   {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(116px,132px))] content-start gap-2.5">
                       {filteredProjectAssets.map((asset) => {
-                        const AssetIcon = getAssetIcon(asset.type);
                         return (
                           <div 
                             key={asset.id}
-                            className="group relative flex flex-col items-center border border-[#111] bg-[#242424] p-2 cursor-pointer transition-colors hover:bg-[#303030]"
+                            className="group relative flex h-[126px] min-w-0 cursor-pointer flex-col border border-border bg-[var(--editor-panel-raised)] p-2 transition-colors hover:border-primary/50 hover:bg-[var(--editor-row-hover)]"
+                            title={`${asset.name}\n${asset.url}`}
                           >
-                            <span className="absolute top-1 left-1 bg-[#1d1d1d] px-1 py-0.5 text-[9px] text-muted-foreground">
-                              {asset.type}
-                            </span>
-                            
-                            {asset.thumbnail ? (
-                              <img src={asset.thumbnail} alt={asset.name} className="w-12 h-12 object-cover rounded mb-1" />
-                            ) : (
-                              <div className="w-12 h-12 flex items-center justify-center text-muted-foreground mb-1">
-                                <AssetIcon className="w-8 h-8 opacity-50" />
+                            <AssetPreview asset={asset} />
+                            <div className="mt-2 min-w-0">
+                              <div className="truncate text-[11px] font-medium leading-tight text-foreground">{asset.name}</div>
+                              <div className="mt-0.5 flex items-center justify-between gap-1 text-[9px] text-muted-foreground">
+                                <span className="truncate">{getAssetFolderLabel(asset)}</span>
+                                <span className="shrink-0 uppercase">{asset.type}</span>
                               </div>
-                            )}
-                            
-                            <span className="text-[10px] text-center truncate w-full">{asset.name}</span>
+                            </div>
                             
                             {/* Delete overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   removeProjectAsset(asset.id);
                                 }}
-                                className="p-1.5 bg-destructive text-destructive-foreground"
+                                className="rounded-sm border border-[#3a1515] bg-destructive/90 p-1 text-destructive-foreground shadow-lg"
+                                title="Remover asset"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -635,26 +808,42 @@ export const BottomPanel = () => {
                       })}
                     </div>
                   ) : (
-                    <div className="space-y-1">
-                      {filteredProjectAssets.map((asset) => {
-                        const AssetIcon = getAssetIcon(asset.type);
-                        return (
-                          <div 
-                            key={asset.id}
-                            className="flex items-center gap-2 border border-[#111] bg-[#242424] px-2 py-1 hover:bg-[#303030] cursor-pointer transition-colors"
-                          >
-                            <AssetIcon className="w-4 h-4 text-muted-foreground" />
-                            <span className="flex-1 text-xs truncate">{asset.name}</span>
-                            <span className="text-[10px] text-muted-foreground">{asset.type}</span>
-                            <button 
-                              onClick={() => removeProjectAsset(asset.id)}
-                              className="p-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[760px] overflow-hidden border border-border bg-[var(--editor-panel)]">
+                        <div className="grid grid-cols-[56px_minmax(180px,1fr)_88px_minmax(150px,0.55fr)_minmax(140px,0.55fr)_36px] items-center border-b border-border bg-[var(--editor-panel-header)] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                          <span>Preview</span>
+                          <span>Nome</span>
+                          <span>Tipo</span>
+                          <span>Pasta</span>
+                          <span>Detalhes</span>
+                          <span />
+                        </div>
+                        {filteredProjectAssets.map((asset) => {
+                          return (
+                            <div
+                              key={asset.id}
+                              className="grid h-11 grid-cols-[56px_minmax(180px,1fr)_88px_minmax(150px,0.55fr)_minmax(140px,0.55fr)_36px] items-center border-b border-border px-2 text-xs transition-colors last:border-b-0 hover:bg-[var(--editor-row-hover)]"
+                              title={`${asset.name}\n${asset.url}`}
                             >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        );
-                      })}
+                              <AssetPreview asset={asset} size="sm" />
+                              <div className="min-w-0 pr-3">
+                                <div className="truncate font-medium text-foreground">{asset.name}</div>
+                                <div className="truncate text-[10px] text-muted-foreground">{getAssetFileName(asset)}</div>
+                              </div>
+                              <span className="truncate text-[10px] uppercase text-muted-foreground">{asset.type}</span>
+                              <span className="truncate text-[10px] text-muted-foreground">{getAssetFolderLabel(asset)}</span>
+                              <span className="truncate text-[10px] text-muted-foreground">{getAssetMetadataLabel(asset)}</span>
+                              <button
+                                onClick={() => removeProjectAsset(asset.id)}
+                                className="justify-self-end rounded-sm p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                                title="Remover asset"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -755,7 +944,7 @@ export const BottomPanel = () => {
             </div>
 
             {/* Command Input */}
-            <div className="flex items-center gap-2 px-3 py-2 border-t border-border bg-[#181825]">
+            <div className="flex items-center gap-2 px-3 py-2 border-t border-border bg-[var(--editor-panel-sunken)]">
               <span className="text-primary text-xs">{'>'}</span>
               <input
                 type="text"

@@ -32,6 +32,7 @@ import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { useTerrainStore } from '@/stores/terrainStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { startRuntimePreviewFromEditor } from '@/engine/runtime/runtimePreviewControls';
 
 interface ToolButtonProps {
   icon: LucideIcon;
@@ -86,7 +87,6 @@ export const MobileToolbar = ({ onOpenSettings, onOpenHierarchy }: MobileToolbar
     setTransformMode, 
     addObject, 
     isEditMode, 
-    toggleEditMode, 
     selectedObjectId, 
     focusOnObject, 
     updateObject,
@@ -125,6 +125,15 @@ export const MobileToolbar = ({ onOpenSettings, onOpenHierarchy }: MobileToolbar
   const handleSave = () => {
     saveProject();
     toast.success('Projeto salvo!', { duration: 2000 });
+  };
+
+  const handlePlay = () => {
+    try {
+      startRuntimePreviewFromEditor();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Nao foi possivel iniciar o runtime.';
+      toast.error(message);
+    }
   };
 
   // Hide toolbar in Play mode - Stop button is in bottom nav
@@ -301,7 +310,7 @@ export const MobileToolbar = ({ onOpenSettings, onOpenHierarchy }: MobileToolbar
 
           {/* Play button */}
           <button
-            onClick={toggleEditMode}
+            onClick={handlePlay}
             className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-95 transition-all border bg-secondary/30 text-muted-foreground border-border"
           >
             <Play className="w-[18px] h-[18px]" />

@@ -50,12 +50,48 @@ describe('editor project adapter', () => {
 
     expect(project.version).toBe(2);
     expect(project.runtime.primary).toBe('three-3d');
-    expect(project.runtime.renderers).toEqual(['three', 'phaser']);
+    // One-runtime-per-game rule (engine/ARCHITECTURE.md): a 3D project ships
+    // Three.js + Rapier only; Phaser is never bundled into a 3D player.
+    expect(project.runtime.renderers).toEqual(['three']);
     expect(project.runtime.physics).toEqual(['rapier']);
     expect(project.scenes[0].rootObjects).toHaveLength(1);
+    expect(project.scenes[0].rootObjects[0].data?.editorObject).toBeUndefined();
+    expect(project.scenes[0].rootObjects[0].data?.editor).toEqual({ color: '#ffffff' });
     expect(project.assets.entries[0].url).toBe('/models/tree.glb');
+    expect(snapshot.objects[0].color).toBe('#ffffff');
     expect(snapshot.objects[0].animationSettings?.modelUrl).toBe('/models/tree.glb');
     expect(snapshot.snapTranslate).toBe(0.5);
+  });
+
+  it('restores from structured components even when a stale editorObject blob exists', () => {
+    const project = createProjectDocumentFromEditorState({
+      currentTemplateId: null,
+      gameScript: '// test',
+      transformSpace: 'world',
+      snapEnabled: true,
+      snapTranslate: 0.5,
+      snapRotate: 15,
+      snapScale: 0.1,
+      objects: [modelObject],
+    }, {
+      name: 'Component Source',
+    });
+
+    project.scenes[0].rootObjects[0].data = {
+      editorObject: {
+        type: 'sphere',
+        position: [99, 99, 99],
+        animationSettings: {
+          modelUrl: '/models/stale.glb',
+        },
+      },
+    };
+
+    const snapshot = createEditorSnapshotFromProjectDocument(project);
+
+    expect(snapshot.objects[0].type).toBe('box');
+    expect(snapshot.objects[0].position).toEqual([2, 0, -3]);
+    expect(snapshot.objects[0].animationSettings?.modelUrl).toBe('/models/tree.glb');
   });
 
   it('migrates legacy flat project files into version 2', () => {
@@ -97,10 +133,18 @@ describe('editor project adapter', () => {
     const sampleText = fs.readFileSync(samplePath, 'utf8');
     const sample = JSON.parse(sampleText);
 
+    // Portability rule (ef4ac754 fix(engine): resolve local project assets
+    // portably): no machine-specific Vite @fs URLs, no Windows/Unix absolute
+    // paths, no host-rooted prefixes. Asset URLs must be relative to the
+    // project folder so a .pixl is openable on any other machine.
     expect(sampleText).not.toMatch(/@fs|C:\\|C:\//);
     expect(sample.runtime.physics).toEqual(['rapier']);
-    expect(sample.assets.entries.every((asset: { url?: string }) => (
-      !asset.url || asset.url.startsWith('/sample-projects/harvest-rush-3d/')
-    ))).toBe(true);
+    expect(sample.assets.entries.every((asset: { url?: string }) => {
+      if (!asset.url) return true;
+      // Allow protocol-prefixed URLs (https://, blob:, data:) and project-
+      // relative paths; reject any path starting with a single '/'.
+      if (/^[a-z][a-z0-9+.-]*:/i.test(asset.url)) return true;
+      return !asset.url.startsWith('/');
+    })).toBe(true);
   });
 });

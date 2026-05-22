@@ -4,8 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useAuthStore } from "@/stores/authStore";
-import { PIXLLAND_CONFIG, pixllandClient } from "@/integrations/pixlland/client";
+import { useAuthStore } from "@/legacy/cloud/stores/authStore";
+import { PIXLLAND_CONFIG, pixllandClient } from "@/legacy/cloud/integrations/pixlland/client";
+import { ENGINE_CLOUD_ENABLED } from "@/config/engineMode";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import Index from "./pages/Index";
 import PlayPage from "./pages/PlayPage";
@@ -22,6 +23,8 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   
   // Handle handoff token from Pixlland platform
   useEffect(() => {
+    if (!ENGINE_CLOUD_ENABLED) return;
+
     const params = new URLSearchParams(window.location.search);
     const handoffToken = params.get('handoff');
     
@@ -56,6 +59,7 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   }, []);
   
   useEffect(() => {
+    if (!ENGINE_CLOUD_ENABLED) return;
     initialize();
   }, [initialize]);
   
@@ -70,7 +74,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <PixllandBridgeInitializer />
+            {ENGINE_CLOUD_ENABLED && <PixllandBridgeInitializer />}
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/play/:templateId" element={<PlayPage />} />

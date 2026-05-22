@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { AlertTriangle, Cloud, X, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { cn } from '@/lib/utils';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 
 interface LocalModeWarningProps {
   className?: string;
@@ -19,7 +20,7 @@ export const LocalModeWarning = ({ className }: LocalModeWarningProps) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Não mostra se logado ou se o usuário dispensou
-  if (user || isDismissed) return null;
+  if (!ENGINE_CLOUD_ENABLED || user || isDismissed) return null;
 
   return (
     <>

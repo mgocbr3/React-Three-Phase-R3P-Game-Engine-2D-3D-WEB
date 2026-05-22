@@ -55,6 +55,67 @@ Phaser Editor files to consult:
 - `source/editor/plugins/phasereditor2d.scene/src/ui/sceneobjects/object/tools/` - translate, rotate, scale, origin and region tools.
 - `source/editor/plugins/phasereditor2d.pack/src/` - asset pack editor model and Phaser asset-pack workflow.
 
+## Primary 3D Runtime Reference
+
+### WesUnwin/three-game-engine
+
+- Repo: https://github.com/WesUnwin/three-game-engine
+- License: MIT (verified in `LICENSE` at the repo root)
+- Vendored locally at `tools/vendor/three-game-engine/` (gitignored — offline study only).
+- Use in PixlPlayground: reference architecture for the in-iframe **Play in Editor** runtime, asset loading from either URL or `FileSystemDirectoryHandle`, JSON-driven scene format, GameObject/Component pattern, and the lifecycle the `.pixl` runtime needs.
+
+Patterns to port (each line maps a Wes file to a Pixl target):
+
+- **Asset source duality (URL vs FileSystemDirectoryHandle):** `src/assets/AssetStore.ts` and `src/assets/Asset.ts:getFullURL()` — the constructor accepts `string | FileSystemDirectoryHandle`, and `getFullURL()` returns either `baseURL/path` or `URL.createObjectURL(file)` minted from `getFileAtPath(dirHandle, path)`. This is exactly what we need so the runtime preview can run either against a dev server URL or against a `.pixl` unpacked into OPFS. Port into `engine/packages/core/src/assetSource.ts` as `createAssetSource(input: string | FileSystemDirectoryHandle)`.
+- **Recursive directory path walking:** `Asset.getFileAtPath(dirHandle, path)` (static) walks `'/'`-separated segments via `getDirectoryHandle` then `getFileHandle`. Reuse verbatim in `@pixlland/engine-core` for OPFS reads.
+- **Object URL caching + unload:** `Asset.objectURL` is cached on first read and revoked on `unload()`. Mirror that lifetime in our preview's Blob URL pool — leak-free.
+- **`game.json` root manifest:** lists `scenes: { [name]: path }`, `gameObjectTypes: { [type]: path }`, `initialScene`. Wes's whole runtime boots from one JSON. Our `project.pixlproject.json` already has `scenes[]` and `game.source.runtimeFile` — we map 1:1 in the runtime layer.
+- **Game lifecycle:** `Game.ts:_init()` → `loadScene()` → `play()` / `pause()`. `loadScene` unloads the previous scene's GameObjects (`beforeUnloaded()`), instantiates the new one, then calls `afterLoaded()` on the scene and every GameObject. Use the same call order for the runtime preview hot-reload.
+- **`_createGameObject` recursion:** `src/Scene.ts:141` — walks `gameObjectJSON.children` and applies `indices` for stable referencing. Same shape as our `PixlSceneObject` tree; port the recursion into the runtime loader.
+
+Wes files to consult before touching the runtime preview:
+
+- `src/Game.ts` — top-level lifecycle. **Already verified.**
+- `src/Scene.ts` — scene JSON → Three.js scene + Rapier world.
+- `src/assets/AssetStore.ts` and `src/assets/Asset.ts` — dual-source asset loading.
+- `src/assets/JSONAsset.ts`, `GLTFAsset.ts`, `TextureAsset.ts`, `SoundAsset.ts` — per-extension loaders.
+- `src/GameObject.ts`, `src/Component.ts` — entity/component split (M3 work; not Phase 1).
+- `examples/first_person_kinematic_character_controller/` — a real `game.json` to crib the JSON shape from.
+
+## Asset Pack & Drag-Drop Reference (2D)
+
+### PhaserEditor2D-v3 — pack core and DropManager
+
+- Vendored locally at `tools/vendor/PhaserEditor2D-v3/` (gitignored — offline study only).
+- Use in PixlPlayground: reference for the **Content Browser asset taxonomy**, the **.pack JSON file format**, and the **viewport drag-drop flow** when M2 lands the real 2D viewport.
+
+Patterns to port:
+
+- **Asset-type taxonomy:** `source/editor/plugins/phasereditor2d.pack/src/core/AssetPack.ts` declares 28 constants (`IMAGE_TYPE`, `ATLAS_TYPE`, `AUDIO_TYPE`, `SCRIPT_TYPE`, `SCENE_FILE_TYPE`, `BITMAP_FONT_TYPE`, `TILEMAP_TILED_JSON_TYPE`, …). Don't reinvent — these are the same kinds Phaser 4 accepts at runtime. Mirror them in `engine/packages/core/src/assetKinds.ts` plus our 3D-only kinds (`gltf`, `hdr`, `cubeTexture`).
+- **Pack JSON shape:** `AssetPack.toJSON()` writes `{ section1: { files: [...] }, meta: { app, contentType, url, version, showAllFilesInBlocks } }`. We reuse this shape verbatim for `Assets/AssetPack/*.pack.json` inside a `.pixl` — `meta.app = "PixlPlayground"`, `meta.version` from our schema.
+- **DropManager flow:** `phasereditor2d.scene/src/ui/editor/DropManager.ts` — `dragover` → `acceptDropDataArray` → `dropData` → undo step `CreateObjectWithAssetOperation`. Two things to port:
+  1. Use the **application-level drag data clipboard** (not just `DataTransfer`) — Phaser's `controls.Controls.getApplicationDragData()`. Lets us drag from the Content Browser into the viewport with rich payloads (FilePath objects, asset descriptors), not just plaintext URIs. Our equivalent: `useAssetDragStore` already exists in the studio.
+  2. Every successful drop becomes a **single undo step**, not N inserts. Port the operation idea into our undo stack (`editorStore.history`).
+- **Scene-object extension model:** `ScenePlugin.getInstance().getGameObjectExtensions()` — extensions register `acceptsDropData(data)` and `createSceneObjectWithAsset({ x, y, asset, scene })`. Use as the pattern for our component-creation registry when M3 (component registry) lands. Don't hand-code if/else by file extension; register handlers.
+
+PhaserEditor2D-v3 files to consult:
+
+- `source/editor/plugins/phasereditor2d.pack/src/core/AssetPack.ts` — pack format.
+- `source/editor/plugins/phasereditor2d.pack/src/core/*AssetPackItem.ts` — per-kind item parsing.
+- `source/editor/plugins/phasereditor2d.scene/src/ui/editor/DropManager.ts` — drag-drop. **Already verified.**
+- `source/editor/plugins/phasereditor2d.scene/src/ui/editor/SelectionManager.ts` — pick logic (M2 work).
+- `source/editor/plugins/phasereditor2d.scene/src/ui/editor/CameraManager.ts` — 2D pan/zoom (M2 work).
+- `source/editor/plugins/phasereditor2d.files/src/ui/` — content browser tree, file thumbnails.
+
+## Rule For Phase 1 (`.pixl` pack/unpack, runtime preview from OPFS)
+
+Before adding pack/unpack code in `engine/packages/core/` or extending `runtimePreview.ts`:
+
+1. Check the corresponding Wes pattern in `tools/vendor/three-game-engine/src/assets/`. The `baseURL | dirHandle` duality and Object URL pool are already solved there.
+2. Port the **shape** of the API (constructor, `getFullURL`, `getFileAtPath`, `unload`). Adapt for our codebase: TS strict, no `any`, no React imports in `engine-core`.
+3. Document each port in a top-of-file comment: `// Adapted from tools/vendor/three-game-engine/src/assets/Asset.ts (MIT, WesUnwin/three-game-engine).`
+4. Create a Pixl-specific approach only when Wes does not cover the case (example: content hashing for `.pixl` manifest — Wes doesn't pack into a single file).
+
 ## Rule For 3D Viewport Changes
 
 Before changing selection, gizmo, highlight, camera, or object interaction in `EditorCanvas`:

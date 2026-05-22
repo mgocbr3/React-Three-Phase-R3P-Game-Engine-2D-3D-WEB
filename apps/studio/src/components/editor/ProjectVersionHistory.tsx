@@ -24,7 +24,7 @@ import {
   getProjectVersions,
   restoreProjectVersion,
   type ProjectVersion,
-} from '@/services/projectVersioning';
+} from '@/legacy/cloud/services/projectVersioning';
 import { History, RotateCcw, Clock, Package } from 'lucide-react';
 
 interface ProjectVersionHistoryProps {

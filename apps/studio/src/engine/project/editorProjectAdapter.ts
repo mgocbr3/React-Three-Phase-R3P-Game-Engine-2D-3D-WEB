@@ -99,12 +99,41 @@ const componentFromSettings = (
   };
 };
 
+const scriptComponentFromInstances = (
+  scriptInstances: SceneObject['scriptInstances'],
+): PixlComponentInstance | null => {
+  if (!scriptInstances?.length) return null;
+
+  return {
+    id: createPixlId('pixl-script'),
+    type: 'pixl.script',
+    enabled: true,
+    data: {
+      instances: cloneJson(scriptInstances),
+    },
+  };
+};
+
+const editorMetadataFromObject = (object: SceneObject): Record<string, unknown> | undefined => {
+  const metadata: Record<string, unknown> = {};
+
+  if (object.color) metadata.color = object.color;
+  if (typeof object.isStatic === 'boolean') metadata.isStatic = object.isStatic;
+  if (typeof object.emissive === 'boolean') metadata.emissive = object.emissive;
+
+  return Object.keys(metadata).length ? { editor: metadata } : undefined;
+};
+
 export const editorObjectToSceneObject = (object: SceneObject): PixlSceneObject => {
   const components = [
     componentFromSettings('pixl.visual', object.visualSettings),
     componentFromSettings('pixl.physics', object.physicsSettings),
     componentFromSettings('pixl.logic', object.logicSettings),
     componentFromSettings('pixl.entity', object.entitySettings),
+    componentFromSettings('pixl.light3d', object.lightSettings),
+    componentFromSettings('pixl.camera3d', object.cameraSettings),
+    componentFromSettings('pixl.player', object.playerSettings),
+    scriptComponentFromInstances(object.scriptInstances),
     componentFromSettings('pixl.animation', object.animationSettings),
     componentFromSettings('pixl.audio', object.audioSettings),
     componentFromSettings('pixl.particles', object.particleSettings),
@@ -121,9 +150,7 @@ export const editorObjectToSceneObject = (object: SceneObject): PixlSceneObject 
     locked: Boolean(object.locked),
     tags: object.logicSettings?.tags ? [...object.logicSettings.tags] : [],
     components,
-    data: {
-      editorObject: cloneJson(object),
-    },
+    data: editorMetadataFromObject(object),
   };
 };
 
@@ -131,7 +158,7 @@ const componentData = (
   object: PixlSceneObject,
   type: string,
 ): Record<string, unknown> | undefined => {
-  const component = object.components.find((item) => item.type === type);
+  const component = object.components?.find((item) => item.type === type);
   return component ? cloneJson(component.data) : undefined;
 };
 
@@ -140,43 +167,44 @@ const typedComponentData = <T,>(
   type: string,
 ): T | undefined => componentData(object, type) as unknown as T | undefined;
 
+const scriptInstancesFromComponent = (
+  object: PixlSceneObject,
+): SceneObject['scriptInstances'] | undefined => {
+  const scriptData = componentData(object, 'pixl.script');
+  const instances = scriptData?.instances;
+
+  return Array.isArray(instances) ? cloneJson(instances) as SceneObject['scriptInstances'] : undefined;
+};
+
 export const sceneObjectToEditorObject = (object: PixlSceneObject): SceneObject => {
-  const savedEditorObject = object.data?.editorObject as Partial<SceneObject> | undefined;
-  const base: SceneObject = {
+  const editorMetadata = object.data?.editor as Partial<Pick<SceneObject, 'color' | 'isStatic' | 'emissive'>> | undefined;
+  const restored: SceneObject = {
     id: object.id,
     name: object.name,
     type: safeObjectType(object.type),
     position: toVec3(object.transform?.position, [0, 0, 0]),
     rotation: toVec3(object.transform?.rotation, [0, 0, 0]),
     scale: toVec3(object.transform?.scale, [1, 1, 1]),
-    color: '#ffffff',
+    color: editorMetadata?.color ?? '#ffffff',
     visible: object.visible !== false,
     locked: Boolean(object.locked),
     parentId: object.parentId ?? null,
+    isStatic: editorMetadata?.isStatic,
+    emissive: editorMetadata?.emissive,
+    visualSettings: typedComponentData<SceneObject['visualSettings']>(object, 'pixl.visual'),
+    physicsSettings: typedComponentData<SceneObject['physicsSettings']>(object, 'pixl.physics'),
+    logicSettings: typedComponentData<SceneObject['logicSettings']>(object, 'pixl.logic'),
+    entitySettings: typedComponentData<SceneObject['entitySettings']>(object, 'pixl.entity'),
+    lightSettings: typedComponentData<SceneObject['lightSettings']>(object, 'pixl.light3d'),
+    cameraSettings: typedComponentData<SceneObject['cameraSettings']>(object, 'pixl.camera3d'),
+    playerSettings: typedComponentData<SceneObject['playerSettings']>(object, 'pixl.player'),
+    scriptInstances: scriptInstancesFromComponent(object),
+    animationSettings: typedComponentData<SceneObject['animationSettings']>(object, 'pixl.animation'),
+    audioSettings: typedComponentData<SceneObject['audioSettings']>(object, 'pixl.audio'),
+    particleSettings: typedComponentData<SceneObject['particleSettings']>(object, 'pixl.particles'),
+    terrainSettings: typedComponentData<SceneObject['terrainSettings']>(object, 'pixl.terrain'),
   };
-
-  const restored: SceneObject = {
-    ...base,
-    ...(savedEditorObject ? cloneJson(savedEditorObject) : {}),
-    id: object.id,
-    name: object.name,
-    type: safeObjectType(savedEditorObject?.type ?? object.type),
-    position: toVec3(object.transform?.position, savedEditorObject?.position ?? [0, 0, 0]),
-    rotation: toVec3(object.transform?.rotation, savedEditorObject?.rotation ?? [0, 0, 0]),
-    scale: toVec3(object.transform?.scale, savedEditorObject?.scale ?? [1, 1, 1]),
-    visible: object.visible !== false,
-    locked: Boolean(object.locked),
-    parentId: object.parentId ?? savedEditorObject?.parentId ?? null,
-  };
-
-  restored.visualSettings = restored.visualSettings ?? typedComponentData<SceneObject['visualSettings']>(object, 'pixl.visual');
-  restored.physicsSettings = restored.physicsSettings ?? typedComponentData<SceneObject['physicsSettings']>(object, 'pixl.physics');
-  restored.logicSettings = restored.logicSettings ?? typedComponentData<SceneObject['logicSettings']>(object, 'pixl.logic');
-  restored.entitySettings = restored.entitySettings ?? typedComponentData<SceneObject['entitySettings']>(object, 'pixl.entity');
-  restored.animationSettings = restored.animationSettings ?? typedComponentData<SceneObject['animationSettings']>(object, 'pixl.animation');
-  restored.audioSettings = restored.audioSettings ?? typedComponentData<SceneObject['audioSettings']>(object, 'pixl.audio');
-  restored.particleSettings = restored.particleSettings ?? typedComponentData<SceneObject['particleSettings']>(object, 'pixl.particles');
-  restored.terrainSettings = restored.terrainSettings ?? typedComponentData<SceneObject['terrainSettings']>(object, 'pixl.terrain');
+  restored.isStatic = restored.isStatic ?? restored.physicsSettings?.bodyType === 'fixed';
 
   return restored;
 };
@@ -255,7 +283,7 @@ export const createProjectDocumentFromEditorState = (
     },
     runtime: {
       primary: 'three-3d',
-      renderers: ['three', 'phaser'],
+      renderers: ['three'],
       physics: ['rapier'],
     },
     activeSceneId: sceneId,
@@ -323,6 +351,11 @@ export const createEditorSnapshotFromProjectDocument = (
       name: asset.name,
       type: asset.kind as 'model' | 'texture' | 'audio' | 'script',
       url: asset.url || asset.path,
+      thumbnail: typeof asset.metadata?.thumbnail === 'string'
+        ? asset.metadata.thumbnail
+        : typeof asset.metadata?.thumbnailUrl === 'string'
+          ? asset.metadata.thumbnailUrl
+          : undefined,
       folder: asset.path.includes('/') ? asset.path.split('/').slice(0, -1).join('/') : project.assets.root,
       createdAt: project.createdAt,
       metadata: asset.metadata,

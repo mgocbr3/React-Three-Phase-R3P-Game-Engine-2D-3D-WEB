@@ -1,20 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-const MAX_PERSISTED_VERSION_OBJECTS = 1000;
-
-const compactVersionData = (data: any) => {
-  const objectCount = Array.isArray(data?.objects) ? data.objects.length : 0;
-  if (objectCount <= MAX_PERSISTED_VERSION_OBJECTS) return data;
-
-  return {
-    truncated: true,
-    objectCount,
-    currentTemplateId: data?.currentTemplateId ?? null,
-    gameScript: data?.gameScript,
-    timestamp: data?.timestamp ?? Date.now(),
-  };
-};
+const MAX_INLINE_VERSION_BYTES = 750_000;
+const MAX_PERSISTED_VERSION_METADATA = 10;
 
 export interface ProjectVersion {
   id: string;
@@ -43,6 +31,29 @@ interface AutoSaveStore {
   deleteVersion: (versionId: string) => void;
   clearOldVersions: (keepLast?: number) => void;
 }
+
+const safeJsonSize = (value: any) => {
+  try {
+    return JSON.stringify(value).length;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+};
+
+const compactVersionData = (data: any) => {
+  const sizeBytes = safeJsonSize(data);
+  if (sizeBytes <= MAX_INLINE_VERSION_BYTES) return data;
+
+  return {
+    truncated: true,
+    reason: 'large-project-version',
+    objectCount: Array.isArray(data?.objects) ? data.objects.length : 0,
+    currentTemplateId: data?.currentTemplateId ?? null,
+    gameScript: data?.gameScript,
+    timestamp: data?.timestamp ?? Date.now(),
+    sizeBytes,
+  };
+};
 
 const getInitialAutoSaveState = (): Pick<
   AutoSaveStore,
@@ -140,11 +151,13 @@ export const useAutoSaveStore = create<AutoSaveStore>()(
         lastSaveTime: state.lastSaveTime,
         lastSaveStatus: state.lastSaveStatus,
         saveMessage: state.saveMessage,
-        versions: state.versions.map((version) => ({
-          ...version,
-          data: compactVersionData(version.data),
-        })),
         currentVersionId: state.currentVersionId,
+        versions: state.versions
+          .slice(0, MAX_PERSISTED_VERSION_METADATA)
+          .map((version) => ({
+            ...version,
+            data: compactVersionData(version.data),
+          })),
       }),
     }
   )

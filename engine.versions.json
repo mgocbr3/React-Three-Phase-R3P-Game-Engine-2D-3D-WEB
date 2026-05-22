@@ -1,0 +1,36 @@
+{
+  "$schema": "./engine.versions.schema.json",
+  "manifestVersion": 1,
+  "engine": {
+    "name": "PixlPlayground",
+    "version": "0.2.0"
+  },
+  "schemaVersion": 2,
+  "runtimes": {
+    "three-3d": {
+      "description": "Three.js + R3F + Rapier para jogos 3D. Bundle padrão pra games tipo Harvest Rush.",
+      "dependencies": {
+        "three": "0.184.0",
+        "@types/three": "0.184.1",
+        "@react-three/fiber": "9.6.1",
+        "@react-three/drei": "10.7.7",
+        "@react-three/rapier": "2.2.0",
+        "@dimforge/rapier3d-compat": "0.19.3"
+      }
+    },
+    "phaser-2d": {
+      "description": "Phaser 4 standalone para jogos 2D. Bundle padrão pra games tipo Average Routine.",
+      "dependencies": {
+        "phaser": "4.1.0",
+        "@dimforge/rapier2d-compat": "0.19.3"
+      }
+    }
+  },
+  "ui": {
+    "description": "Camada de UI/HUD/menu em DOM React+CSS, agnostica de runtime. Carregada por todos os bundles que precisem de menu/HUD.",
+    "dependencies": {
+      "react": "19.2.3",
+      "react-dom": "19.2.3"
+    }
+  }
+}

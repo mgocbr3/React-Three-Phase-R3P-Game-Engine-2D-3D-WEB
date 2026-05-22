@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAutoSaveStore } from '@/stores/autoSaveStore';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { Check, AlertCircle, Loader2, Clock, Cloud, CloudOff } from 'lucide-react';
 import {
   Popover,
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 
 export const SaveStatusIndicator = () => {
   const { lastSaveStatus, lastSaveTime, saveMessage, getAllVersions } = useAutoSaveStore();
@@ -16,7 +17,7 @@ export const SaveStatusIndicator = () => {
   const [isOpen, setIsOpen] = useState(false);
   const versions = getAllVersions();
 
-  const isCloudMode = !!user;
+  const isCloudMode = ENGINE_CLOUD_ENABLED && !!user;
 
   const getIcon = () => {
     switch (lastSaveStatus) {

@@ -43,6 +43,7 @@ export interface ProjectAsset {
     animations?: string[];
     dimensions?: { width: number; height: number };
     format?: string;
+    [key: string]: unknown;
   };
 }
 

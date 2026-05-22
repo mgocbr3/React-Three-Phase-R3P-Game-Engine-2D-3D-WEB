@@ -18,6 +18,7 @@ export const FlyCamera = ({
 }: FlyCameraProps) => {
   const { camera, gl, scene } = useThree();
   const focusTarget = useEditorStore((s) => s.focusTarget);
+  const cameraPoseTarget = useEditorStore((s) => s.cameraPoseTarget);
   
   const keys = useRef({
     w: false,
@@ -159,6 +160,21 @@ export const FlyCamera = ({
       canvas.removeEventListener('pointerleave', handlePointerLeave);
     };
   }, [camera, gl, lookSpeed]);
+
+  // Restore the editor camera from Play Mode without reframing the scene.
+  useEffect(() => {
+    if (!cameraPoseTarget) return;
+
+    camera.position.set(...cameraPoseTarget.position);
+    camera.quaternion.set(...cameraPoseTarget.quaternion);
+    if (cameraPoseTarget.fov && camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = cameraPoseTarget.fov;
+      camera.updateProjectionMatrix();
+    }
+    euler.current.setFromQuaternion(camera.quaternion);
+    focusState.current.active = false;
+    initialized.current = true;
+  }, [camera, cameraPoseTarget]);
 
   // Handle focus target changes
   useEffect(() => {

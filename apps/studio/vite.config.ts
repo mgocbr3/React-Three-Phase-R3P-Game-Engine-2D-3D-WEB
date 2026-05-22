@@ -1,24 +1,26 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
-// https://vitejs.dev/config/
-// Cache invalidation: 2026-01-21 - force rebuild for React context fix
-export default defineConfig(({ mode }) => ({
+const repoRoot = path.resolve(__dirname, "../../..").replace(/\\/g, "/");
+
+export default defineConfig(() => ({
   server: {
     host: "::",
     port: 8080,
     fs: {
       allow: [
-        path.resolve(__dirname, "../../.."),
+        repoRoot,
       ],
     },
     hmr: {
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  define: {
+    "import.meta.env.VITE_PIXL_REPO_ROOT": JSON.stringify(repoRoot),
+  },
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

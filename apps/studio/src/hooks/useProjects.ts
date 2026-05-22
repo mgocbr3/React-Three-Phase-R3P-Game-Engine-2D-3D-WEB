@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import {
   fetchUserProjects,
   fetchProject,
@@ -18,8 +18,9 @@ import {
   type UpdateProjectInput,
   type ProjectAsset,
   type InventoryItem,
-} from '@/services/projectService';
+} from '@/legacy/cloud/services/projectService';
 import { createBlankGameData } from '@/lib/blankTemplate';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 
 // Query keys
 export const projectKeys = {
@@ -39,7 +40,7 @@ export function useProjects() {
   return useQuery({
     queryKey: projectKeys.lists(),
     queryFn: fetchUserProjects,
-    enabled: !!user,
+    enabled: ENGINE_CLOUD_ENABLED && !!user,
     staleTime: 1000 * 60, // 1 minute
   });
 }
@@ -49,7 +50,7 @@ export function useProject(projectId: string | null) {
   return useQuery({
     queryKey: projectKeys.detail(projectId || ''),
     queryFn: () => fetchProject(projectId!),
-    enabled: !!projectId,
+    enabled: ENGINE_CLOUD_ENABLED && !!projectId,
   });
 }
 
@@ -133,7 +134,7 @@ export function useProjectAssets(projectId: string | null) {
   return useQuery({
     queryKey: projectKeys.assets(projectId || ''),
     queryFn: () => fetchProjectAssets(projectId!),
-    enabled: !!projectId,
+    enabled: ENGINE_CLOUD_ENABLED && !!projectId,
     staleTime: 1000 * 60, // 1 minute
   });
 }
@@ -184,7 +185,7 @@ export function useUserInventory() {
   return useQuery({
     queryKey: projectKeys.inventory(),
     queryFn: fetchUserInventory,
-    enabled: !!user,
+    enabled: ENGINE_CLOUD_ENABLED && !!user,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

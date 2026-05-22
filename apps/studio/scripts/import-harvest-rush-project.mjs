@@ -6,12 +6,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const studioRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(studioRoot, '../../..');
 const gameRoot = path.join(repoRoot, 'apps/portal/games-src/harvest-rush-3d');
+const engineManifestPath = path.join(repoRoot, 'engine/engine.versions.json');
 const levelPath = path.join(gameRoot, 'public/levels/harvest-rush.level3d.json');
 const runtimePath = path.join(gameRoot, 'src/main.js');
 const studioProjectPath = path.join(studioRoot, 'public/sample-projects/harvest-rush-3d/project.pixlproject.json');
 const gameProjectPath = path.join(gameRoot, 'pixlplayground/project.pixlproject.json');
-const studioSampleRoot = path.dirname(studioProjectPath);
-const sampleProjectPublicRoot = '/sample-projects/harvest-rush-3d';
 
 const DEFAULT_PROJECT_FOLDERS = [
   'Assets/3D_Models',
@@ -160,9 +159,6 @@ const CROP_COLORS = {
   rice: '#98b979',
 };
 
-const toSampleProjectUrl = (relativePath) => (
-  `${sampleProjectPublicRoot}/${relativePath.replace(/\\/g, '/').replace(/^\/+/, '')}`
-);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const slug = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const roundNumber = (value, precision = 6) => {
@@ -170,8 +166,7 @@ const roundNumber = (value, precision = 6) => {
   return Number(value.toFixed(precision));
 };
 const farmPackAssetPath = (file) => path.join(gameRoot, 'public/assets/vendor/farm-pack', file);
-const farmPackAssetRelativePath = (file) => `assets/vendor/farm-pack/${file}`;
-const farmPackAssetUrl = (file) => toSampleProjectUrl(farmPackAssetRelativePath(file));
+const farmPackAssetUrl = (file) => `public/assets/vendor/farm-pack/${file}`;
 
 const componentFromSettings = (objectId, type, data) => {
   if (!data) return null;
@@ -181,6 +176,15 @@ const componentFromSettings = (objectId, type, data) => {
     enabled: true,
     data: clone(data),
   };
+};
+
+const editorMetadataFromObject = (object) => {
+  const metadata = {};
+  if (object.color) metadata.color = object.color;
+  if (typeof object.isStatic === 'boolean') metadata.isStatic = object.isStatic;
+  if (typeof object.emissive === 'boolean') metadata.emissive = object.emissive;
+
+  return Object.keys(metadata).length ? { editor: metadata } : undefined;
 };
 
 const editorObjectToSceneObject = (object) => ({
@@ -201,14 +205,15 @@ const editorObjectToSceneObject = (object) => ({
     componentFromSettings(object.id, 'pixl.physics', object.physicsSettings),
     componentFromSettings(object.id, 'pixl.logic', object.logicSettings),
     componentFromSettings(object.id, 'pixl.entity', object.entitySettings),
+    componentFromSettings(object.id, 'pixl.light3d', object.lightSettings),
+    componentFromSettings(object.id, 'pixl.camera3d', object.cameraSettings),
+    componentFromSettings(object.id, 'pixl.player', object.playerSettings),
     componentFromSettings(object.id, 'pixl.animation', object.animationSettings),
     componentFromSettings(object.id, 'pixl.audio', object.audioSettings),
     componentFromSettings(object.id, 'pixl.particles', object.particleSettings),
     componentFromSettings(object.id, 'pixl.terrain', object.terrainSettings),
   ].filter(Boolean),
-  data: {
-    editorObject: clone(object),
-  },
+  data: editorMetadataFromObject(object),
 });
 
 const animationSettings = (modelUrl, overrides = {}) => ({
@@ -770,7 +775,9 @@ const collectSceneAssetEntries = (editorObjects) => {
       id: `scene-model-${entries.size + 1}-${slug(assetName)}`,
       name: assetName,
       kind: 'model',
-      path: `Assets/3D_Models/${assetName.replace(/[^a-z0-9_. -]/gi, '').trim() || object.id}`,
+      path: isFarmGlb
+        ? 'Assets/3D_Models/farm-pack/Farm.glb'
+        : `Assets/3D_Models/${object.name.replace(/[^a-z0-9_. -]/gi, '').trim() || object.id}`,
       url: modelUrl,
       tags: ['harvest-rush', 'scene-model'],
       metadata: {
@@ -794,36 +801,26 @@ const uniqueAssets = (...assetLists) => {
   return [...byUrl.values()];
 };
 
-const collectSampleFarmPackFiles = () => [
-  ...new Set([
-    'Farm.glb',
-    ...MACHINES.flatMap((machine) => [machine.file, machine.trailerFile]),
-    ...Object.values(CROP_MODEL_ASSETS).map((asset) => asset.file),
-  ]),
-];
-
-const copySampleRuntimeAssets = async () => {
-  const farmPackOutDir = path.join(studioSampleRoot, 'assets/vendor/farm-pack');
-  await fs.mkdir(farmPackOutDir, { recursive: true });
-
-  await Promise.all(
-    collectSampleFarmPackFiles().map((file) => fs.copyFile(
-      farmPackAssetPath(file),
-      path.join(farmPackOutDir, file),
-    )),
-  );
-
-  const runtimeOutPath = path.join(studioSampleRoot, 'runtime/src/main.js');
-  await fs.mkdir(path.dirname(runtimeOutPath), { recursive: true });
-  await fs.copyFile(runtimePath, runtimeOutPath);
-};
-
 const readOptionalJson = async (filePath) => {
   try {
     return JSON.parse(await fs.readFile(filePath, 'utf8'));
   } catch {
     return null;
   }
+};
+
+const readEngineManifest = async () => JSON.parse(await fs.readFile(engineManifestPath, 'utf8'));
+
+const runtimeManifestFor = (engineManifest, runtime) => {
+  const dependencies = engineManifest.runtimes?.[runtime]?.dependencies;
+  if (!dependencies) {
+    throw new Error(`Runtime "${runtime}" not found in ${engineManifestPath}`);
+  }
+
+  return {
+    runtime,
+    dependencies: { ...dependencies },
+  };
 };
 
 const readRuntimeInfo = async () => {
@@ -904,14 +901,13 @@ const readFarmGlbManifest = async () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 16)
         .map(([prefix, count]) => ({ prefix, count })),
-      sampleNodes: meshNodes.slice(0, 32),
+      sampleNodes: meshNodes.slice(0, 32).map(({ index, name, mesh, prefix }) => ({ index, name, mesh, prefix })),
     };
   } catch (error) {
     return {
       nodeCount: 0,
       meshCount: 0,
       meshNodeCount: 0,
-      meshNodes: [],
       topNamePrefixes: [],
       sampleNodes: [],
       error: error.message,
@@ -921,9 +917,12 @@ const readFarmGlbManifest = async () => {
 
 const buildProject = async () => {
   const legacyLevel = await readOptionalJson(levelPath);
+  const existingProject = await readOptionalJson(gameProjectPath) ?? await readOptionalJson(studioProjectPath);
+  const engineManifest = await readEngineManifest();
   const runtimeInfo = await readRuntimeInfo();
   const farmManifest = await readFarmGlbManifest();
   const sceneId = 'harvest-rush-main';
+  const primaryRuntime = 'three-3d';
   const editorObjects = [
     ...createCoreObjects(farmManifest),
     ...createFieldObjects(),
@@ -937,17 +936,18 @@ const buildProject = async () => {
     id: 'pixl-harvest-rush-3d',
     slug: 'harvest-rush-3d',
     name: 'Harvest Rush 3D',
-    createdAt: now,
-    savedAt: now,
+    createdAt: existingProject?.createdAt ?? now,
+    savedAt: existingProject?.savedAt ?? now,
     engine: {
-      name: 'PixlPlayground',
-      version: '0.1.0',
-      schemaVersion: 2,
+      name: engineManifest.engine.name,
+      version: engineManifest.engine.version,
+      schemaVersion: engineManifest.schemaVersion,
+      runtimeManifest: runtimeManifestFor(engineManifest, primaryRuntime),
     },
     runtime: {
-      primary: 'three-3d',
+      primary: primaryRuntime,
       renderers: ['three', 'phaser'],
-      physics: ['rapier'],
+      physics: ['rapier', 'enable3d'],
     },
     activeSceneId: sceneId,
     scenes: [
@@ -980,10 +980,11 @@ const buildProject = async () => {
         metadata: {
           source: 'harvest-rush-runtime',
           runtimeInfo,
-          farmManifest,
+          farmManifest: summarizeFarmManifest(farmManifest),
           originalEditorLevel: legacyLevel ? {
             schema: legacyLevel.schema,
             game: legacyLevel.game,
+            engineTarget: legacyLevel.engineTarget,
             sourceScene: legacyLevel.sourceScene,
             objectCount: Array.isArray(legacyLevel.objects) ? legacyLevel.objects.length : 0,
             notes: legacyLevel.notes,
@@ -1008,7 +1009,7 @@ const buildProject = async () => {
             name: 'Harvest Rush runtime',
             kind: 'script',
             path: 'Scripts/harvest-rush-runtime-main.js',
-            url: toSampleProjectUrl('runtime/src/main.js'),
+            url: 'src/main.js',
             tags: ['harvest-rush', 'runtime', 'script'],
             metadata: runtimeInfo,
           },
@@ -1059,7 +1060,6 @@ const buildProject = async () => {
 const project = await buildProject();
 const json = `${JSON.stringify(project, null, 2)}\n`;
 
-await copySampleRuntimeAssets();
 await fs.mkdir(path.dirname(studioProjectPath), { recursive: true });
 await fs.mkdir(path.dirname(gameProjectPath), { recursive: true });
 await fs.writeFile(studioProjectPath, json);

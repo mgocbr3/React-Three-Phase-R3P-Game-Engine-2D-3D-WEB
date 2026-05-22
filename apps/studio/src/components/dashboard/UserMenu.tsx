@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { usePixllandUserStore } from '@/stores/pixllandUserStore';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogIn, LogOut, User, Settings } from 'lucide-react';
 import { toast } from 'sonner';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 
 export function UserMenu() {
   const { user, profile, signOut, isLoading } = useAuthStore();
@@ -31,6 +32,10 @@ export function UserMenu() {
   const avatarUrl = platformProfile.avatarUrl || profile.avatarUrl || (user?.user_metadata?.avatar_url as string | undefined);
   const coins = platformProfile.wallet.coins;
   const level = platformProfile.level;
+
+  if (!ENGINE_CLOUD_ENABLED) {
+    return null;
+  }
 
   if (!user) {
     return (

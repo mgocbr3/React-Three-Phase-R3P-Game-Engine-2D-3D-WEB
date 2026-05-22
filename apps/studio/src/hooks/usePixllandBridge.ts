@@ -3,9 +3,10 @@ import { useEditorStore } from '@/stores/editorStore';
 import { usePixllandAssetStore, PixllandAsset } from '@/stores/pixllandAssetStore';
 import { usePixllandProjectStore, PixllandProject } from '@/stores/pixllandProjectStore';
 import { create } from 'zustand';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuthStore } from '@/stores/authStore';
+import { supabase } from '@/legacy/cloud/integrations/supabase/client';
+import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { usePixllandUserStore } from '@/stores/pixllandUserStore';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 
 // Default origin used when running standalone. When embedded, we dynamically
 // infer the parent origin from document.referrer or querystring.
@@ -95,8 +96,8 @@ export const usePixllandBridge = () => {
   const [state, setState] = useState<PixllandBridgeState>(() => {
     const params = new URLSearchParams(window.location.search);
     return {
-      isEmbedded: params.get('embedded') === 'true',
-      isReady: false,
+      isEmbedded: ENGINE_CLOUD_ENABLED && params.get('embedded') === 'true',
+      isReady: !ENGINE_CLOUD_ENABLED,
       authToken: null,
       userId: null,
       forkGameId: params.get('fork') || null,
@@ -122,7 +123,7 @@ export const usePixllandBridge = () => {
 
   // Send message to parent with optional promise-based response
   const sendToParent = useCallback((message: PixllandMessage): Promise<any> | void => {
-    if (!state.isEmbedded) {
+    if (!ENGINE_CLOUD_ENABLED || !state.isEmbedded) {
       console.log('[PixllandBridge] Not embedded, skipping message:', message.type);
       return;
     }
@@ -689,6 +690,8 @@ export const usePixllandBridge = () => {
   const openStore = useCallback(() => {
     if (state.isEmbedded) {
       sendToParent({ type: 'OPEN_STORE' });
+    } else if (!ENGINE_CLOUD_ENABLED) {
+      console.warn('[PixllandBridge] Cloud/store integration is disabled for this engine build.');
     } else {
       window.open(`${DEFAULT_PIXLLAND_ORIGIN}/store`, '_blank');
     }
@@ -722,6 +725,8 @@ export const usePixllandBridge = () => {
   const connectAccount = useCallback(() => {
     if (state.isEmbedded) {
       sendToParent({ type: 'CONNECT_ACCOUNT' });
+    } else if (!ENGINE_CLOUD_ENABLED) {
+      console.warn('[PixllandBridge] Account connection is disabled for this engine build.');
     } else {
       window.open(`${DEFAULT_PIXLLAND_ORIGIN}/auth?redirect=engine`, '_blank');
     }
@@ -849,7 +854,7 @@ interface PixllandStore {
 }
 
 export const usePixllandStore = create<PixllandStore>((set) => ({
-  isEmbedded: new URLSearchParams(window.location.search).get('embedded') === 'true',
+  isEmbedded: ENGINE_CLOUD_ENABLED && new URLSearchParams(window.location.search).get('embedded') === 'true',
   authToken: null,
   userId: null,
   setAuth: (token, userId = null) => set({ authToken: token, userId }),

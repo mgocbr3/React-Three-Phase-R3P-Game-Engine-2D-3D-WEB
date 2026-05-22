@@ -92,16 +92,9 @@ export const MobileSettingsSheet = ({ onClose }: MobileSettingsSheetProps) => {
               value={settings.uiTheme}
               options={[
                 { value: 'black', label: 'Dark Mode' },
-                { value: 'blue', label: 'Classic Mode' },
                 { value: 'light', label: 'Light Mode' },
               ]}
-              onChange={(v) => settings.updateSettings({ uiTheme: v as 'black' | 'blue' | 'light' })}
-            />
-            <ToggleRow 
-              label="Transparência nos Menus" 
-              description="Efeito de vidro translúcido" 
-              checked={settings.menuTransparency} 
-              onChange={(v) => settings.updateSettings({ menuTransparency: v })} 
+              onChange={(v) => settings.updateSettings({ uiTheme: v as 'black' | 'light' })}
             />
           </div>
         );

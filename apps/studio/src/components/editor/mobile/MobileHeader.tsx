@@ -46,6 +46,7 @@ import { useInterfaceStore } from '@/stores/interfaceStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { cn } from '@/lib/utils';
 import { GAME_TEMPLATES } from '@/stores/gameStore';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { toast } from 'sonner';
 
 const PIXLLAND_PLATFORM_ORIGIN = import.meta.env.VITE_PIXLLAND_PLATFORM_ORIGIN || 'http://localhost:3000';
@@ -276,21 +277,23 @@ export const MobileHeader = () => {
         </nav>
 
       {/* Right - Publish Button */}
-      <div className="flex items-center">
-        <button
-          onClick={handlePublish}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95"
-          style={{
-            background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%)',
-            color: 'hsl(var(--primary-foreground))',
-            boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)',
-          }}
-        >
-          <Upload className="w-3.5 h-3.5" />
-          <span>Publicar</span>
-          <ExternalLink className="w-2.5 h-2.5 opacity-70" />
-        </button>
-      </div>
+      {ENGINE_CLOUD_ENABLED && (
+        <div className="flex items-center">
+          <button
+            onClick={handlePublish}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%)',
+              color: 'hsl(var(--primary-foreground))',
+              boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)',
+            }}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>Publicar</span>
+            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+          </button>
+        </div>
+      )}
     </header>
   );
 };
