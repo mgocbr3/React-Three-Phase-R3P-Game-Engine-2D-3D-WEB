@@ -1,0 +1,21 @@
+{
+  "name": "pixlland-engine",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Pixlland engine — vibe coding game editor (three.js + phaser, agent-first MCP/HTTP/CLI). Split from pixlland-poki on 2026-05-22.",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm --filter pixlplaygroundstudio dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "studio:dev": "pnpm --filter pixlplaygroundstudio dev",
+    "studio:build": "pnpm --filter pixlplaygroundstudio build",
+    "studio:test": "pnpm --filter pixlplaygroundstudio test",
+    "studio:typecheck": "pnpm --filter pixlplaygroundstudio typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
