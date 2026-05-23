@@ -12,6 +12,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { pixlSceneToPhaserScene, type GameObjectJSON, type SceneJSON } from '@pixlland/phaser-runtime';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 
 export interface PhaserRuntimeMountProps {
   visible: boolean;
@@ -213,6 +214,14 @@ export function PhaserRuntimeMount({
   const gameRef = useRef<any>(null);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
 
+  // Subscribe to the editor's Play/Stop button via the existing
+  // runtimeGameStore. The Phaser scene starts PAUSED so the user sees the
+  // project doc as a static snapshot (typical editor behavior — edit mode
+  // by default, click Play to start, click Stop to pause). Subscribing
+  // through useEffect below means Play/Stop toggles flow through to
+  // scene.scene.pause()/resume() without re-mounting the canvas.
+  const isPlaying = useRuntimeGameStore((s) => s.isPlaying);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !visible) return;
@@ -398,6 +407,19 @@ export function PhaserRuntimeMount({
             try { canvas.focus({ preventScroll: true }); } catch { /* noop */ }
           });
         }
+
+        // Honor the current Play/Stop state immediately on boot. The user
+        // expects the editor to default to "edit mode" (paused) so they
+        // can inspect the scene before scripts start moving things; click
+        // Play in the toolbar to begin. The useEffect below keeps it in
+        // sync with later toggles.
+        try {
+          const sceneRef = gameRef.current.scene.scenes[0] as import('phaser').Scene | undefined;
+          if (sceneRef && !useRuntimeGameStore.getState().isPlaying) {
+            sceneRef.scene.pause();
+          }
+        } catch { /* scene may not be fully booted yet — useEffect will catch up */ }
+
         setLoad({ status: 'ready' });
       } catch (error) {
         if (disposed) return;
@@ -414,6 +436,33 @@ export function PhaserRuntimeMount({
       }
     };
   }, [visible, assetBaseUrl]);
+
+  // Mirror the Play/Stop toggle into the live Phaser scene. Pause freezes
+  // the update loop (so the runtime script's tick stops running); resume
+  // re-enables it. Input handlers attached at scene.input level still
+  // fire on either side of pause, which is fine — they just don't see
+  // motion until tick runs again.
+  useEffect(() => {
+    const game = gameRef.current;
+    if (!game || load.status !== 'ready') return;
+    try {
+      const scene = game.scene?.scenes?.[0];
+      if (!scene) return;
+      const sceneMgr = scene.scene;
+      const currentlyPaused = sceneMgr?.isPaused?.() ?? false;
+      if (isPlaying && currentlyPaused) {
+        sceneMgr.resume();
+        // Re-focus the canvas so WASD reaches the game on resume — the
+        // user usually clicked the Play button, which stole focus.
+        try { game.canvas?.focus?.({ preventScroll: true }); } catch { /* noop */ }
+      } else if (!isPlaying && !currentlyPaused) {
+        sceneMgr.pause();
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[PhaserRuntimeMount] play/stop toggle failed:', err);
+    }
+  }, [isPlaying, load.status]);
 
   return (
     <div
