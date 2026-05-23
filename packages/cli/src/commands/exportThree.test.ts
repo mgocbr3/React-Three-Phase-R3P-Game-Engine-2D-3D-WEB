@@ -73,6 +73,22 @@ describe('exportProjectToThree (pure)', () => {
     expect(result.mainJsSource).toContain("fetch('./project.pixlproject.json')");
   });
 
+  it('emits main.js source that attaches the canvas to the DOM and wires resize', () => {
+    // three-runtime is canvas-agnostic (the editor mounts it itself); the
+    // standalone bundle has to attach + resize the THREE.WebGLRenderer's
+    // domElement explicitly. Without these, the renderer paints into an
+    // orphan canvas and the page stays black.
+    const project = buildMinimalProject();
+    const result = exportProjectToThree(project);
+    expect(result.mainJsSource).toContain('attachCanvas');
+    expect(result.mainJsSource).toContain('threeJSRenderer');
+    expect(result.mainJsSource).toContain('appendChild');
+    expect(result.mainJsSource).toContain('setSize');
+    expect(result.mainJsSource).toContain('window.innerWidth');
+    expect(result.mainJsSource).toContain('window.innerHeight');
+    expect(result.mainJsSource).toContain("addEventListener('resize'");
+  });
+
   it('passes assetSourceBase through to new Game(...)', () => {
     const project = buildMinimalProject();
     const result = exportProjectToThree(project, { assetSourceBase: './Assets' });
@@ -499,6 +515,44 @@ describe('runExportThree (IO, skipBundle)', () => {
     const sourceAfter = JSON.parse(await readFile(projectPath, 'utf8')) as PixlProjectShape;
     const sourceMesh = sourceAfter.scenes[0]!.rootObjects[0]!.components![0]!;
     expect(sourceMesh.data!.modelUrl).toBe('public/assets/vendor/Farm.glb');
+  });
+
+  it('finds an asset whose entry.url uses the public/ prefix but the file lives without it', async () => {
+    // Real-world Harvest Rush shape: entry.url = "public/assets/vendor/X.glb"
+    // but the binary on disk lives at <projectDir>/assets/vendor/X.glb (no
+    // public/ prefix — Vite serves public/ from root). The copier must strip
+    // public/ the same way the runtime does to locate the file.
+    const tmp = await mkdtemp(join(tmpdir(), 'pixl-export-three-pub-'));
+    const fs = await import('node:fs/promises');
+
+    const assetDir = join(tmp, 'assets', 'vendor');
+    await fs.mkdir(assetDir, { recursive: true });
+    await fs.writeFile(join(assetDir, 'farm.glb'), 'PUBLIC-PREFIX-GLB-BYTES');
+
+    const project = buildMinimalProject({
+      assets: {
+        root: 'Assets',
+        entries: [
+          {
+            id: 'farm',
+            name: 'Farm',
+            kind: 'model',
+            path: 'Assets/3D_Models/farm.glb',
+            url: 'public/assets/vendor/farm.glb', // public/ prefix
+          },
+        ],
+      },
+    });
+    const projectPath = join(tmp, 'project.pixlproject.json');
+    await fs.writeFile(projectPath, JSON.stringify(project), 'utf8');
+
+    const outDir = join(tmp, 'out');
+    const result = await runExportThree(projectPath, outDir, { skipBundle: true });
+
+    expect(result.assetCount).toBe(1);
+    expect(result.missingAssets).toEqual([]);
+    const copied = await readFile(join(outDir, 'Assets', '3D_Models', 'farm.glb'), 'utf8');
+    expect(copied).toBe('PUBLIC-PREFIX-GLB-BYTES');
   });
 
   it('honors assetSearchPaths when the asset lives outside the project dir', async () => {
