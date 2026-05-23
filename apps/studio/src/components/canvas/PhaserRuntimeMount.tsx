@@ -380,6 +380,38 @@ export function PhaserRuntimeMount({
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (this as any).__pixlScaleHandles = handles;
 
+              // Rotate handle ported from PhaserEditor2D-v3 RotateToolItem
+              // (MIT) — a green circle above the object's top-center.
+              // The reference renders a ring at radius 100 around the
+              // object center and drags any point on the ring; we use a
+              // single grab dot above-top-center because that's the
+              // Unity/Godot idiom and easier to discover for users.
+              // Drag math is the same: angleBetweenTwoPointsWithFixedPoint.
+              const ROTATE_HANDLE_NAME = '__pixl_rotate_handle';
+              const ROTATE_HANDLE_RADIUS = 9;
+              const rotateHandle = this.add.circle(0, 0, ROTATE_HANDLE_RADIUS, 0x4cd964, 0.95);
+              rotateHandle.setStrokeStyle(2, 0xffffff, 1);
+              rotateHandle.setDepth(100000);
+              rotateHandle.setVisible(false);
+              rotateHandle.setName(ROTATE_HANDLE_NAME);
+              rotateHandle.setInteractive(
+                new Phaser.Geom.Circle(0, 0, ROTATE_HANDLE_RADIUS + 2),
+                Phaser.Geom.Circle.Contains,
+              );
+              this.input.setDraggable(rotateHandle, true);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (this as any).__pixlRotateHandle = rotateHandle;
+
+              // Translate indicator: small crosshair at the object's
+              // center when mode === 'translate'. Non-interactive — the
+              // body itself is the drag target (Round 1.5 path).
+              const translateIndicator = this.add.graphics();
+              translateIndicator.setDepth(100000);
+              translateIndicator.setVisible(false);
+              translateIndicator.setName('__pixl_translate_indicator');
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (this as any).__pixlTranslateIndicator = translateIndicator;
+
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const sceneAny = this as any;
               // Cache of the active transformMode + which handles are
@@ -415,7 +447,7 @@ export function PhaserRuntimeMount({
                   b.width + padding * 2, b.height + padding * 2,
                 );
 
-                // Position handles at each corner of the (padded) box.
+                // Position scale handles at each corner of the (padded) box.
                 const x0 = b.x - padding;
                 const y0 = b.y - padding;
                 const x1 = b.x + b.width + padding;
@@ -424,6 +456,32 @@ export function PhaserRuntimeMount({
                 handles[1].setPosition(x1, y0).setVisible(wantHandles);  // NE
                 handles[2].setPosition(x0, y1).setVisible(wantHandles);  // SW
                 handles[3].setPosition(x1, y1).setVisible(wantHandles);  // SE
+
+                // Rotate handle: green dot 24px above top-center.
+                const wantRotate = mode === 'rotate';
+                const cxRot = (x0 + x1) / 2;
+                const cyRot = y0 - 24;
+                rotateHandle.setPosition(cxRot, cyRot).setVisible(wantRotate);
+
+                // Translate indicator: small + at object's geometric center,
+                // visible in 'translate' or 'select' so users see the pivot.
+                const wantTranslate = mode === 'translate' || mode === 'select';
+                translateIndicator.clear();
+                if (wantTranslate) {
+                  const cxT = (x0 + x1) / 2;
+                  const cyT = (y0 + y1) / 2;
+                  translateIndicator.lineStyle(2, 0xffe066, 0.9);
+                  translateIndicator.beginPath();
+                  translateIndicator.moveTo(cxT - 8, cyT);
+                  translateIndicator.lineTo(cxT + 8, cyT);
+                  translateIndicator.moveTo(cxT, cyT - 8);
+                  translateIndicator.lineTo(cxT, cyT + 8);
+                  translateIndicator.strokePath();
+                  translateIndicator.setVisible(true);
+                } else {
+                  translateIndicator.setVisible(false);
+                }
+
                 // Track which object the handles are operating on, so the
                 // drag handler can find it without doing another lookup.
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -433,14 +491,81 @@ export function PhaserRuntimeMount({
               // Drag handler — disambiguates body-drag (translate) from
               // handle-drag (scale via corner). Active only in edit mode
               // (gated by isPlaying).
-              // Debug log helps diagnose hit-detection issues on the
-              // real mouse path (eval emit bypasses Phaser's pointer
-              // tracking; only this code path proves the gizmo actually
-              // works for users).
-              this.input.on('dragstart', (_p: unknown, go: { name?: string }) => {
-                // eslint-disable-next-line no-console
-                console.log('[gizmo] dragstart on', go?.name);
-              });
+              // -------------------------------------------------------
+              // Gizmo drag math ported from PhaserEditor2D-v3:
+              // source/editor/plugins/phasereditor2d.scene/src/ui/
+              //   sceneobjects/object/tools/ScaleToolItem.ts  (MIT)
+              // -------------------------------------------------------
+              // The reference editor stores `initScaleX/Y, initLocalPos,
+              // initWorldTx, initWidth/Height` on the sprite via setData
+              // at dragstart, then derives the new scale per axis from
+              // (localPos - initLocalPos) / width * initScale at drag
+              // time. We mirror that exact math here — the local-space
+              // delta approach handles rotation, origin and parent
+              // transforms correctly, which a naïve distance-from-center
+              // implementation does not.
+              this.input.on(
+                'dragstart',
+                (
+                  pointer: import('phaser').Input.Pointer,
+                  go: import('phaser').GameObjects.GameObject,
+                ) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const name = (go as any).name as string | undefined;
+
+                  // Rotate handle dragstart — port of
+                  // PhaserEditor2D-v3 RotateToolItem.onStartDrag (MIT).
+                  // Captures the initial cursor pos + the target's
+                  // current angle. onDrag computes the delta via
+                  // angleBetweenTwoPointsWithFixedPoint.
+                  if (name === ROTATE_HANDLE_NAME) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const target = (this as any).__pixlSelectedTarget;
+                    if (!target) return;
+                    target.setData('__pixl_rotate_init', {
+                      initCursorX: pointer.worldX,
+                      initCursorY: pointer.worldY,
+                      // Phaser exposes both `angle` (degrees) and
+                      // `rotation` (radians); the reference uses angle.
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      initAngle: (target as any).angle ?? 0,
+                    });
+                    return;
+                  }
+
+                  if (!name || !(HANDLE_NAMES as readonly string[]).includes(name)) {
+                    return;
+                  }
+                  // Stash init state on the SELECTED target so onDrag can
+                  // compute the additive delta. Mirrors the reference
+                  // ScaleToolItem.onStartDrag pattern.
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const target = (this as any).__pixlSelectedTarget;
+                  if (!target?.getWorldTransformMatrix) return;
+                  const worldTx = new Phaser.GameObjects.Components.TransformMatrix();
+                  target.getWorldTransformMatrix(worldTx);
+                  const initLocalPos = new Phaser.Math.Vector2();
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const handle = go as any;
+                  worldTx.applyInverse(handle.x, handle.y, initLocalPos);
+                  // displayWidth = width * scaleX, so "unit width at
+                  // scale=1" = displayWidth / scaleX.
+                  const sx0 = target.scaleX ?? 1;
+                  const sy0 = target.scaleY ?? 1;
+                  const w0 = (target.displayWidth ?? target.width ?? 1) / (sx0 || 1);
+                  const h0 = (target.displayHeight ?? target.height ?? 1) / (sy0 || 1);
+                  target.setData('__pixl_scale_init', {
+                    initScaleX: sx0,
+                    initScaleY: sy0,
+                    initLocalPosX: initLocalPos.x,
+                    initLocalPosY: initLocalPos.y,
+                    initWorldTx: worldTx,
+                    initWidth: Math.max(1, Math.abs(w0)),
+                    initHeight: Math.max(1, Math.abs(h0)),
+                    handleName: name,
+                  });
+                },
+              );
               this.input.on(
                 'drag',
                 (
@@ -453,50 +578,125 @@ export function PhaserRuntimeMount({
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const go = gameObject as any;
                   const isHandle = (HANDLE_NAMES as readonly string[]).includes(go.name as string);
+                  const isRotateHandle = go.name === ROTATE_HANDLE_NAME;
 
-                  if (isHandle) {
-                    // Scale: distance from center vs the original bounds-
-                    // corner distance gives the uniform scale factor. We
-                    // operate on the currently-selected target stashed
-                    // when the outline redrew.
+                  // Rotate handle drag — ported from PhaserEditor2D-v3
+                  // RotateToolItem.onDrag (MIT). The reference computes
+                  // the radians swept around the object center between
+                  // the init cursor and the current cursor, then adds
+                  // that to the initial angle.
+                  if (isRotateHandle) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const target = (this as any).__pixlSelectedTarget as
-                      | (import('phaser').GameObjects.GameObject & { x?: number; y?: number; scaleX?: number; scaleY?: number; getBounds?: () => { x: number; y: number; width: number; height: number } })
+                    const target = (this as any).__pixlSelectedTarget;
+                    if (!target?.getData) return;
+                    const init = target.getData('__pixl_rotate_init') as
+                      | { initCursorX: number; initCursorY: number; initAngle: number }
                       | undefined;
-                    if (!target?.getBounds) return;
+                    if (!init) return;
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const pixlId = (target as any).getData?.('pixlId') as string | undefined;
                     if (!pixlId) return;
-                    const b = target.getBounds!();
-                    const cx = b.x + b.width / 2;
-                    const cy = b.y + b.height / 2;
-                    // Half-extent at scale=1 (current size / current scale).
-                    // Compute the "1.0 scale" half-extent from the target's
-                    // current scale, then derive the new scale from the
-                    // dragged corner's distance to center along each axis.
-                    const sx = (target.scaleX ?? 1) || 1;
-                    const sy = (target.scaleY ?? 1) || 1;
-                    const halfW1 = (b.width / 2) / sx;
-                    const halfH1 = (b.height / 2) / sy;
-                    const newHalfW = Math.max(2, Math.abs(dragX - cx));
-                    const newHalfH = Math.max(2, Math.abs(dragY - cy));
-                    const newSx = newHalfW / halfW1;
-                    const newSy = newHalfH / halfH1;
-                    // Uniform scale (preserve aspect): use the dominant axis.
-                    // Hold shift to scale per-axis (future round).
-                    const newScale = Math.min(newSx, newSy);
-                    if (typeof (target as any).setScale === 'function') {
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (target as any).setScale(
-                        Math.sign(sx) * newScale,
-                        Math.sign(sy) * newScale,
-                      );
+                    // Object center = where the rotation pivots. Use the
+                    // gameobject's x/y (Phaser sprites pivot at their
+                    // origin which defaults to center for Image/Sprite).
+                    const cx = target.x;
+                    const cy = target.y;
+                    // dragX/dragY are the HANDLE's new position. The
+                    // reference uses raw cursor (args.x, args.y) which
+                    // matches because the handle is dragged on the cursor.
+                    const angle1 = Math.atan2(dragY - cy, dragX - cx);
+                    const angle2 = Math.atan2(init.initCursorY - cy, init.initCursorX - cx);
+                    const deltaRadians = angle1 - angle2;
+                    const deltaAngle = Phaser.Math.RadToDeg(deltaRadians);
+                    const newAngle = init.initAngle + deltaAngle;
+                    target.angle = newAngle;
+                    // Redraw outline + propagate to store. Use rotation
+                    // tuple [x, y, z] where z is radians (matches the
+                    // editorStore's 3D-shaped rotation type).
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (this as any).__pixlRedrawOutline?.(pixlId);
+                    const store = useEditorStore.getState();
+                    store.updateObject(pixlId, {
+                      rotation: [0, 0, Phaser.Math.DegToRad(newAngle)],
+                    } as Parameters<typeof store.updateObject>[1]);
+                    return;
+                  }
+
+                  if (isHandle) {
+                    // -----------------------------------------------
+                    // Scale drag — ported from PhaserEditor2D-v3
+                    // ScaleToolItem.onDrag (MIT). See the dragstart
+                    // handler above for the init-state stash.
+                    // -----------------------------------------------
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const target = (this as any).__pixlSelectedTarget as
+                      | (import('phaser').GameObjects.GameObject & {
+                          scaleX?: number; scaleY?: number;
+                          flipX?: boolean; flipY?: boolean;
+                          getData?: (key: string) => unknown;
+                          setScale?: (x: number, y: number) => void;
+                        })
+                      | undefined;
+                    if (!target?.getData) return;
+                    const init = target.getData('__pixl_scale_init') as
+                      | {
+                          initScaleX: number; initScaleY: number;
+                          initLocalPosX: number; initLocalPosY: number;
+                          initWorldTx: import('phaser').GameObjects.Components.TransformMatrix;
+                          initWidth: number; initHeight: number;
+                          handleName: string;
+                        }
+                      | undefined;
+                    if (!init) return;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const pixlId = (target as any).getData?.('pixlId') as string | undefined;
+                    if (!pixlId) return;
+
+                    // Pointer (handle's new position) → local-space via
+                    // the WORLD transform captured at dragstart. This is
+                    // the move that fixes rotation/origin/zoom — a naive
+                    // distance-from-center calc misses those.
+                    const localPos = new Phaser.Math.Vector2();
+                    init.initWorldTx.applyInverse(dragX, dragY, localPos);
+
+                    const flipX = target.flipX ? -1 : 1;
+                    const flipY = target.flipY ? -1 : 1;
+                    const dx = (localPos.x - init.initLocalPosX) * flipX;
+                    const dy = (localPos.y - init.initLocalPosY) * flipY;
+
+                    // Each handle controls scale signed by its corner:
+                    // dragging NW outward (toward -x,-y) and SE outward
+                    // (toward +x,+y) both grow the box.
+                    const signX = (init.handleName === '__pixl_handle_ne' || init.handleName === '__pixl_handle_se') ? 1 : -1;
+                    const signY = (init.handleName === '__pixl_handle_sw' || init.handleName === '__pixl_handle_se') ? 1 : -1;
+
+                    const scaleDX = (dx * signX) / init.initWidth * init.initScaleX;
+                    const scaleDY = (dy * signY) / init.initHeight * init.initScaleY;
+
+                    let newScaleX = init.initScaleX + scaleDX;
+                    let newScaleY = init.initScaleY + scaleDY;
+
+                    // Shift = uniform scale (matches PhaserEditor2D-v3
+                    // shiftKey branch for the SE diagonal handle).
+                    const shiftKey =
+                      this.input.keyboard?.checkDown(
+                        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
+                        0,
+                      ) ?? false;
+                    if (shiftKey) {
+                      const u = Math.max(Math.abs(newScaleX), Math.abs(newScaleY));
+                      newScaleX = Math.sign(newScaleX || 1) * u;
+                      newScaleY = Math.sign(newScaleY || 1) * u;
+                    }
+
+                    if (typeof target.setScale === 'function') {
+                      target.setScale(newScaleX, newScaleY);
                     }
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (this as any).__pixlRedrawOutline?.(pixlId);
                     const store = useEditorStore.getState();
                     store.updateObject(pixlId, {
-                      scale: [Math.sign(sx) * newScale, Math.sign(sy) * newScale, 1],
+                      scale: [newScaleX, newScaleY, 1],
                     } as Parameters<typeof store.updateObject>[1]);
                     return;
                   }
