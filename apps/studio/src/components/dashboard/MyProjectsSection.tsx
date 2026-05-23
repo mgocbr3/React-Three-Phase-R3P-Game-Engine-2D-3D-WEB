@@ -141,10 +141,23 @@ export const MyProjectsSection = ({ onCreateNew, onOpenProjectFolder }: MyProjec
                 <p className="truncate text-xs text-muted-foreground">{getTemplateName(project.templateId)}</p>
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(project.updatedAt), {
-                    addSuffix: true,
-                    locale: ptBR,
-                  })}
+                  {(() => {
+                    // Defensive: pre-existing local projects may have a
+                    // missing / non-finite updatedAt (e.g. older save format
+                    // or zustand persist corruption). Without this guard
+                    // formatDistanceToNow throws RangeError and unmounts the
+                    // whole section. Keep the date display optional.
+                    const ts = Number(project.updatedAt);
+                    if (!Number.isFinite(ts) || ts <= 0) return 'data indisponivel';
+                    try {
+                      return formatDistanceToNow(new Date(ts), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      });
+                    } catch {
+                      return 'data invalida';
+                    }
+                  })()}
                 </p>
               </div>
 

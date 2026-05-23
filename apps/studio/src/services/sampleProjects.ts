@@ -5,22 +5,75 @@ import { normalizeProjectDocument } from '@/engine/project/editorProjectAdapter'
 const REPO_ROOT = import.meta.env.VITE_PIXL_REPO_ROOT as string | undefined;
 const REPO_FS_ROOT = REPO_ROOT?.replace(/^\/+/, '');
 
-const SAMPLE_PROJECTS: Record<string, { projectUrl: string; assetBaseUrl?: string }> = {
+export type SampleKind = '2d' | '3d';
+export type SampleAccent = 'purple' | 'cyan' | 'pink' | 'orange' | 'red' | 'green' | 'blue';
+
+export interface SampleProjectMeta {
+  /** Public URL the studio fetches `project.pixlproject.json` from. */
+  projectUrl: string;
+  /** Optional asset base used when binaries live outside the project dir. */
+  assetBaseUrl?: string;
+  /** Human-friendly title for Hub cards / page titles. */
+  displayName: string;
+  /** One-line elevator pitch shown beneath the title in the Hub. */
+  description: string;
+  /** Routes the editor to the right viewport (Three vs Phaser). */
+  kind: SampleKind;
+  /** Accent color for the Hub card. Optional — defaults to neutral. */
+  accent?: SampleAccent;
+}
+
+const SAMPLE_PROJECTS: Record<string, SampleProjectMeta> = {
   'harvest-rush-3d': {
     projectUrl: '/sample-projects/harvest-rush-3d/project.pixlproject.json',
     assetBaseUrl: import.meta.env.DEV && REPO_FS_ROOT ? `/@fs/${REPO_FS_ROOT}/apps/portal/games-src/harvest-rush-3d/` : undefined,
+    displayName: 'Harvest Rush 3D',
+    description: 'Farming sandbox 3D — Farm.glb completo, 11k+ objetos da cena decomposta',
+    kind: '3d',
+    accent: 'green',
   },
   'magic-battleground-mvp': {
     projectUrl: '/sample-projects/magic-battleground-mvp/project.pixlproject.json',
-    // No external assetBaseUrl — every entity is a pixl.primitive, no GLBs to resolve.
-    // (NB: this is a 3D demo of the new pixl.primitive feature, not the canonical
-    // Magic Battleground recreation. The actual game is 2D side-view — see the
-    // 'magic-battleground-2d' sample below.)
+    // Não é o jogo Magic Battleground (que é 2D) — é um demo do pixl.primitive
+    // component em 3D. Renomeado em apresentação pra deixar isso claro.
+    displayName: 'Primitive Demo (3D)',
+    description: 'Demonstração do componente pixl.primitive — box, sphere, cone, torus, plane',
+    kind: '3d',
+    accent: 'purple',
   },
   'magic-battleground-2d': {
     projectUrl: '/sample-projects/magic-battleground-2d/project.pixlproject.json',
-    // 2D side-view fighter. Open with ?kind=2d to route to PhaserRuntimeMount.
+    displayName: 'Magic Battleground 2D',
+    description: 'Side-view fighter inspirado no jogo da Poki — mago, inimigo, rune glows, fireball',
+    kind: '2d',
+    accent: 'pink',
   },
+  'sample-2d': {
+    projectUrl: '/sample-projects/sample-2d/project.pixlproject.json',
+    displayName: 'Sample 2D',
+    description: 'Cena 2D mínima — player, inimigo, plataforma, moeda. Boilerplate de teste',
+    kind: '2d',
+    accent: 'cyan',
+  },
+};
+
+export interface SampleProjectEntry extends SampleProjectMeta {
+  slug: string;
+}
+
+/** Snapshot of every registered sample. Used by the Hub to render cards. */
+export const listSampleProjects = (): SampleProjectEntry[] =>
+  Object.entries(SAMPLE_PROJECTS).map(([slug, meta]) => ({ slug, ...meta }));
+
+/** Build the editor URL that opens a sample directly into its right viewport. */
+export const buildSampleEditorUrl = (slug: string): string | null => {
+  const meta = SAMPLE_PROJECTS[slug];
+  if (!meta) return null;
+  const params = new URLSearchParams();
+  params.set('sampleProject', slug);
+  params.set('engine', 'native');
+  if (meta.kind === '2d') params.set('kind', '2d');
+  return `/editor?${params.toString()}`;
 };
 
 export const hasSampleProject = (slug: string) => Boolean(SAMPLE_PROJECTS[slug]);

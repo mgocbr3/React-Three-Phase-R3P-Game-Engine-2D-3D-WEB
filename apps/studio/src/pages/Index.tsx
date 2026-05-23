@@ -7,6 +7,8 @@ import { CreateProjectDialog } from '@/components/dashboard/CreateProjectDialog'
 import { EmbeddedProjectsSection } from '@/components/dashboard/EmbeddedProjectsSection';
 import { MyProjectsSection } from '@/components/dashboard/MyProjectsSection';
 import { NewProjectSection } from '@/components/dashboard/NewProjectSection';
+import { SamplesSection } from '@/components/dashboard/SamplesSection';
+import { SectionErrorBoundary } from '@/components/dashboard/SectionErrorBoundary';
 import { TemplateCard } from '@/components/dashboard/TemplateCard';
 import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { openProjectDocumentFromDirectory } from '@/services/localProjectFiles';
@@ -63,13 +65,21 @@ const Index = () => {
           />
 
           {isEmbedded ? (
-            <EmbeddedProjectsSection onCreateNew={handleCreateBlank} />
+            <SectionErrorBoundary sectionName="Projetos embarcados">
+              <EmbeddedProjectsSection onCreateNew={handleCreateBlank} />
+            </SectionErrorBoundary>
           ) : (
-            <MyProjectsSection
-              onCreateNew={handleCreateBlank}
-              onOpenProjectFolder={handleOpenProjectFolder}
-            />
+            <SectionErrorBoundary sectionName="Projetos recentes">
+              <MyProjectsSection
+                onCreateNew={handleCreateBlank}
+                onOpenProjectFolder={handleOpenProjectFolder}
+              />
+            </SectionErrorBoundary>
           )}
+
+          <SectionErrorBoundary sectionName="Samples">
+            <SamplesSection />
+          </SectionErrorBoundary>
 
           <section>
             <div className="mb-3 flex items-center justify-between">
