@@ -1,0 +1,407 @@
+// pixl-engine export-three — emits a standalone web bundle that runs a
+// PixlProjectDocument via @pixlland/three-runtime + Three.js + Rapier.
+//
+// Two layers:
+//   - exportProjectToThree(project, opts): pure function. Generates HTML +
+//     main.js source + manifest + asset path list. No filesystem I/O. Easy
+//     to unit-test with vitest.
+//   - runExportThree(projectPath, outDir, opts): I/O wrapper. Reads project
+//     doc, copies assets from the project source dir to <outDir>/Assets/,
+//     writes the generated files, and bundles main.js with esbuild
+//     (embedding @pixlland/three-runtime + three + rapier3d-compat).
+//
+// The output directory is a fully-static, drop-anywhere site:
+//   <outDir>/
+//     index.html
+//     main.js                 -- esbuild bundle (single file, ~3.5MB raw)
+//     project.pixlproject.json
+//     manifest.json
+//     Assets/                 -- copied from <projectDir>/<assets.root>/
+//       3D_Models/...
+//       Textures/...
+//
+// Companion commands (planned): export-phaser (2D), export-pixlland
+// (Pixlland portal-ready archive).
+
+import { mkdir, writeFile, readFile, copyFile, stat, rm } from 'node:fs/promises';
+import { dirname, resolve, relative, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import type { PixlProjectShape } from '../schema.js';
+
+// ---------------------------------------------------------------------------
+// Public API (pure)
+// ---------------------------------------------------------------------------
+
+export const EXPORT_THREE_FORMAT = 'pixlplayground-export-three' as const;
+export const EXPORT_THREE_FORMAT_VERSION = 1 as const;
+
+export interface ExportThreeOptions {
+  /**
+   * AssetStore base path written into the generated main.js — passed as the
+   * `source` argument to `new Game(source)`. Defaults to `.` so the runtime
+   * resolves assets relative to wherever index.html is served from.
+   */
+  assetSourceBase?: string;
+  /** `<title>` text. Defaults to `project.name`. */
+  title?: string;
+  /** CSS background of the host page. Defaults to `#000`. */
+  pageBackground?: string;
+  /**
+   * Deterministic timestamp for the manifest. Tests pin this; production
+   * leaves it undefined and the runner stamps Date.now().
+   */
+  exportedAt?: number;
+}
+
+export interface ExportThreeManifest {
+  format: typeof EXPORT_THREE_FORMAT;
+  formatVersion: typeof EXPORT_THREE_FORMAT_VERSION;
+  exportedAt: number;
+  projectId: string;
+  projectName: string;
+  activeSceneId: string;
+  sceneCount: number;
+  assetCount: number;
+  engine: { name?: string; version?: string } | undefined;
+  runtime: 'three-3d';
+}
+
+export interface ExportThreeResult {
+  indexHtml: string;
+  /** Pre-bundle main.js source. runExportThree pipes this through esbuild. */
+  mainJsSource: string;
+  manifest: ExportThreeManifest;
+  /**
+   * Asset paths declared in `project.assets.entries[].path`. The runner
+   * copies each one from <projectDir>/<path> into <outDir>/<path>. Order is
+   * preserved from the project document.
+   */
+  assetPaths: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const buildIndexHtml = (title: string, pageBackground: string): string => {
+  const safeTitle = escapeHtml(title);
+  const safeBg = escapeHtml(pageBackground);
+  // Keep the template literal-free; just embed values into a plain string.
+  // Tabs are intentionally NOT used so editor diffs stay clean.
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    `<title>${safeTitle}</title>`,
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">',
+    '<style>',
+    `html,body{margin:0;padding:0;height:100%;background:${safeBg};overflow:hidden;font-family:system-ui,sans-serif;color:#eee}`,
+    'canvas{display:block;width:100vw!important;height:100vh!important}',
+    '#error{position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#3a0a0a;color:#fca5a5;font:13px/1.4 ui-monospace,monospace;white-space:pre-wrap;display:none}',
+    '#error.show{display:block}',
+    '</style>',
+    '</head>',
+    '<body>',
+    '<div id="error"></div>',
+    '<script type="module" src="./main.js"></script>',
+    '</body>',
+    '</html>',
+    '',
+  ].join('\n');
+};
+
+const buildMainJsSource = (assetSourceBase: string): string => {
+  const safeBase = JSON.stringify(assetSourceBase);
+  // The runtime asset cache is primed by Game.loadFromPixlProject — see
+  // packages/three-runtime/src/Game.ts. AssetSource is still needed for
+  // binary assets (GLB / textures / audio).
+  return [
+    '// Generated by pixl-engine export-three. Do not edit by hand.',
+    "import { Game } from '@pixlland/three-runtime';",
+    '',
+    'const showError = (message) => {',
+    "  const el = document.getElementById('error');",
+    '  if (el) { el.textContent = message; el.classList.add(\'show\'); }',
+    "  console.error('[pixl-export-three]', message);",
+    '};',
+    '',
+    '(async () => {',
+    '  try {',
+    "    const resp = await fetch('./project.pixlproject.json');",
+    "    if (!resp.ok) throw new Error('Failed to fetch project.pixlproject.json: ' + resp.status);",
+    '    const project = await resp.json();',
+    `    const game = new Game(${safeBase});`,
+    '    await game.loadFromPixlProject(project);',
+    '    await game.play();',
+    "    window.__pixlGame = game; // expose for debugging",
+    '  } catch (err) {',
+    '    showError(err && err.stack ? err.stack : String(err));',
+    '  }',
+    '})();',
+    '',
+  ].join('\n');
+};
+
+// ---------------------------------------------------------------------------
+// Pure exporter
+// ---------------------------------------------------------------------------
+
+export const exportProjectToThree = (
+  project: PixlProjectShape,
+  options: ExportThreeOptions = {},
+): ExportThreeResult => {
+  // Schema sanity — fail loudly instead of producing a broken bundle.
+  if (project.format !== 'pixlplayground-project') {
+    throw new Error(
+      `exportProjectToThree: unexpected project format "${project.format}". Expected "pixlplayground-project".`,
+    );
+  }
+  const activeScene = project.scenes.find((s) => s.id === project.activeSceneId);
+  if (!activeScene) {
+    throw new Error(
+      `exportProjectToThree: activeSceneId "${project.activeSceneId}" not found in project.scenes.`,
+    );
+  }
+  if (activeScene.kind !== '3d') {
+    throw new Error(
+      `exportProjectToThree: active scene "${activeScene.id}" is kind="${activeScene.kind}", expected "3d". Use export-phaser for 2D projects.`,
+    );
+  }
+
+  const assetSourceBase = options.assetSourceBase ?? '.';
+  const title = options.title ?? project.name;
+  const pageBackground = options.pageBackground ?? '#000';
+
+  const indexHtml = buildIndexHtml(title, pageBackground);
+  const mainJsSource = buildMainJsSource(assetSourceBase);
+
+  const assetEntries = project.assets?.entries ?? [];
+  // Dedupe by path. Project docs can legally have multiple entries pointing
+  // at the same file (e.g. shared GLB referenced by several objects).
+  const assetPaths = Array.from(
+    new Set(assetEntries.map((e) => e.path).filter((p): p is string => typeof p === 'string' && p.length > 0)),
+  );
+
+  const manifest: ExportThreeManifest = {
+    format: EXPORT_THREE_FORMAT,
+    formatVersion: EXPORT_THREE_FORMAT_VERSION,
+    exportedAt: options.exportedAt ?? 0,
+    projectId: project.id,
+    projectName: project.name,
+    activeSceneId: project.activeSceneId,
+    sceneCount: project.scenes.length,
+    assetCount: assetPaths.length,
+    engine: project.engine
+      ? { name: project.engine.name, version: project.engine.version }
+      : undefined,
+    runtime: 'three-3d',
+  };
+
+  return { indexHtml, mainJsSource, manifest, assetPaths };
+};
+
+// ---------------------------------------------------------------------------
+// I/O wrapper
+// ---------------------------------------------------------------------------
+
+export interface RunExportThreeOptions extends ExportThreeOptions {
+  /**
+   * Additional directories to search when resolving an asset entry's
+   * `url`/`path`. The runner tries `<searchPath>/<entry.url>` then
+   * `<searchPath>/<entry.path>`. Defaults to `[projectDir]`. In a multi-repo
+   * layout (e.g. asset binaries served from a portal's `public/`), pass the
+   * portal root here.
+   */
+  assetSearchPaths?: string[];
+  /**
+   * Skip the esbuild bundling step. Emits the raw `_entry.js` instead of
+   * `main.js`. Use this if you want to bundle yourself (e.g. via Vite). Tests
+   * also use it to avoid running esbuild in the unit suite.
+   */
+  skipBundle?: boolean;
+  /**
+   * Override the directory esbuild treats as `absWorkingDir`. Defaults to
+   * the CLI package directory (resolved via import.meta.url). Tests inject
+   * this to bundle from a controlled location.
+   */
+  cliPackageDir?: string;
+}
+
+export interface RunExportThreeResult {
+  outDir: string;
+  fileCount: number;
+  assetCount: number;
+  /**
+   * Asset entries whose `url` and `path` could not be located on disk. Empty
+   * in the happy path. Non-empty does NOT fail the export — the bundle still
+   * works for whatever code paths don't touch the missing assets.
+   */
+  missingAssets: Array<{ id: string; path: string; url?: string }>;
+  bundleSizeBytes: number;
+}
+
+const fileExists = async (path: string): Promise<boolean> => {
+  try {
+    const s = await stat(path);
+    return s.isFile();
+  } catch {
+    return false;
+  }
+};
+
+const defaultCliPackageDir = (): string => {
+  // __filename in compiled form: <cliDir>/dist/commands/exportThree.js
+  // __filename in source/vitest:  <cliDir>/src/commands/exportThree.ts
+  // Either way, up two levels from the file's directory is the package dir.
+  const here = fileURLToPath(import.meta.url);
+  return resolve(dirname(here), '..', '..');
+};
+
+/**
+ * Copy an asset entry from its source location to `<outDir>/<entry.path>`.
+ * Returns true if copied, false if the source could not be located on disk.
+ */
+const copyAssetEntry = async (
+  entry: { id: string; path: string; url?: string },
+  projectDir: string,
+  outDir: string,
+  searchPaths: string[],
+): Promise<boolean> => {
+  const candidates: string[] = [];
+  for (const base of [projectDir, ...searchPaths]) {
+    if (entry.url) candidates.push(resolve(base, entry.url));
+    if (entry.path) candidates.push(resolve(base, entry.path));
+  }
+  for (const candidate of candidates) {
+    if (await fileExists(candidate)) {
+      const dest = resolve(outDir, entry.path);
+      await mkdir(dirname(dest), { recursive: true });
+      await copyFile(candidate, dest);
+      return true;
+    }
+  }
+  return false;
+};
+
+export const runExportThree = async (
+  projectPath: string,
+  outDir: string,
+  options: RunExportThreeOptions = {},
+): Promise<RunExportThreeResult> => {
+  const absProject = resolve(process.cwd(), projectPath);
+  const absOut = resolve(process.cwd(), outDir);
+  const projectDir = dirname(absProject);
+
+  const raw = await readFile(absProject, 'utf8');
+  const project = JSON.parse(raw) as PixlProjectShape;
+
+  // Stamp manifest with real time at write boundary (the pure exporter
+  // accepts an override for deterministic tests).
+  const exportedAt = options.exportedAt ?? Date.now();
+  const result = exportProjectToThree(project, { ...options, exportedAt });
+
+  await mkdir(absOut, { recursive: true });
+
+  // Write source files.
+  await writeFile(resolve(absOut, 'index.html'), result.indexHtml, 'utf8');
+  await writeFile(
+    resolve(absOut, 'project.pixlproject.json'),
+    `${JSON.stringify(project, null, 2)}\n`,
+    'utf8',
+  );
+  await writeFile(
+    resolve(absOut, 'manifest.json'),
+    `${JSON.stringify(result.manifest, null, 2)}\n`,
+    'utf8',
+  );
+
+  // Bundle main.js (or emit raw if skipBundle).
+  const entryPath = resolve(absOut, '_entry.js');
+  await writeFile(entryPath, result.mainJsSource, 'utf8');
+  const bundlePath = resolve(absOut, 'main.js');
+  let bundleSizeBytes = 0;
+
+  if (options.skipBundle) {
+    // Move _entry.js -> main.js so the output is still consumable.
+    const contents = await readFile(entryPath);
+    await writeFile(bundlePath, contents);
+    bundleSizeBytes = contents.byteLength;
+    await rm(entryPath, { force: true });
+  } else {
+    const cliPackageDir = options.cliPackageDir ?? defaultCliPackageDir();
+    // Lazy import so unit tests that pass skipBundle don't load esbuild.
+    const esbuild = await import('esbuild');
+    const buildResult = await esbuild.build({
+      entryPoints: [entryPath],
+      outfile: bundlePath,
+      bundle: true,
+      format: 'esm',
+      platform: 'browser',
+      target: ['es2022'],
+      allowOverwrite: true,
+      logLevel: 'silent',
+      absWorkingDir: cliPackageDir,
+      nodePaths: [resolve(cliPackageDir, 'node_modules')],
+      metafile: true,
+    });
+    bundleSizeBytes = (await stat(bundlePath)).size;
+    // Silence unused-var lint; the metafile is available for callers via
+    // future opts if needed.
+    void buildResult.metafile;
+    await rm(entryPath, { force: true });
+  }
+
+  // Copy assets.
+  const assetEntries = project.assets?.entries ?? [];
+  const missingAssets: RunExportThreeResult['missingAssets'] = [];
+  let copiedCount = 0;
+  const searchPaths = options.assetSearchPaths ?? [];
+  for (const entry of assetEntries) {
+    if (!entry.path) continue;
+    const ok = await copyAssetEntry(entry, projectDir, absOut, searchPaths);
+    if (ok) copiedCount += 1;
+    else missingAssets.push({ id: entry.id, path: entry.path, url: entry.url });
+  }
+
+  // 3 generated files (index.html, project.pixlproject.json, manifest.json)
+  // + main.js + copied assets.
+  const fileCount = 4 + copiedCount;
+
+  return {
+    outDir: absOut,
+    fileCount,
+    assetCount: copiedCount,
+    missingAssets,
+    bundleSizeBytes,
+  };
+};
+
+export const printExportThreeResult = (result: RunExportThreeResult): void => {
+  // eslint-disable-next-line no-console
+  console.log('pixl-engine export-three');
+  console.log(`  out:           ${result.outDir}`);
+  console.log(`  files:         ${result.fileCount}`);
+  console.log(`  assets copied: ${result.assetCount}`);
+  console.log(`  bundle bytes:  ${result.bundleSizeBytes.toLocaleString()}`);
+  if (result.missingAssets.length > 0) {
+    console.log(`  missing:       ${result.missingAssets.length}`);
+    for (const m of result.missingAssets.slice(0, 5)) {
+      console.log(`    - ${m.path}${m.url ? ` (url: ${m.url})` : ''}`);
+    }
+    if (result.missingAssets.length > 5) {
+      console.log(`    ... +${result.missingAssets.length - 5} more`);
+    }
+  }
+  void relative; // marker; relative() unused yet but kept for future delta-report.
+  void join;
+};

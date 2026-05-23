@@ -12,7 +12,7 @@ Manifest em [`engine/engine.versions.json`](./engine.versions.json):
 - **2D runtime:** Phaser `4.1.0` (GA), `@dimforge/rapier2d-compat 0.19.3`
 - **UI:** React `19.2.3`
 
-O `engine/apps/studio/package.json` hoje pinna versões mais antigas (Three 0.171, Phaser 3.90). Alinhar com o manifest é o item 4 abaixo (precisa de Mac com browser pra QA).
+**Status (2026-05-22, session 2):** todas as deps do `engine/apps/studio/package.json` já casam com o manifest. Item 4 abaixo está efetivamente concluído (typecheck zerado); restam só os ítems "verificar PhaserViewport2D em runtime" e "decidir destino de @mediapipe/* e @mlc-ai/web-llm".
 
 ## 1. Tornar `PixlSceneDocument` a fonte de verdade
 
@@ -47,22 +47,17 @@ Acceptance:
 
 Risco: médio. Precisa boot do editor pra confirmar.
 
-## 4. Alinhar deps do studio com `engine.versions.json`
+## 4. Alinhar deps do studio com `engine.versions.json` — ✅ DONE (2026-05-22, session 2)
 
-`engine/apps/studio/package.json` precisa subir pra:
-- `three@0.184.0` (de `0.171.0`)
-- `@types/three@0.184.1` (de `0.171.0`) — provavelmente **resolve os 95 erros baseline** de typecheck
-- `@react-three/fiber@9.6.1` (de `^9.5.0`)
-- `@dimforge/rapier3d-compat@0.19.3` (novo)
-- `phaser@4.1.0` (de `^3.90.0`) — quebra o `PhaserViewport2D.tsx` atual; substituir junto
-- `@dimforge/rapier2d-compat@0.19.3` (novo, pra 2D physics)
-- Remover `@enable3d/phaser-extension` e a pasta `tools/vendor/enable3d/`
+Concluído:
+- ✅ `three@0.184.0`, `@types/three@0.184.1`, `@react-three/fiber@9.6.1`, `@react-three/drei@10.7.7`, `@react-three/rapier@2.2.0`, `@dimforge/rapier3d-compat@0.19.3`, `@dimforge/rapier2d-compat@0.19.3`, `phaser@4.1.0`, `react/react-dom@19.2.3` — todas casando 100% com [`engine.versions.json`](./engine.versions.json).
+- ✅ `@enable3d/phaser-extension` removido. `tools/vendor/enable3d/` deletado.
+- ✅ Typecheck baseline do studio: **0 erros** (era 95; bump de `@types/three` cobriu 94, último fix em [`editorStore.ts`](./apps/studio/src/stores/editorStore.ts) — `setActiveSceneKind` setter implementado).
 
-Outras deps suspeitas:
-- `@mediapipe/camera_utils`, `@mediapipe/hands` (motion control) — manter ou mover pro portal?
-- `@mlc-ai/web-llm` (AI no browser) — manter ou mover pro portal?
-
-Risco: médio. Three.js 0.184 tem mudanças na TSL se houver shader customizado — checar `src/components/canvas/effects/`.
+Aberto / follow-ups:
+- 🟡 [`apps/studio/src/components/canvas/PhaserViewport2D.tsx`](./apps/studio/src/components/canvas/PhaserViewport2D.tsx) ainda existe. Tipos compilam contra Phaser 4 mas runtime não foi smoked. Verificar quando atacar item 6 (viewport 2D real).
+- 🟡 Decidir destino de `@mediapipe/camera_utils`, `@mediapipe/hands`, `@mediapipe/drawing_utils` (motion control) e `@mlc-ai/web-llm` (AI no browser) — manter no studio ou mover pro portal?
+- 🟡 Verificar se há shader TSL customizado em `src/components/canvas/effects/` afetado pela mudança da TSL em Three.js 0.184. (typecheck passa, mas pode ser visual regression.)
 
 ## 5. CLI continua antes de MCP
 
@@ -76,11 +71,16 @@ Risco: médio. Three.js 0.184 tem mudanças na TSL se houver shader customizado 
 - `pack <dir> <out.pixl>` — empacota projeto em ZIP único com manifest sha256-hashado (Phase 1, 2026-05-22)
 - `unpack <in.pixl> <dir>` — desempacota verificando hashes
 - `inspect <in.pixl>` — lê só o manifest header (sem verificar hashes)
+- `export-three <project> <out-dir>` — bundle standalone HTML+main.js (esbuild) + Assets/, runtime via `Game.loadFromPixlProject` (Phase 2, 2026-05-22 session 3). `--asset-search <dir>` pra resolver assets que vivem fora do project dir; `--skip-bundle` pra emit raw entry (debug).
 
 Próximos comandos (precisam de design ao vivo):
-- `pixl-engine export-three <project> <out>` — bundle HTML+JS Three+Rapier+DOM standalone
-- `pixl-engine export-phaser <project> <out>` — bundle HTML+JS Phaser 4+DOM standalone
+- `pixl-engine export-phaser <project> <out>` — bundle HTML+JS Phaser 4+DOM standalone (espelho 2D do export-three)
 - `pixl-engine export-pixlland <project> <out>` — bundle pronto pra upload no Pixlland
+
+Follow-ups do export-three:
+- 🟡 **Asset URL mismatch**: runtime fetcha pelo `modelUrl` normalizado (ex `assets/vendor/farm-pack/Farm.glb`) mas o exporter copia preservando `entry.path` (`Assets/3D_Models/...`). Smoke test mostrou 404 em todos os GLBs do Harvest Rush. Fix: ou copiar usando `normalizeAssetPath(entry.url)` como destino, ou rewrite os `data.modelUrl` no `project.pixlproject.json` copiado para apontar pra `entry.path`. A segunda é mais limpa mas exige walk dos componentes.
+- 🟡 **Sourcemap opcional**: hoje esbuild bundla sem sourcemap. Adicionar opção `--sourcemap` no CLI.
+- 🟡 **Tree-shake / minify**: bundle atual é 3.5MB raw. Para publicação real, ligar minify; pra dev keep raw.
 
 Risco: baixo. Aditivo, sem UI.
 
@@ -130,7 +130,8 @@ node engine/packages/cli/dist/index.js outdated \
 KPIs:
 
 - `validate` no sample legacy do Harvest Rush reporta `34 warnings` hoje. **Pós-item 1: 0 warnings.**
-- `outdated` reporta 6 deps faltando + drift de engine version. **Pós-item 4 + um `migrate`: 0 drift.**
+- `outdated` reporta 6 deps faltando + drift de engine version no parent monorepo. **Pós-item 4 + um `migrate`: 0 drift.** (Standalone, este repo já está alinhado — sem como rodar `outdated` sem o sample do parent.)
 - `import-level3d` + `export-level3d` no harvest-rush.level3d.json é **round-trip identity** hoje (22 objetos, 19 assets, schema/game/engineTarget/camera preservados). Esse é o KPI do round-trip Harvest Rush.
+- **Studio typecheck baseline: 0 erros** (era 95 antes do bump de `@types/three`). Verificado nesta sessão: `pnpm --filter pixlplaygroundstudio typecheck` → exit 0.
 
-Esses três sinais são o termômetro do refactor estrutural, do alinhamento de deps e do round-trip de runtime.
+Esses sinais são o termômetro do refactor estrutural, do alinhamento de deps e do round-trip de runtime.

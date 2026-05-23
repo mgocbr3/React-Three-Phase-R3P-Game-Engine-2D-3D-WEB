@@ -1209,6 +1209,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     },
     focusTarget: null,
   }),
+  setActiveSceneKind: (kind) => set({ activeSceneKind: kind }),
   setTransformMode: (mode) => set({ transformMode: mode }),
   setTransformSpace: (space) => set({ transformSpace: space }),
   toggleTransformSpace: () => set({ transformSpace: get().transformSpace === 'world' ? 'local' : 'world' }),

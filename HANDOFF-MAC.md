@@ -11,6 +11,78 @@ Update 2026-05-22: Enable3D is legacy context only. The current engine direction
 
 > Antes de qualquer outra tarefa, leia [`engine/PLAN.md`](./PLAN.md) — ordem priorizada de ataque pós-review.
 
+## Review pass 2026-05-22 (session 3) — `export-three` landed (PLAN item 5)
+
+Phase 2 do roadmap CLI: o décimo comando, `pixl-engine export-three`. Emite um bundle web standalone que roda um `PixlProjectDocument` via `@pixlland/three-runtime` + Three.js + Rapier.
+
+```bash
+pixl-engine export-three apps/studio/public/sample-projects/harvest-rush-3d/project.pixlproject.json /tmp/harvest-three
+# pixl-engine export-three
+#   out:           /tmp/harvest-three
+#   files:         4
+#   assets copied: 0
+#   bundle bytes:  3,686,197
+#   missing:       16   (assets binários moram em apps/portal/public/assets/vendor/, fora do clone standalone)
+```
+
+Output:
+```
+<out-dir>/
+  index.html        -- canvas full-bleed + <script type=module src=main.js> + <div id=error>
+  main.js           -- esbuild bundle (~3.5 MB) embedding three-runtime + three + rapier3d-compat
+  project.pixlproject.json  -- cópia do input
+  manifest.json     -- {format:'pixlplayground-export-three', formatVersion:1, exportedAt, projectId, ...}
+  Assets/           -- copiado de <projectDir>/<entry.path>, com fallback search em [projectDir, ...--asset-search]
+```
+
+Arquitetura em dois andares:
+- [`packages/cli/src/commands/exportThree.ts`](./packages/cli/src/commands/exportThree.ts) → `exportProjectToThree(project, opts)`: função pura, retorna `{ indexHtml, mainJsSource, manifest, assetPaths }`. Sem IO.
+- Mesmo arquivo → `runExportThree(projectPath, outDir, opts)`: lê doc, chama o pure, escreve files, copia assets, invoca `esbuild.build({ absWorkingDir: cliPackageDir, ... })` programaticamente. `--skip-bundle` no test mode pula esbuild pra agilizar.
+
+main.js bootstrap (15 linhas literalmente):
+```js
+import { Game } from '@pixlland/three-runtime';
+const project = await (await fetch('./project.pixlproject.json')).json();
+const game = new Game('.');
+await game.loadFromPixlProject(project);
+await game.play();
+```
+
+Validação:
+- ✅ Typecheck CLI verde após bump.
+- ✅ Vitest CLI: **12 testes novos** em [`exportThree.test.ts`](./packages/cli/src/commands/exportThree.test.ts) (9 pure + 3 IO incluindo 1 com esbuild real). Total CLI: 64 testes (5 falhas pré-existentes em `pack.test.ts` que esperam fixture do parent monorepo — não regrediram).
+- ✅ Smoke e2e: bundle servido via `python3 -m http.server`, três + rapier inicializam no canvas (warnings R3F-style deprecation confirmam), runtime chega em `AssetStore.load`, error overlay funciona pra 404 dos binários ausentes.
+
+Dependências novas em `@pixlland/engine-cli`:
+- `esbuild ^0.21.5`
+- `@pixlland/three-runtime: workspace:*` (pra esbuild resolver `import { Game } from '@pixlland/three-runtime'`)
+- `three` e `@dimforge/rapier3d-compat` vêm transitivos via three-runtime.
+
+Follow-ups capturados no PLAN.md item 5 (não bloqueiam o comando — bundle gera, runtime boota):
+- 🟡 Asset URL mismatch: runtime fetcha `modelUrl` normalizado (`assets/vendor/farm-pack/Farm.glb`) mas exporter copia em `entry.path` (`Assets/3D_Models/...`). Fix: rewrite `modelUrl` no doc copiado, OU copiar pra `normalizeAssetPath(entry.url)`.
+- 🟡 Sourcemap opcional via flag.
+- 🟡 Minify pra publicação real.
+
+Próximo natural: `export-phaser` (espelho 2D, esperando pelo Phase do `PhaserViewport2D` em runtime).
+
+## Review pass 2026-05-22 (session 2) — studio deps alignment confirmed (PLAN item 4)
+
+PLAN.md item 4 (alinhar deps do studio com `engine.versions.json`) está efetivamente concluído. Reconfirmado nesta sessão a partir de um clone limpo:
+
+- `apps/studio/package.json` casa 100% com [`engine.versions.json`](./engine.versions.json): `three 0.184.0`, `@types/three 0.184.1`, `@react-three/fiber 9.6.1`, `@react-three/drei 10.7.7`, `@react-three/rapier 2.2.0`, `@dimforge/rapier3d-compat 0.19.3`, `@dimforge/rapier2d-compat 0.19.3`, `phaser 4.1.0`, `react/react-dom 19.2.3`.
+- `tools/vendor/` removido. Zero referências a `@enable3d` em `apps/` ou `packages/`.
+- Typecheck baseline do studio: **95 → 0 erros**. O bump de `@types/three 0.171 → 0.184.1` cobriu 94 deles. O 95º era um `setActiveSceneKind` declarado em `EditorState` mas nunca implementado no objeto literal de [`editorStore.ts`](./apps/studio/src/stores/editorStore.ts) — sem chamadores no UI ainda (só um comentário em `Viewport.tsx` sinalizando intenção). Implementação trivial adicionada nesta sessão (`set({ activeSceneKind: kind })`), seguindo o padrão de `setTransformMode`.
+
+Pendências remanescentes do item 4:
+- [`apps/studio/src/components/canvas/PhaserViewport2D.tsx`](./apps/studio/src/components/canvas/PhaserViewport2D.tsx) ainda existe. Tipos compilam contra Phaser 4, mas runtime não foi smoked. PLAN.md item 4 dizia "quebra com Phaser 4" — pode ter sido portado em sessão anterior ou pode estar compilando por acidente. Smoke test quando atacar item 6 (viewport 2D real).
+- Decisão sobre `@mediapipe/camera_utils`, `@mediapipe/hands`, `@mediapipe/drawing_utils` e `@mlc-ai/web-llm` (manter no studio ou mover pro portal) continua aberta.
+
+Workspace bootstrap nota: como este repo (`engine/`) foi clonado standalone — fora do monorepo Pixlland que normalmente fornece o root `package.json`/`pnpm-workspace.yaml` — foi criado um root manifest mínimo na raiz do clone wireando `engine:dev / build / typecheck / test / lint` via `pnpm -r`. Drop esses arquivos se este repo voltar pra dentro do monorepo pai.
+
+KPI atualizado:
+- `pnpm --filter pixlplaygroundstudio typecheck`: **exit 0, zero erros** (era 95).
+- `outdated` no harvest-rush sample não é verificável standalone — o `apps/portal/games-src/harvest-rush-3d/` vive no parent monorepo.
+
 ## Phase 1 done 2026-05-22 — `.pixl` package round-trip
 
 Novo workspace package `@pixlland/engine-core` em [`engine/packages/core/`](./packages/core/). Empacota um projeto em ZIP com manifest sha256-hashado.

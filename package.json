@@ -1,21 +1,21 @@
 {
-  "name": "pixlland-engine",
+  "name": "pixlland-engine-workspace",
+  "version": "0.0.0",
   "private": true,
-  "version": "0.1.0",
-  "description": "Pixlland engine — vibe coding game editor (three.js + phaser, agent-first MCP/HTTP/CLI). Split from pixlland-poki on 2026-05-22.",
+  "description": "Standalone bootstrap for the PixlPlayground engine workspace (apps/studio + packages/*). Replaces the root wiring normally provided by the parent Pixlland monorepo.",
   "packageManager": "pnpm@10.33.0",
-  "scripts": {
-    "dev": "pnpm --filter pixlplaygroundstudio dev",
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
-    "studio:dev": "pnpm --filter pixlplaygroundstudio dev",
-    "studio:build": "pnpm --filter pixlplaygroundstudio build",
-    "studio:test": "pnpm --filter pixlplaygroundstudio test",
-    "studio:typecheck": "pnpm --filter pixlplaygroundstudio typecheck"
+  "engines": {
+    "node": ">=18"
   },
-  "devDependencies": {
-    "typescript": "^5.7.2"
+  "scripts": {
+    "engine:dev": "pnpm --filter pixlplaygroundstudio dev",
+    "engine:build": "pnpm -r run build",
+    "engine:typecheck": "pnpm -r run typecheck",
+    "engine:test": "pnpm -r run test",
+    "engine:lint": "pnpm --filter pixlplaygroundstudio lint",
+    "dev": "pnpm engine:dev",
+    "build": "pnpm engine:build",
+    "typecheck": "pnpm engine:typecheck",
+    "test": "pnpm engine:test"
   }
 }

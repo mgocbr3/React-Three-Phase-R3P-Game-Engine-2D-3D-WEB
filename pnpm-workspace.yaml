@@ -1,9 +1,3 @@
 packages:
-  - apps/*
-  - packages/*
-
-# Inherited from parent pixlland-poki workspace at split time (2026-05-22).
-# Sub-packages with native build steps that need explicit allow.
-allowBuilds:
-  esbuild: true
-  sharp: true
+  - 'apps/*'
+  - 'packages/*'

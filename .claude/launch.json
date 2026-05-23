@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pixlplaygroundstudio",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "pixlplaygroundstudio", "dev"],
+      "port": 8080
+    },
+    {
+      "name": "engine-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@pixlland/engine-api", "start"],
+      "port": 8765
+    }
+  ]
+}

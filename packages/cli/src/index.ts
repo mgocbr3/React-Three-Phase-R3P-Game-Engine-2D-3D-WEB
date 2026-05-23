@@ -4,6 +4,7 @@ import { printOutdatedReport, runOutdated } from './commands/outdated.js';
 import { printMigrationResult, runMigrate } from './commands/migrate.js';
 import { printNewResult, runNew, type ProjectKind } from './commands/new.js';
 import { runImportLevel3D, runExportLevel3D } from './commands/level3d.js';
+import { runExportThree, printExportThreeResult } from './commands/exportThree.js';
 import {
   printInspectResult,
   printPackResult,
@@ -29,6 +30,8 @@ Commands:
   new <dir> --kind 2d|3d [--name <name>]       Scaffold a new project folder.
   import-level3d <src.level3d.json> <out.pixlproject.json>   Convert level3d.json -> project doc.
   export-level3d <project.pixlproject.json> <out.level3d.json>   Reverse: project doc -> level3d.json.
+  export-three <project.pixlproject.json> <out-dir> [--asset-search <dir>...] [--skip-bundle]
+                                               Emit a standalone Three.js+Rapier web bundle for the project.
   pack    <project-dir> <out.pixl>             Pack a project folder into a single .pixl archive.
   unpack  <in.pixl> <project-dir>              Unpack a .pixl archive into a project folder (verifies hashes).
   inspect <in.pixl>                            Print the manifest header of a .pixl archive (no hash verify).
@@ -41,6 +44,7 @@ Examples:
   pixl-engine new ./my-3d-game --kind 3d --name "My 3D Game"
   pixl-engine import-level3d ./apps/portal/games-src/harvest-rush-3d/public/levels/harvest-rush.level3d.json /tmp/harvest.pixlproject.json
   pixl-engine export-level3d /tmp/harvest.pixlproject.json /tmp/harvest.level3d.json
+  pixl-engine export-three ./apps/studio/public/sample-projects/harvest-rush-3d/project.pixlproject.json /tmp/harvest-three
   pixl-engine pack    ./apps/portal/games-src/harvest-rush-3d/pixlplayground /tmp/harvest-rush.pixl
   pixl-engine unpack  /tmp/harvest-rush.pixl /tmp/harvest-rush-unpacked
   pixl-engine inspect /tmp/harvest-rush.pixl
@@ -120,6 +124,39 @@ const main = async (): Promise<number> => {
       console.log(`  objetos:  ${result.objectCount}`);
       console.log(`  assets:   ${result.assetCount}`);
       return 0;
+    }
+
+    case 'export-three': {
+      const source = rest[0];
+      const out = rest[1];
+      if (!source || !out) {
+        console.error('export-three: <project.pixlproject.json> <out-dir> obrigatorios.\n');
+        console.error(USAGE);
+        return 1;
+      }
+      // Parse --asset-search <dir> (repeatable) and --skip-bundle flags.
+      const assetSearchPaths: string[] = [];
+      let skipBundle = false;
+      for (let i = 2; i < rest.length; i += 1) {
+        const arg = rest[i];
+        if (arg === '--asset-search') {
+          const value = rest[i + 1];
+          if (!value) {
+            console.error('export-three: --asset-search requer um caminho.');
+            return 1;
+          }
+          assetSearchPaths.push(value);
+          i += 1;
+        } else if (arg === '--skip-bundle') {
+          skipBundle = true;
+        } else {
+          console.error(`export-three: opcao desconhecida "${arg}".`);
+          return 1;
+        }
+      }
+      const result = await runExportThree(source, out, { assetSearchPaths, skipBundle });
+      printExportThreeResult(result);
+      return result.missingAssets.length > 0 ? 0 : 0;
     }
 
     case 'new': {
