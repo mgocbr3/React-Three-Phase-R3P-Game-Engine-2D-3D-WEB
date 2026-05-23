@@ -1,0 +1,19 @@
+/* Stub: the canonical styles.css for Harvest Rush 3D lives in the parent
+   Pixlland monorepo (apps/portal/games-src/harvest-rush-3d/src/styles.css)
+   and was not copied into this standalone engine clone alongside main.js.
+   This empty stub lets `pixl-engine export-runtime` build the game from
+   THIS clone. The game's UI will render without polish — restore the full
+   stylesheet from the parent monorepo to get the intended visuals. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #eee;
+  font-family: system-ui, sans-serif;
+}
+canvas {
+  display: block;
+}

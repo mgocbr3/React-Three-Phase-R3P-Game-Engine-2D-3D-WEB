@@ -5,6 +5,7 @@ import { printMigrationResult, runMigrate } from './commands/migrate.js';
 import { printNewResult, runNew, type ProjectKind } from './commands/new.js';
 import { runImportLevel3D, runExportLevel3D } from './commands/level3d.js';
 import { runExportThree, printExportThreeResult } from './commands/exportThree.js';
+import { runExportRuntime, printExportRuntimeResult } from './commands/exportRuntime.js';
 import {
   printInspectResult,
   printPackResult,
@@ -32,6 +33,10 @@ Commands:
   export-level3d <project.pixlproject.json> <out.level3d.json>   Reverse: project doc -> level3d.json.
   export-three <project.pixlproject.json> <out-dir> [--asset-search <dir>...] [--skip-bundle] [--sourcemap] [--no-minify]
                                                Emit a standalone Three.js+Rapier web bundle for the project.
+  export-runtime <project.pixlproject.json> <out-dir> [--runtime-file <path>] [--sourcemap] [--no-minify]
+                                               Bundle the project's GAME runtime (game.source.runtimeFile) as a
+                                               standalone playable web app. Distinct from export-three (which
+                                               bundles the editor snapshot view).
   pack    <project-dir> <out.pixl>             Pack a project folder into a single .pixl archive.
   unpack  <in.pixl> <project-dir>              Unpack a .pixl archive into a project folder (verifies hashes).
   inspect <in.pixl>                            Print the manifest header of a .pixl archive (no hash verify).
@@ -169,6 +174,41 @@ const main = async (): Promise<number> => {
       });
       printExportThreeResult(result);
       return result.missingAssets.length > 0 ? 0 : 0;
+    }
+
+    case 'export-runtime': {
+      const source = rest[0];
+      const out = rest[1];
+      if (!source || !out) {
+        console.error('export-runtime: <project.pixlproject.json> <out-dir> obrigatorios.\n');
+        console.error(USAGE);
+        return 1;
+      }
+      let runtimeFile: string | undefined = undefined;
+      let sourcemap = false;
+      let minify: boolean | undefined = undefined;
+      for (let i = 2; i < rest.length; i += 1) {
+        const arg = rest[i];
+        if (arg === '--runtime-file') {
+          const value = rest[i + 1];
+          if (!value) {
+            console.error('export-runtime: --runtime-file requer um caminho.');
+            return 1;
+          }
+          runtimeFile = value;
+          i += 1;
+        } else if (arg === '--sourcemap') {
+          sourcemap = true;
+        } else if (arg === '--no-minify') {
+          minify = false;
+        } else {
+          console.error(`export-runtime: opcao desconhecida "${arg}".`);
+          return 1;
+        }
+      }
+      const result = await runExportRuntime(source, out, { runtimeFile, sourcemap, minify });
+      printExportRuntimeResult(result);
+      return 0;
     }
 
     case 'new': {
