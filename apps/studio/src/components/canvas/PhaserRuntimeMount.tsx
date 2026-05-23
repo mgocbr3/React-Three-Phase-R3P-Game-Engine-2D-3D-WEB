@@ -319,12 +319,78 @@ export function PhaserRuntimeMount({
               // Selection outline — drawn as a yellow rectangle on top of
               // everything. Updated reactively by the React layer below;
               // here we just create the Graphics object and stash it on
-              // the scene so the React useEffect can find it.
+              // the scene plus a redraw helper that the drag handler can
+              // call without going through React state.
               const outline = this.add.graphics();
               outline.setDepth(9999);
               outline.setName('__pixl_selection_outline');
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (this as any).__pixlSelectionOutline = outline;
+
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const sceneAny = this as any;
+              sceneAny.__pixlRedrawOutline = (pixlId: string | null): void => {
+                outline.clear();
+                if (!pixlId) return;
+                const target = sceneAny.children.list.find(
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (go: any) => go.getData?.('pixlId') === pixlId,
+                );
+                if (!target?.getBounds) return;
+                const b = target.getBounds();
+                const padding = 4;
+                outline.lineStyle(2, 0xffe066, 1);
+                outline.strokeRect(
+                  b.x - padding, b.y - padding,
+                  b.width + padding * 2, b.height + padding * 2,
+                );
+                outline.fillStyle(0xffe066, 0.08);
+                outline.fillRect(
+                  b.x - padding, b.y - padding,
+                  b.width + padding * 2, b.height + padding * 2,
+                );
+              };
+
+              // Drag-to-move on the selected object — basic 2D gizmo MVP.
+              // Active only when in edit mode (scene paused via isPlaying
+              // false). Phaser fires drag events when the GameObject was
+              // both setInteractive and setDraggable; we toggle draggable
+              // off in play mode below so gameplay clicks still go to the
+              // runtime script.
+              this.input.on(
+                'drag',
+                (
+                  _pointer: import('phaser').Input.Pointer,
+                  gameObject: import('phaser').GameObjects.GameObject,
+                  dragX: number,
+                  dragY: number,
+                ) => {
+                  if (useRuntimeGameStore.getState().isPlaying) return;
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const go = gameObject as any;
+                  if (typeof go.setPosition === 'function') {
+                    go.setPosition(dragX, dragY);
+                  } else {
+                    go.x = dragX;
+                    go.y = dragY;
+                  }
+                  // Force outline redraw on the live position.
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const pixlId = go.getData?.('pixlId') as string | undefined;
+                  if (pixlId) {
+                    // Redraw outline at the new position so the highlight
+                    // tracks the dragged object live.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (this as any).__pixlRedrawOutline?.(pixlId);
+                    // Push position update back to the editor store so the
+                    // Inspector reflects the new coordinates immediately.
+                    const store = useEditorStore.getState();
+                    store.updateObject(pixlId, {
+                      position: [dragX, dragY, 0],
+                    } as Parameters<typeof store.updateObject>[1]);
+                  }
+                },
+              );
 
               const cam = phaserScene.camera;
               // Pixl 2D camera.position is interpreted as "scroll" offset
@@ -398,6 +464,28 @@ export function PhaserRuntimeMount({
                       return;
                     }
                     let tickFn: ((dt: number, time: number) => void) | null = null;
+                    // Editor-friendly ctx helpers: scripts that want to
+                    // react to player input must go through onGameInput so
+                    // the editor can suppress gameplay during edit mode.
+                    // tick() is already gated by scene pause (scene.update
+                    // doesn't fire) so polled inputs like keys[X].isDown
+                    // don't need a wrapper — only one-shot listeners do.
+                    const offFns: Array<() => void> = [];
+                    const onGameInput = (
+                      event: string,
+                      handler: (...args: unknown[]) => void,
+                    ): (() => void) => {
+                      const wrapped = (...args: unknown[]) => {
+                        if (useRuntimeGameStore.getState().isPlaying) {
+                          handler(...args);
+                        }
+                      };
+                      sceneRef.input.on(event, wrapped);
+                      const off = () => sceneRef.input.off(event, wrapped);
+                      offFns.push(off);
+                      return off;
+                    };
+
                     try {
                       const ret = setup({
                         scene: sceneRef,
@@ -405,6 +493,8 @@ export function PhaserRuntimeMount({
                         Phaser,
                         project,
                         activeScene,
+                        onGameInput,
+                        isPlaying: () => useRuntimeGameStore.getState().isPlaying,
                       });
                       if (typeof ret === 'function') {
                         tickFn = ret as (dt: number, time: number) => void;
@@ -489,9 +579,10 @@ export function PhaserRuntimeMount({
     };
   }, [visible, assetBaseUrl]);
 
-  // Redraw the selection outline whenever the editor store's selection
-  // changes. Runs decoupled from Phaser's update loop so it works whether
-  // the scene is paused (edit mode) or running (play mode).
+  // Redraw the selection outline + toggle draggable on the selected
+  // gameobject whenever the editor store's selection changes. Runs
+  // decoupled from Phaser's update loop so it works whether the scene
+  // is paused (edit mode) or running (play mode).
   useEffect(() => {
     const game = gameRef.current;
     if (!game || load.status !== 'ready') return;
@@ -499,51 +590,34 @@ export function PhaserRuntimeMount({
       const scene = game.scene?.scenes?.[0] as import('phaser').Scene | undefined;
       if (!scene) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const outline = (scene as any).__pixlSelectionOutline as
-        | import('phaser').GameObjects.Graphics
+      const sceneAny = scene as any;
+      const redraw = sceneAny.__pixlRedrawOutline as
+        | ((id: string | null) => void)
         | undefined;
-      if (!outline) return;
-      outline.clear();
+      redraw?.(selectedObjectId);
 
-      if (!selectedObjectId) return;
-
-      // Find the gameobject whose stamped pixlId matches the selection.
-      const target = scene.children.list.find(
+      // Only the selected gameobject is draggable in edit mode. Other
+      // interactive objects keep their hit-testing for click-select but
+      // shouldn't move. In play mode (isPlaying true) the drag handler
+      // is a no-op anyway, so we leave the flag alone.
+      for (const go of scene.children.list) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (go) => (go as any).getData?.('pixlId') === selectedObjectId,
-      ) as import('phaser').GameObjects.GameObject | undefined;
-      if (!target) return;
-
-      // Phaser's GameObject.getBounds returns world-space rect for most
-      // visual types (Image/Sprite/Rectangle/Text). Skip types without it.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bounds = (target as any).getBounds?.() as
-        | { x: number; y: number; width: number; height: number }
-        | undefined;
-      if (!bounds) return;
-
-      // Yellow stroke with a translucent fill — matches Godot/Unity selection
-      // visuals without overpowering the underlying art.
-      const padding = 4;
-      outline.lineStyle(2, 0xffe066, 1);
-      outline.strokeRect(
-        bounds.x - padding,
-        bounds.y - padding,
-        bounds.width + padding * 2,
-        bounds.height + padding * 2,
-      );
-      outline.fillStyle(0xffe066, 0.08);
-      outline.fillRect(
-        bounds.x - padding,
-        bounds.y - padding,
-        bounds.width + padding * 2,
-        bounds.height + padding * 2,
-      );
+        const anyGo = go as any;
+        const id = anyGo.getData?.('pixlId') as string | undefined;
+        if (typeof anyGo.input?.draggable === 'boolean') {
+          // Re-set via the Phaser API which keeps the flag in sync.
+          if (id && id === selectedObjectId) {
+            scene.input.setDraggable(go, true);
+          } else {
+            scene.input.setDraggable(go, false);
+          }
+        }
+      }
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[PhaserRuntimeMount] selection outline draw failed:', err);
+      console.error('[PhaserRuntimeMount] selection outline / drag toggle failed:', err);
     }
-  }, [selectedObjectId, load.status]);
+  }, [selectedObjectId, load.status, isPlaying]);
 
   // Mirror the Play/Stop toggle into the live Phaser scene. Pause freezes
   // the update loop (so the runtime script's tick stops running); resume

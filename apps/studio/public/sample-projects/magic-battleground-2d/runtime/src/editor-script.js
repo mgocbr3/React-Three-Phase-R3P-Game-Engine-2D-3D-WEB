@@ -60,8 +60,11 @@ export default function setupArena(ctx) {
 
   const projectiles = [];
 
-  // Click to cast a fireball aimed at the click point.
-  scene.input.on('pointerdown', (pointer) => {
+  // Click to cast a fireball aimed at the click point. Wrapped via
+  // ctx.onGameInput so the editor can suppress this during edit mode —
+  // clicks in edit mode should select objects, not cast spells.
+  const onGameInput = ctx.onGameInput ?? ((event, handler) => scene.input.on(event, handler));
+  onGameInput('pointerdown', (pointer) => {
     const sourceX = player.x + (player.flipX ? -PROJECTILE_FROM_PLAYER_OFFSET_X : PROJECTILE_FROM_PLAYER_OFFSET_X);
     const sourceY = player.y - 16;
     const dx = pointer.worldX - sourceX;
