@@ -30,6 +30,17 @@ const readKindFromUrl = (): SceneKind => {
   return k === '2d' ? '2d' : '3d';
 };
 
+// Map ?sampleProject=<slug> (or ?project=<slug>) to the public path the
+// runtime mounts will fetch project.pixlproject.json from. Keeps the Viewport
+// usable with any sample under apps/studio/public/sample-projects/ without
+// hardcoding harvest-rush.
+const readSampleBaseUrlFromUrl = (): string | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  const sp = new URLSearchParams(window.location.search);
+  const slug = sp.get('sampleProject') ?? sp.get('project');
+  return slug ? `/sample-projects/${slug}` : undefined;
+};
+
 export function Viewport({
   sceneKind: sceneKindProp,
   assetBaseUrl3D,
@@ -41,11 +52,22 @@ export function Viewport({
     [sceneKindProp],
   );
 
+  // Honor explicit props first; otherwise infer from the URL so the
+  // ?engine=native flow can target any sample, not just harvest-rush.
+  const resolvedBase3D = useMemo(
+    () => assetBaseUrl3D ?? readSampleBaseUrlFromUrl(),
+    [assetBaseUrl3D],
+  );
+  const resolvedBase2D = useMemo(
+    () => assetBaseUrl2D ?? readSampleBaseUrlFromUrl(),
+    [assetBaseUrl2D],
+  );
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <ThreeRuntimeMount
         visible={sceneKind === '3d'}
-        assetBaseUrl={assetBaseUrl3D}
+        assetBaseUrl={resolvedBase3D}
         initialScene={initialScene}
       />
       <div
@@ -55,7 +77,7 @@ export function Viewport({
           display: sceneKind === '2d' ? 'block' : 'none',
         }}
       >
-        <PhaserRuntimeMount visible={sceneKind === '2d'} assetBaseUrl={assetBaseUrl2D} />
+        <PhaserRuntimeMount visible={sceneKind === '2d'} assetBaseUrl={resolvedBase2D} />
       </div>
     </div>
   );

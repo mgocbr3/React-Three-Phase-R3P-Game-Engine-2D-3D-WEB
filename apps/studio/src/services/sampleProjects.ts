@@ -10,6 +10,10 @@ const SAMPLE_PROJECTS: Record<string, { projectUrl: string; assetBaseUrl?: strin
     projectUrl: '/sample-projects/harvest-rush-3d/project.pixlproject.json',
     assetBaseUrl: import.meta.env.DEV && REPO_FS_ROOT ? `/@fs/${REPO_FS_ROOT}/apps/portal/games-src/harvest-rush-3d/` : undefined,
   },
+  'magic-battleground-mvp': {
+    projectUrl: '/sample-projects/magic-battleground-mvp/project.pixlproject.json',
+    // No external assetBaseUrl — every entity is a pixl.primitive, no GLBs to resolve.
+  },
 };
 
 export const hasSampleProject = (slug: string) => Boolean(SAMPLE_PROJECTS[slug]);

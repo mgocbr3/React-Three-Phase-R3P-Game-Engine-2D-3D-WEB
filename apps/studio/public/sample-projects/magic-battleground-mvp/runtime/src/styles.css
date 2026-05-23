@@ -1,0 +1,52 @@
+/* Magic Battleground MVP — minimal page chrome.
+   The game owns the canvas full-bleed; HUD is plain DOM positioned via JS. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #eee;
+  font-family: system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+canvas {
+  display: block;
+  cursor: crosshair;
+}
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  pointer-events: none;
+  font-size: 14px;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px #000;
+  z-index: 10;
+}
+
+#hud .title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+#hud .controls {
+  opacity: 0.75;
+}
+
+#hud .score {
+  font-size: 18px;
+  margin-top: 8px;
+}
+
+#hud .status {
+  margin-top: 6px;
+  font-weight: 600;
+  color: #ffdf6c;
+}

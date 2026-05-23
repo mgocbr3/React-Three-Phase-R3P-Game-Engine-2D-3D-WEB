@@ -10,6 +10,7 @@ import Component, { type ComponentJSON, type ComponentTickContext } from './Comp
 import GltfNodeComponent from './components/GltfNodeComponent.js';
 import LightComponent from './components/LightComponent.js';
 import ModelComponent from './components/ModelComponent.js';
+import PrimitiveComponent from './components/PrimitiveComponent.js';
 import RigidBodyComponent from './components/RigidBodyComponent.js';
 import SoundComponent from './components/SoundComponent.js';
 import type Scene from './Scene.js';
@@ -39,6 +40,7 @@ class GameObject {
     rigidBody: RigidBodyComponent,
     light: LightComponent,
     sound: SoundComponent,
+    primitive: PrimitiveComponent,
   };
 
   static registerClassForComponentType(type: string, klass: ComponentClass): void {

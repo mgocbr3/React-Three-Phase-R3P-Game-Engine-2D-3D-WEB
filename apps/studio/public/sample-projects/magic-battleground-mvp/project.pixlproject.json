@@ -1,0 +1,273 @@
+{
+  "format": "pixlplayground-project",
+  "version": 2,
+  "id": "magic-battleground-mvp",
+  "slug": "magic-battleground-mvp",
+  "name": "Magic Battleground MVP",
+  "activeSceneId": "arena",
+  "scenes": [
+    {
+      "id": "arena",
+      "name": "Arena",
+      "kind": "3d",
+      "environment": {
+        "background": "#6ea4d8",
+        "ambientLight": "#b0d4ff",
+        "ambientIntensity": 0.6,
+        "sunColor": "#ffffff",
+        "sunIntensity": 1.0
+      },
+      "camera": {
+        "position": [0, 13, 14],
+        "target": [0, 1, 0],
+        "fov": 55,
+        "near": 0.1,
+        "far": 200
+      },
+      "rootObjects": [
+        {
+          "id": "ground",
+          "name": "Ground",
+          "type": "group",
+          "transform": { "position": [0, -0.5, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "ground-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "box",
+                "size": { "x": 24, "y": 1, "z": 24 },
+                "color": "#4f7d3a",
+                "roughness": 0.95,
+                "receiveShadow": true,
+                "castShadow": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "wall-north",
+          "name": "Wall North",
+          "type": "group",
+          "transform": { "position": [0, 0.6, -12], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "wall-north-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "box",
+                "size": { "x": 24, "y": 1.2, "z": 0.4 },
+                "color": "#3a3a4e",
+                "roughness": 0.7
+              }
+            }
+          ]
+        },
+        {
+          "id": "wall-south",
+          "name": "Wall South",
+          "type": "group",
+          "transform": { "position": [0, 0.6, 12], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "wall-south-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "box",
+                "size": { "x": 24, "y": 1.2, "z": 0.4 },
+                "color": "#3a3a4e",
+                "roughness": 0.7
+              }
+            }
+          ]
+        },
+        {
+          "id": "wall-east",
+          "name": "Wall East",
+          "type": "group",
+          "transform": { "position": [12, 0.6, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "wall-east-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "box",
+                "size": { "x": 0.4, "y": 1.2, "z": 24 },
+                "color": "#3a3a4e",
+                "roughness": 0.7
+              }
+            }
+          ]
+        },
+        {
+          "id": "wall-west",
+          "name": "Wall West",
+          "type": "group",
+          "transform": { "position": [-12, 0.6, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "wall-west-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "box",
+                "size": { "x": 0.4, "y": 1.2, "z": 24 },
+                "color": "#3a3a4e",
+                "roughness": 0.7
+              }
+            }
+          ]
+        },
+        {
+          "id": "rune-ring",
+          "name": "Rune Ring",
+          "type": "group",
+          "transform": { "position": [0, 0.02, 0], "rotation": [-1.5707963267948966, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "rune-ring-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "torus",
+                "radius": 4.2,
+                "tube": 0.15,
+                "color": "#9a4cff",
+                "emissive": "#7a2cdf",
+                "emissiveIntensity": 0.45,
+                "roughness": 0.3,
+                "castShadow": false
+              }
+            }
+          ]
+        },
+
+        {
+          "id": "player-body",
+          "name": "Player Body",
+          "type": "group",
+          "tags": ["player"],
+          "transform": { "position": [0, 0.8, 4], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "player-body-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "box",
+                "size": { "x": 0.8, "y": 1.6, "z": 0.8 },
+                "color": "#3878ff",
+                "roughness": 0.4,
+                "metalness": 0.1
+              }
+            }
+          ]
+        },
+        {
+          "id": "player-hat",
+          "name": "Player Hat",
+          "type": "group",
+          "tags": ["player"],
+          "transform": { "position": [0, 1.95, 4], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "player-hat-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "cone",
+                "radius": 0.45,
+                "height": 0.7,
+                "color": "#2050cc",
+                "roughness": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "player-wand-orb",
+          "name": "Wand Orb",
+          "type": "group",
+          "tags": ["player"],
+          "transform": { "position": [0.6, 1.0, 4], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "player-wand-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "sphere",
+                "radius": 0.14,
+                "color": "#ffaa44",
+                "emissive": "#ff5500",
+                "emissiveIntensity": 1.6
+              }
+            }
+          ]
+        },
+
+        {
+          "id": "enemy-torso",
+          "name": "Enemy Torso",
+          "type": "group",
+          "tags": ["enemy"],
+          "transform": { "position": [-4.5, 0.7, -2], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "enemy-torso-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "box",
+                "size": { "x": 0.8, "y": 1.4, "z": 0.5 },
+                "color": "#e04848",
+                "roughness": 0.55
+              }
+            }
+          ]
+        },
+        {
+          "id": "enemy-head",
+          "name": "Enemy Head",
+          "type": "group",
+          "tags": ["enemy"],
+          "transform": { "position": [-4.5, 1.65, -2], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "components": [
+            {
+              "id": "enemy-head-mesh",
+              "type": "pixl.primitive",
+              "enabled": true,
+              "data": {
+                "shape": "sphere",
+                "radius": 0.32,
+                "color": "#f2c89e",
+                "roughness": 0.7
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "engine": {
+    "name": "PixlPlayground",
+    "version": "0.2.0"
+  },
+  "runtime": {
+    "primary": "three-3d",
+    "renderers": ["three"],
+    "physics": ["rapier"]
+  },
+  "game": {
+    "templateId": null,
+    "source": {
+      "game": "magic-battleground-mvp",
+      "runtimeFile": "src/main.js",
+      "notes": "Forcing-function test for the engine. Scene authored as pixl.primitive components — renders inside the editor's :8080 viewport via three-runtime's PrimitiveComponent. The standalone playable JS (Three.js + Rapier ragdoll) lives in runtime/src/main.js and is bundled via pixl-engine export-runtime separately."
+    }
+  }
+}

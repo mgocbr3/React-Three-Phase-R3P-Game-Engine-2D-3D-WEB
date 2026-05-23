@@ -134,6 +134,12 @@ const mapComponent = (instance: PixlComponentInstance): ComponentJSON | null => 
       if (!assetPath) return null;
       return { type: 'model', name: instance.id, assetPath: normalizeAssetPath(assetPath) };
     }
+    case 'pixl.primitive': {
+      // Built-in geometry (box/sphere/cone/...). Lets a project describe a
+      // scene with simple shapes without authoring GLB assets. Handled by
+      // PrimitiveComponent in the runtime.
+      return { type: 'primitive', name: instance.id, ...data };
+    }
     case 'pixl.light3d':
     case 'pixl.light': {
       const lightType = (data.lightType ?? data.kind ?? 'PointLight') as string;
