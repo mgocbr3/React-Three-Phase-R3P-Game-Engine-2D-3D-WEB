@@ -341,10 +341,35 @@ export function PhaserRuntimeMount({
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (this as any).__pixlSelectionOutline = outline;
 
+              // Scale handles: 4 small blue squares at the bounding box
+              // corners of the selected object. Each handle is its own
+              // interactive Phaser Rectangle so Phaser's drag system can
+              // distinguish a handle drag from a body drag. The drag
+              // handler at scene level (below) reads HANDLE_NAMES to know
+              // which corner is moving and computes uniform scale based
+              // on distance from the object's center.
+              const HANDLE_NAMES = ['__pixl_handle_nw', '__pixl_handle_ne', '__pixl_handle_sw', '__pixl_handle_se'] as const;
+              const handles: import('phaser').GameObjects.Rectangle[] = [];
+              for (const name of HANDLE_NAMES) {
+                const h = this.add.rectangle(0, 0, 10, 10, 0x4aa6ff, 0.95);
+                h.setStrokeStyle(2, 0xffffff, 1);
+                h.setDepth(10000);
+                h.setVisible(false);
+                h.setName(name);
+                h.setInteractive({ draggable: true });
+                handles.push(h);
+                this.input.setDraggable(h, true);
+              }
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (this as any).__pixlScaleHandles = handles;
+
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const sceneAny = this as any;
               sceneAny.__pixlRedrawOutline = (pixlId: string | null): void => {
                 outline.clear();
+                // Hide handles by default; show them only when an object
+                // is selected and has measurable bounds.
+                for (const h of handles) h.setVisible(false);
                 if (!pixlId) return;
                 const target = sceneAny.children.list.find(
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -363,14 +388,25 @@ export function PhaserRuntimeMount({
                   b.x - padding, b.y - padding,
                   b.width + padding * 2, b.height + padding * 2,
                 );
+
+                // Position handles at each corner of the (padded) box.
+                const x0 = b.x - padding;
+                const y0 = b.y - padding;
+                const x1 = b.x + b.width + padding;
+                const y1 = b.y + b.height + padding;
+                handles[0].setPosition(x0, y0).setVisible(true);  // NW
+                handles[1].setPosition(x1, y0).setVisible(true);  // NE
+                handles[2].setPosition(x0, y1).setVisible(true);  // SW
+                handles[3].setPosition(x1, y1).setVisible(true);  // SE
+                // Track which object the handles are operating on, so the
+                // drag handler can find it without doing another lookup.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (sceneAny as any).__pixlSelectedTarget = target;
               };
 
-              // Drag-to-move on the selected object — basic 2D gizmo MVP.
-              // Active only when in edit mode (scene paused via isPlaying
-              // false). Phaser fires drag events when the GameObject was
-              // both setInteractive and setDraggable; we toggle draggable
-              // off in play mode below so gameplay clicks still go to the
-              // runtime script.
+              // Drag handler — disambiguates body-drag (translate) from
+              // handle-drag (scale via corner). Active only in edit mode
+              // (gated by isPlaying).
               this.input.on(
                 'drag',
                 (
@@ -382,22 +418,67 @@ export function PhaserRuntimeMount({
                   if (useRuntimeGameStore.getState().isPlaying) return;
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const go = gameObject as any;
+                  const isHandle = (HANDLE_NAMES as readonly string[]).includes(go.name as string);
+
+                  if (isHandle) {
+                    // Scale: distance from center vs the original bounds-
+                    // corner distance gives the uniform scale factor. We
+                    // operate on the currently-selected target stashed
+                    // when the outline redrew.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const target = (this as any).__pixlSelectedTarget as
+                      | (import('phaser').GameObjects.GameObject & { x?: number; y?: number; scaleX?: number; scaleY?: number; getBounds?: () => { x: number; y: number; width: number; height: number } })
+                      | undefined;
+                    if (!target?.getBounds) return;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const pixlId = (target as any).getData?.('pixlId') as string | undefined;
+                    if (!pixlId) return;
+                    const b = target.getBounds!();
+                    const cx = b.x + b.width / 2;
+                    const cy = b.y + b.height / 2;
+                    // Half-extent at scale=1 (current size / current scale).
+                    // Compute the "1.0 scale" half-extent from the target's
+                    // current scale, then derive the new scale from the
+                    // dragged corner's distance to center along each axis.
+                    const sx = (target.scaleX ?? 1) || 1;
+                    const sy = (target.scaleY ?? 1) || 1;
+                    const halfW1 = (b.width / 2) / sx;
+                    const halfH1 = (b.height / 2) / sy;
+                    const newHalfW = Math.max(2, Math.abs(dragX - cx));
+                    const newHalfH = Math.max(2, Math.abs(dragY - cy));
+                    const newSx = newHalfW / halfW1;
+                    const newSy = newHalfH / halfH1;
+                    // Uniform scale (preserve aspect): use the dominant axis.
+                    // Hold shift to scale per-axis (future round).
+                    const newScale = Math.min(newSx, newSy);
+                    if (typeof (target as any).setScale === 'function') {
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      (target as any).setScale(
+                        Math.sign(sx) * newScale,
+                        Math.sign(sy) * newScale,
+                      );
+                    }
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (this as any).__pixlRedrawOutline?.(pixlId);
+                    const store = useEditorStore.getState();
+                    store.updateObject(pixlId, {
+                      scale: [Math.sign(sx) * newScale, Math.sign(sy) * newScale, 1],
+                    } as Parameters<typeof store.updateObject>[1]);
+                    return;
+                  }
+
+                  // Body translate (the original path).
                   if (typeof go.setPosition === 'function') {
                     go.setPosition(dragX, dragY);
                   } else {
                     go.x = dragX;
                     go.y = dragY;
                   }
-                  // Force outline redraw on the live position.
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const pixlId = go.getData?.('pixlId') as string | undefined;
                   if (pixlId) {
-                    // Redraw outline at the new position so the highlight
-                    // tracks the dragged object live.
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (this as any).__pixlRedrawOutline?.(pixlId);
-                    // Push position update back to the editor store so the
-                    // Inspector reflects the new coordinates immediately.
                     const store = useEditorStore.getState();
                     store.updateObject(pixlId, {
                       position: [dragX, dragY, 0],
