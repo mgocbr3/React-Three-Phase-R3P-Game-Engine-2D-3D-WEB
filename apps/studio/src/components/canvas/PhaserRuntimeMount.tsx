@@ -225,6 +225,11 @@ export function PhaserRuntimeMount({
   // Round 1: subscribe to the existing editor-store selection so the
   // outline + InspectorPanel work uniformly for the 2D viewport.
   const selectedObjectId = useEditorStore((s) => s.selectedObjectId);
+  // Round 3.5: also subscribe to transformMode so the toolbar
+  // (select / translate / rotate / scale) drives which gizmo handles
+  // appear. Default 'translate' = body drag only; 'scale' = corner
+  // handles; 'rotate' = rotation handle (future).
+  const transformMode = useEditorStore((s) => s.transformMode);
   // Round 2: subscribe to the currently-selected SceneObject's transform
   // and visibility so Inspector edits flow back into the Phaser scene
   // without a reload. Use scalar derived deps (px, py, rz, sx, sy) instead
@@ -349,28 +354,49 @@ export function PhaserRuntimeMount({
               // which corner is moving and computes uniform scale based
               // on distance from the object's center.
               const HANDLE_NAMES = ['__pixl_handle_nw', '__pixl_handle_ne', '__pixl_handle_sw', '__pixl_handle_se'] as const;
+              const HANDLE_SIZE = 14;
               const handles: import('phaser').GameObjects.Rectangle[] = [];
               for (const name of HANDLE_NAMES) {
-                const h = this.add.rectangle(0, 0, 10, 10, 0x4aa6ff, 0.95);
+                const h = this.add.rectangle(0, 0, HANDLE_SIZE, HANDLE_SIZE, 0x4aa6ff, 0.95);
                 h.setStrokeStyle(2, 0xffffff, 1);
-                h.setDepth(10000);
+                // Way above any normal game content so it always wins
+                // hit-testing, even over UI sprites in the project doc.
+                h.setDepth(100000);
                 h.setVisible(false);
                 h.setName(name);
-                h.setInteractive({ draggable: true });
-                handles.push(h);
+                // Explicit hit area centered on the rectangle's origin.
+                // The setInteractive({ draggable: true }) signature has
+                // historically been flaky for primitive Shapes — passing
+                // an explicit Phaser.Geom.Rectangle hitArea + Contains
+                // callback is the canonical safe path.
+                const hitArea = new Phaser.Geom.Rectangle(
+                  -HANDLE_SIZE / 2, -HANDLE_SIZE / 2,
+                  HANDLE_SIZE, HANDLE_SIZE,
+                );
+                h.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
                 this.input.setDraggable(h, true);
+                handles.push(h);
               }
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (this as any).__pixlScaleHandles = handles;
 
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const sceneAny = this as any;
+              // Cache of the active transformMode + which handles are
+              // appropriate for each. The React-side useEffect mutates
+              // this when the toolbar toggles, and the redraw helper
+              // reads it to decide handle visibility.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (sceneAny as any).__pixlTransformMode = 'translate';
               sceneAny.__pixlRedrawOutline = (pixlId: string | null): void => {
                 outline.clear();
                 // Hide handles by default; show them only when an object
-                // is selected and has measurable bounds.
+                // is selected AND the toolbar's transform mode wants them.
                 for (const h of handles) h.setVisible(false);
                 if (!pixlId) return;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const mode = ((sceneAny as any).__pixlTransformMode ?? 'translate') as string;
+                const wantHandles = mode === 'scale';
                 const target = sceneAny.children.list.find(
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   (go: any) => go.getData?.('pixlId') === pixlId,
@@ -394,10 +420,10 @@ export function PhaserRuntimeMount({
                 const y0 = b.y - padding;
                 const x1 = b.x + b.width + padding;
                 const y1 = b.y + b.height + padding;
-                handles[0].setPosition(x0, y0).setVisible(true);  // NW
-                handles[1].setPosition(x1, y0).setVisible(true);  // NE
-                handles[2].setPosition(x0, y1).setVisible(true);  // SW
-                handles[3].setPosition(x1, y1).setVisible(true);  // SE
+                handles[0].setPosition(x0, y0).setVisible(wantHandles);  // NW
+                handles[1].setPosition(x1, y0).setVisible(wantHandles);  // NE
+                handles[2].setPosition(x0, y1).setVisible(wantHandles);  // SW
+                handles[3].setPosition(x1, y1).setVisible(wantHandles);  // SE
                 // Track which object the handles are operating on, so the
                 // drag handler can find it without doing another lookup.
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -407,6 +433,14 @@ export function PhaserRuntimeMount({
               // Drag handler — disambiguates body-drag (translate) from
               // handle-drag (scale via corner). Active only in edit mode
               // (gated by isPlaying).
+              // Debug log helps diagnose hit-detection issues on the
+              // real mouse path (eval emit bypasses Phaser's pointer
+              // tracking; only this code path proves the gizmo actually
+              // works for users).
+              this.input.on('dragstart', (_p: unknown, go: { name?: string }) => {
+                // eslint-disable-next-line no-console
+                console.log('[gizmo] dragstart on', go?.name);
+              });
               this.input.on(
                 'drag',
                 (
@@ -713,6 +747,22 @@ export function PhaserRuntimeMount({
       console.error('[PhaserRuntimeMount] selection outline / drag toggle failed:', err);
     }
   }, [selectedObjectId, load.status, isPlaying]);
+
+  // Round 3.5: keep the live scene in sync with the toolbar's
+  // transformMode toggle. The scene caches the value via a custom
+  // field so the redraw helper can read it without an extra React
+  // subscription each tick. Trigger an outline redraw on change so
+  // handles appear/disappear immediately.
+  useEffect(() => {
+    if (load.status !== 'ready') return;
+    const game = gameRef.current;
+    const scene = game?.scene?.scenes?.[0] as import('phaser').Scene | undefined;
+    if (!scene) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (scene as any).__pixlTransformMode = transformMode;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (scene as any).__pixlRedrawOutline?.(useEditorStore.getState().selectedObjectId);
+  }, [transformMode, load.status]);
 
   // Round 2: Inspector edits → live Phaser GO sync. When the selected
   // SceneObject's transform/visible changes in the editor store (typically
