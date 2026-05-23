@@ -43,9 +43,59 @@ const parseColor = (value: unknown, fallback = 0xffffff): number => {
   return fallback;
 };
 
-// Draws a single PixlSceneObject into the given Phaser.Scene. Supports the
-// primitive types our minimal sample uses; future types (sprite, text,
-// tilemap) plug in here.
+// Resolve a sprite's URL declared in the project doc against the project's
+// asset base. Project docs reference assets via relative paths (e.g.
+// "assets/characters/mage.png"); the runtime fetches from
+// `${assetBaseUrl}/${path}`. Returns the input verbatim for absolute URLs.
+const resolveAssetUrl = (assetBaseUrl: string, path: string): string => {
+  if (/^https?:\/\//i.test(path) || path.startsWith('/')) return path;
+  return `${assetBaseUrl.replace(/\/$/, '')}/${path}`;
+};
+
+// Walk a tree of GameObjectJSON, calling fn on every node depth-first.
+const walkObjects = (
+  list: GameObjectJSON[],
+  fn: (obj: GameObjectJSON) => void,
+): void => {
+  for (const obj of list) {
+    fn(obj);
+    if (obj.children?.length) walkObjects(obj.children, fn);
+  }
+};
+
+// Queue every sprite/image asset referenced by the scene tree onto Phaser's
+// loader so create() can synchronously add them to the scene. Spritesheet
+// frame configs are honoured when data.frameWidth/frameHeight are set.
+const queueSpriteLoads = (
+  scene: import('phaser').Scene,
+  rootObjects: GameObjectJSON[],
+  assetBaseUrl: string,
+): void => {
+  const queued = new Set<string>();
+  walkObjects(rootObjects, (obj) => {
+    if (obj.type !== 'sprite' && obj.type !== 'image') return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (obj as any).data ?? {};
+    const url = data.imageUrl ?? data.url;
+    if (typeof url !== 'string' || queued.has(url)) return;
+    queued.add(url);
+    const fullUrl = resolveAssetUrl(assetBaseUrl, url);
+    if (typeof data.frameWidth === 'number' && typeof data.frameHeight === 'number') {
+      scene.load.spritesheet(url, fullUrl, {
+        frameWidth: data.frameWidth,
+        frameHeight: data.frameHeight,
+        margin: data.frameMargin ?? 0,
+        spacing: data.frameSpacing ?? 0,
+      });
+    } else {
+      scene.load.image(url, fullUrl);
+    }
+  });
+};
+
+// Draws a single PixlSceneObject into the given Phaser.Scene. Supports
+// primitive shapes (rectangle/circle), sprite/image, and text. Unknown
+// types render a magenta marker so the gap is visible instead of silent.
 const drawObject = (
   scene: import('phaser').Scene,
   obj: GameObjectJSON,
@@ -63,6 +113,7 @@ const drawObject = (
       r.setRotation(obj.transform.rotation);
       r.setScale(obj.transform.scale.x, obj.transform.scale.y);
       r.setVisible(obj.visible !== false);
+      if (typeof data.alpha === 'number') r.setAlpha(data.alpha);
       break;
     }
     case 'circle': {
@@ -70,6 +121,58 @@ const drawObject = (
       const c = scene.add.circle(px.x, px.y, radius, color);
       c.setName(obj.name || obj.id);
       c.setVisible(obj.visible !== false);
+      if (typeof data.alpha === 'number') c.setAlpha(data.alpha);
+      break;
+    }
+    case 'sprite':
+    case 'image': {
+      const key = data.imageUrl ?? data.url;
+      if (!key || !scene.textures.exists(key)) {
+        // Asset missing — render a magenta marker labeled with the URL so
+        // the gap is debuggable instead of silently invisible.
+        const placeholder = scene.add.rectangle(px.x, px.y, 32, 32, 0xff00ff);
+        placeholder.setName(`${obj.name}(sprite-missing:${key ?? 'no-url'})`);
+        placeholder.setStrokeStyle(2, 0xffffff);
+        break;
+      }
+      const frame = typeof data.frame === 'number' ? data.frame : undefined;
+      const sprite = scene.add.sprite(px.x, px.y, key, frame);
+      sprite.setName(obj.name || obj.id);
+      sprite.setRotation(obj.transform.rotation);
+      const scaleMult = typeof data.scale === 'number' ? data.scale : 1;
+      sprite.setScale(
+        obj.transform.scale.x * scaleMult,
+        obj.transform.scale.y * scaleMult,
+      );
+      sprite.setVisible(obj.visible !== false);
+      if (typeof data.flipX === 'boolean') sprite.setFlipX(data.flipX);
+      if (typeof data.flipY === 'boolean') sprite.setFlipY(data.flipY);
+      if (typeof data.alpha === 'number') sprite.setAlpha(data.alpha);
+      if (typeof data.tint === 'string' || typeof data.tint === 'number') {
+        sprite.setTint(parseColor(data.tint, 0xffffff));
+      }
+      if (typeof data.depth === 'number') sprite.setDepth(data.depth);
+      // For tiled backgrounds (e.g. wallpaper-style arena-bg), let the
+      // project doc set displayWidth/displayHeight directly instead of
+      // multiplying scale (works better with auto-sized images).
+      if (typeof data.displayWidth === 'number') sprite.displayWidth = data.displayWidth;
+      if (typeof data.displayHeight === 'number') sprite.displayHeight = data.displayHeight;
+      break;
+    }
+    case 'text': {
+      const txt = typeof data.text === 'string' ? data.text : '';
+      const fontSize = typeof data.fontSize === 'number' ? `${data.fontSize}px` : '16px';
+      const fontFamily = typeof data.fontFamily === 'string' ? data.fontFamily : 'monospace';
+      const fontColor = typeof data.color === 'string' ? data.color : '#ffffff';
+      const t = scene.add.text(px.x, px.y, txt, {
+        fontSize, fontFamily, color: fontColor,
+      });
+      t.setName(obj.name || obj.id);
+      t.setRotation(obj.transform.rotation);
+      t.setScale(obj.transform.scale.x, obj.transform.scale.y);
+      t.setVisible(obj.visible !== false);
+      if (typeof data.depth === 'number') t.setDepth(data.depth);
+      if (typeof data.alpha === 'number') t.setAlpha(data.alpha);
       break;
     }
     default: {
@@ -119,14 +222,29 @@ export function PhaserRuntimeMount({
           : (phaserScene.physics?.gravity as { x: number; y: number } | undefined) ?? { x: 0, y: 980 });
         const bg = parseColor(phaserScene.environment?.background, 0x101822);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const env = (phaserScene.environment ?? {}) as any;
+        // Default to pixel art rendering — most 2D games using this mount
+        // are low-res sprite-driven (Magic Battleground, Arcane Arena, etc.).
+        // The project doc can opt out via environment.pixelArt = false.
+        const pixelArt = env.pixelArt !== false;
+
         gameRef.current = new Phaser.Game({
           type: Phaser.AUTO,
           parent: container,
           width: container.clientWidth || 800,
           height: container.clientHeight || 600,
           backgroundColor: bg,
+          pixelArt,
+          roundPixels: pixelArt,
           physics: { default: 'arcade', arcade: { gravity } },
           scene: {
+            preload(this: import('phaser').Scene) {
+              // Queue every sprite/image referenced by the scene tree before
+              // create() runs — Phaser's loader resolves between scenes so
+              // create() can call scene.add.sprite() synchronously.
+              queueSpriteLoads(this, phaserScene.rootObjects, assetBaseUrl);
+            },
             create(this: import('phaser').Scene) {
               for (const obj of phaserScene.rootObjects) {
                 drawObject(this, obj);
