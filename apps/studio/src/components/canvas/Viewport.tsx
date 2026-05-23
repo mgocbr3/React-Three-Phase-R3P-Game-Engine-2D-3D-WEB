@@ -1,13 +1,18 @@
-// GDD §6.6 — Phase 6B step 5.
+// GDD §6.6 — Phase 6B step 5+6.
 // The viewport. Picks Three vs Phaser based on the active scene kind.
 // Both canvases live in the React tree simultaneously (D7) — `visible`
 // toggles `display: block | none` so the WebGL context survives toggles.
 //
-// Phase 6B step 5: kind is now driven by either an explicit prop or the
-// URL `?kind=2d|3d` query param. Phase 6B step 6 will move this to
-// useEditorStore.activeSceneKind so the header 2D/3D buttons drive it.
+// Source-of-truth precedence (highest wins):
+//   1. Explicit `sceneKind` prop (rarely used — programmatic override)
+//   2. useViewportStore.viewportMode — the global toggle the toolbar
+//      writes when the user clicks the 2D/3D buttons. **This is what
+//      makes the header toggle actually drive the viewport.**
+//   3. URL `?kind=2d|3d` query param — boot-time seed only.
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+
+import { useViewportStore } from '@/stores/viewportStore';
 
 import { PhaserRuntimeMount } from './PhaserRuntimeMount';
 import { ThreeRuntimeMount } from './ThreeRuntimeMount';
@@ -47,9 +52,30 @@ export function Viewport({
   assetBaseUrl2D,
   initialScene,
 }: ViewportProps): React.JSX.Element {
+  // Subscribe to the toolbar's toggle so clicking 2D/3D in the header
+  // actually flips the viewport. Without this, the toolbar wrote to
+  // viewportStore but nobody read from it — toggle was visually active
+  // but a no-op functionally.
+  const viewportMode = useViewportStore((s) => s.viewportMode);
+  const setViewportMode = useViewportStore((s) => s.setViewportMode);
+
+  // Seed viewportStore from `?kind=` ONCE on first mount. The toggle takes
+  // over after that. Idempotent — re-running with same kind is a no-op.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current) return;
+    seededRef.current = true;
+    const fromUrl = readKindFromUrl();
+    if (fromUrl !== viewportMode) setViewportMode(fromUrl);
+    // viewportMode read inside effect intentionally — we only seed once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Effective kind: explicit prop wins (programmatic override), otherwise
+  // the live store value (toolbar-driven).
   const sceneKind = useMemo<SceneKind>(
-    () => sceneKindProp ?? readKindFromUrl(),
-    [sceneKindProp],
+    () => sceneKindProp ?? viewportMode,
+    [sceneKindProp, viewportMode],
   );
 
   // Honor explicit props first; otherwise infer from the URL so the
