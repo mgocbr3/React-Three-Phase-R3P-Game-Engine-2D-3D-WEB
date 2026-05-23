@@ -93,6 +93,18 @@ const queueSpriteLoads = (
   });
 };
 
+// Track the pixl id on each Phaser GameObject so scripts can look up
+// entities by their stable schema id (not by display name, which is
+// human-readable and can collide). Runtime gameObjects Map is keyed by
+// this id; setName(obj.name||obj.id) is preserved for the existing
+// Phaser-name convention.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const stampPixlId = (go: any, id: string | undefined): void => {
+  if (id && typeof go?.setData === 'function') {
+    go.setData('pixlId', id);
+  }
+};
+
 // Draws a single PixlSceneObject into the given Phaser.Scene. Supports
 // primitive shapes (rectangle/circle), sprite/image, and text. Unknown
 // types render a magenta marker so the gap is visible instead of silent.
@@ -110,6 +122,7 @@ const drawObject = (
       const h = typeof data.height === 'number' ? data.height : 40;
       const r = scene.add.rectangle(px.x, px.y, w, h, color);
       r.setName(obj.name || obj.id);
+      stampPixlId(r, obj.id);
       r.setRotation(obj.transform.rotation);
       r.setScale(obj.transform.scale.x, obj.transform.scale.y);
       r.setVisible(obj.visible !== false);
@@ -120,6 +133,7 @@ const drawObject = (
       const radius = typeof data.radius === 'number' ? data.radius : 20;
       const c = scene.add.circle(px.x, px.y, radius, color);
       c.setName(obj.name || obj.id);
+      stampPixlId(c, obj.id);
       c.setVisible(obj.visible !== false);
       if (typeof data.alpha === 'number') c.setAlpha(data.alpha);
       break;
@@ -138,6 +152,7 @@ const drawObject = (
       const frame = typeof data.frame === 'number' ? data.frame : undefined;
       const sprite = scene.add.sprite(px.x, px.y, key, frame);
       sprite.setName(obj.name || obj.id);
+      stampPixlId(sprite, obj.id);
       sprite.setRotation(obj.transform.rotation);
       const scaleMult = typeof data.scale === 'number' ? data.scale : 1;
       sprite.setScale(
@@ -168,6 +183,7 @@ const drawObject = (
         fontSize, fontFamily, color: fontColor,
       });
       t.setName(obj.name || obj.id);
+      stampPixlId(t, obj.id);
       t.setRotation(obj.transform.rotation);
       t.setScale(obj.transform.scale.x, obj.transform.scale.y);
       t.setVisible(obj.visible !== false);
@@ -260,6 +276,101 @@ export function PhaserRuntimeMount({
               }
               if (typeof cam?.zoom === 'number' && cam.zoom !== 1) {
                 this.cameras.main.setZoom(cam.zoom);
+              }
+
+              // Scene-level runtime script — first step toward the PLAN
+              // item 1 "scripts as components" milestone. If the active
+              // scene declares `runtimeScript` (a path relative to the
+              // project root), import it dynamically, call its default
+              // export with { scene, gameObjects, Phaser, project }, and
+              // wire the returned tick(delta) function to scene update.
+              // Vite serves files under /sample-projects/ raw, so the
+              // script is a plain ES module — no external bare imports.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const scriptPath = (activeScene as any).runtimeScript as string | undefined;
+              if (typeof scriptPath === 'string' && scriptPath.length > 0) {
+                // Key the lookup map by the pixl id (stamped via setData
+                // in drawObject) — that's the stable schema id the script
+                // references, distinct from go.name which carries the
+                // human-readable display name. Fall back to go.name when
+                // no pixl id was stamped (e.g. legacy projects).
+                const gameObjects = new Map<string, import('phaser').GameObjects.GameObject>();
+                for (const go of this.children.list) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const pixlId = (go as any).getData?.('pixlId') as string | undefined;
+                  const key = pixlId ?? go.name;
+                  if (key) gameObjects.set(key, go);
+                }
+                const sceneRef = this;
+                const fullUrl = `${assetBaseUrl.replace(/\/$/, '')}/${scriptPath}?t=${Date.now()}`;
+                // eslint-disable-next-line no-console
+                console.log(`[PhaserRuntimeMount] loading runtime script: ${fullUrl}`);
+                // Vite refuses dynamic import() of files served from /public
+                // ("only via HTML tags"), so we fetch the raw text and import
+                // it through a Blob URL — the browser still treats the result
+                // as a real ES module with proper import/export semantics.
+                (async () => {
+                  const response = await fetch(fullUrl);
+                  if (!response.ok) {
+                    throw new Error(
+                      `runtimeScript fetch ${response.status} ${response.statusText} for ${fullUrl}`,
+                    );
+                  }
+                  const code = await response.text();
+                  const blob = new Blob([code], { type: 'application/javascript' });
+                  const blobUrl = URL.createObjectURL(blob);
+                  try {
+                    return await import(/* @vite-ignore */ blobUrl);
+                  } finally {
+                    URL.revokeObjectURL(blobUrl);
+                  }
+                })()
+                  .then((mod: { default?: unknown; setup?: unknown }) => {
+                    const setup = (mod.default ?? mod.setup) as
+                      | ((ctx: unknown) => unknown)
+                      | undefined;
+                    if (typeof setup !== 'function') {
+                      // eslint-disable-next-line no-console
+                      console.warn(
+                        `[PhaserRuntimeMount] runtimeScript ${scriptPath} has no default/setup export`,
+                      );
+                      return;
+                    }
+                    let tickFn: ((dt: number, time: number) => void) | null = null;
+                    try {
+                      const ret = setup({
+                        scene: sceneRef,
+                        gameObjects,
+                        Phaser,
+                        project,
+                        activeScene,
+                      });
+                      if (typeof ret === 'function') {
+                        tickFn = ret as (dt: number, time: number) => void;
+                      }
+                    } catch (err) {
+                      // eslint-disable-next-line no-console
+                      console.error('[PhaserRuntimeMount] runtimeScript setup threw:', err);
+                      return;
+                    }
+                    if (tickFn) {
+                      sceneRef.events.on('update', (time: number, delta: number) => {
+                        try {
+                          tickFn?.(delta, time);
+                        } catch (err) {
+                          // eslint-disable-next-line no-console
+                          console.error('[PhaserRuntimeMount] runtimeScript tick threw:', err);
+                        }
+                      });
+                    }
+                  })
+                  .catch((err: unknown) => {
+                    // eslint-disable-next-line no-console
+                    console.error(
+                      `[PhaserRuntimeMount] failed to load runtimeScript ${scriptPath}:`,
+                      err,
+                    );
+                  });
               }
             },
           },

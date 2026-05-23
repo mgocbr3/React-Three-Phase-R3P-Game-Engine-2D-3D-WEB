@@ -24,6 +24,7 @@
       "id": "arena",
       "name": "Arena",
       "kind": "2d",
+      "runtimeScript": "runtime/src/editor-script.js",
       "environment": { "background": "#a8a8a8", "pixelArt": true },
       "physics": { "engine": "arcade", "gravity": [0, 980] },
       "camera": {
