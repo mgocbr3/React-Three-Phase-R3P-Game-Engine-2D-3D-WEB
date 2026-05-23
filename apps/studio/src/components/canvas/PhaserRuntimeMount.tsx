@@ -12,6 +12,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { pixlSceneToPhaserScene, type GameObjectJSON, type SceneJSON } from '@pixlland/phaser-runtime';
+import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 
 export interface PhaserRuntimeMountProps {
@@ -221,6 +222,9 @@ export function PhaserRuntimeMount({
   // through useEffect below means Play/Stop toggles flow through to
   // scene.scene.pause()/resume() without re-mounting the canvas.
   const isPlaying = useRuntimeGameStore((s) => s.isPlaying);
+  // Round 1: subscribe to the existing editor-store selection so the
+  // outline + InspectorPanel work uniformly for the 2D viewport.
+  const selectedObjectId = useEditorStore((s) => s.selectedObjectId);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -274,6 +278,54 @@ export function PhaserRuntimeMount({
               for (const obj of phaserScene.rootObjects) {
                 drawObject(this, obj);
               }
+
+              // Round 1 of the visual editor: make every rendered gameobject
+              // hit-testable, route clicks to useEditorStore.selectObject so
+              // the existing InspectorPanel picks up the selection. Empty
+              // clicks deselect. The runtime script's own pointerdown
+              // handlers still fire — selection is additive, not exclusive.
+              for (const go of this.children.list) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const anyGo = go as any;
+                if (typeof anyGo.setInteractive === 'function') {
+                  try { anyGo.setInteractive(); } catch { /* some types can't be interactive */ }
+                }
+              }
+              this.input.on(
+                'gameobjectdown',
+                (
+                  _pointer: import('phaser').Input.Pointer,
+                  gameObject: import('phaser').GameObjects.GameObject,
+                ) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const pixlId = (gameObject as any).getData?.('pixlId') as string | undefined;
+                  if (pixlId) {
+                    useEditorStore.getState().selectObject(pixlId);
+                  }
+                },
+              );
+              this.input.on(
+                'pointerdown',
+                (
+                  _pointer: import('phaser').Input.Pointer,
+                  hits: import('phaser').GameObjects.GameObject[],
+                ) => {
+                  if (!hits || hits.length === 0) {
+                    useEditorStore.getState().selectObject(null);
+                  }
+                },
+              );
+
+              // Selection outline — drawn as a yellow rectangle on top of
+              // everything. Updated reactively by the React layer below;
+              // here we just create the Graphics object and stash it on
+              // the scene so the React useEffect can find it.
+              const outline = this.add.graphics();
+              outline.setDepth(9999);
+              outline.setName('__pixl_selection_outline');
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (this as any).__pixlSelectionOutline = outline;
+
               const cam = phaserScene.camera;
               // Pixl 2D camera.position is interpreted as "scroll" offset
               // (top-left corner of view in world coords). Only override
@@ -436,6 +488,62 @@ export function PhaserRuntimeMount({
       }
     };
   }, [visible, assetBaseUrl]);
+
+  // Redraw the selection outline whenever the editor store's selection
+  // changes. Runs decoupled from Phaser's update loop so it works whether
+  // the scene is paused (edit mode) or running (play mode).
+  useEffect(() => {
+    const game = gameRef.current;
+    if (!game || load.status !== 'ready') return;
+    try {
+      const scene = game.scene?.scenes?.[0] as import('phaser').Scene | undefined;
+      if (!scene) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const outline = (scene as any).__pixlSelectionOutline as
+        | import('phaser').GameObjects.Graphics
+        | undefined;
+      if (!outline) return;
+      outline.clear();
+
+      if (!selectedObjectId) return;
+
+      // Find the gameobject whose stamped pixlId matches the selection.
+      const target = scene.children.list.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (go) => (go as any).getData?.('pixlId') === selectedObjectId,
+      ) as import('phaser').GameObjects.GameObject | undefined;
+      if (!target) return;
+
+      // Phaser's GameObject.getBounds returns world-space rect for most
+      // visual types (Image/Sprite/Rectangle/Text). Skip types without it.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const bounds = (target as any).getBounds?.() as
+        | { x: number; y: number; width: number; height: number }
+        | undefined;
+      if (!bounds) return;
+
+      // Yellow stroke with a translucent fill — matches Godot/Unity selection
+      // visuals without overpowering the underlying art.
+      const padding = 4;
+      outline.lineStyle(2, 0xffe066, 1);
+      outline.strokeRect(
+        bounds.x - padding,
+        bounds.y - padding,
+        bounds.width + padding * 2,
+        bounds.height + padding * 2,
+      );
+      outline.fillStyle(0xffe066, 0.08);
+      outline.fillRect(
+        bounds.x - padding,
+        bounds.y - padding,
+        bounds.width + padding * 2,
+        bounds.height + padding * 2,
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[PhaserRuntimeMount] selection outline draw failed:', err);
+    }
+  }, [selectedObjectId, load.status]);
 
   // Mirror the Play/Stop toggle into the live Phaser scene. Pause freezes
   // the update loop (so the runtime script's tick stops running); resume
