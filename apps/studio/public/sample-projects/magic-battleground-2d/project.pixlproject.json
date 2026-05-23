@@ -1,0 +1,209 @@
+{
+  "format": "pixlplayground-project",
+  "version": 2,
+  "id": "magic-battleground-2d",
+  "slug": "magic-battleground-2d",
+  "name": "Magic Battleground 2D",
+  "engine": {
+    "name": "PixlPlayground",
+    "version": "0.2.0",
+    "schemaVersion": 2,
+    "runtimeManifest": {
+      "runtime": "phaser-2d",
+      "dependencies": { "phaser": "4.1.0" }
+    }
+  },
+  "runtime": {
+    "primary": "phaser-2d",
+    "renderers": ["phaser"],
+    "physics": ["arcade"]
+  },
+  "activeSceneId": "arena",
+  "scenes": [
+    {
+      "id": "arena",
+      "name": "Arena",
+      "kind": "2d",
+      "environment": { "background": "#1b1530" },
+      "physics": { "engine": "arcade", "gravity": [0, 980] },
+      "camera": {
+        "id": "main-camera-2d",
+        "name": "Main Camera 2D",
+        "position": [0, 0, 0],
+        "target": [0, 0, 0],
+        "zoom": 1
+      },
+      "rootObjects": [
+        {
+          "id": "sky-glow",
+          "name": "Sky Glow Backdrop",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [400, 250, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["backdrop"],
+          "components": [],
+          "data": { "color": "#2a1f4a", "width": 760, "height": 360 }
+        },
+        {
+          "id": "ground",
+          "name": "Ground",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [400, 540, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["static"],
+          "components": [],
+          "data": { "color": "#3a2b5a", "width": 800, "height": 60 }
+        },
+        {
+          "id": "ground-trim",
+          "name": "Ground Trim",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [400, 514, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["static"],
+          "components": [],
+          "data": { "color": "#6b4cd0", "width": 800, "height": 4 }
+        },
+
+        {
+          "id": "rune-circle-left",
+          "name": "Rune Glow Left",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [180, 502, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["fx"],
+          "components": [],
+          "data": { "color": "#7a5cff", "radius": 38 }
+        },
+        {
+          "id": "rune-circle-right",
+          "name": "Rune Glow Right",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [620, 502, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["fx"],
+          "components": [],
+          "data": { "color": "#ff6c4a", "radius": 38 }
+        },
+
+        {
+          "id": "player-body",
+          "name": "Player Mage Body",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [180, 470, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["player"],
+          "components": [],
+          "data": { "color": "#3b73ff", "width": 36, "height": 56 }
+        },
+        {
+          "id": "player-head",
+          "name": "Player Mage Head",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [180, 432, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["player"],
+          "components": [],
+          "data": { "color": "#f0c89a", "radius": 16 }
+        },
+        {
+          "id": "player-hat",
+          "name": "Player Mage Hat",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [180, 410, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["player"],
+          "components": [],
+          "data": { "color": "#2050cc", "width": 26, "height": 16 }
+        },
+        {
+          "id": "player-wand-orb",
+          "name": "Player Wand Orb",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [212, 470, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["player", "fx"],
+          "components": [],
+          "data": { "color": "#ffd055", "radius": 7 }
+        },
+
+        {
+          "id": "enemy-body",
+          "name": "Enemy Body",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [620, 470, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["enemy"],
+          "components": [],
+          "data": { "color": "#e04848", "width": 36, "height": 56 }
+        },
+        {
+          "id": "enemy-head",
+          "name": "Enemy Head",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [620, 432, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["enemy"],
+          "components": [],
+          "data": { "color": "#f0c89a", "radius": 16 }
+        },
+        {
+          "id": "enemy-eye",
+          "name": "Enemy Eye Glow",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [612, 432, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["enemy", "fx"],
+          "components": [],
+          "data": { "color": "#ff2020", "radius": 3 }
+        },
+
+        {
+          "id": "fireball-incoming",
+          "name": "Incoming Fireball",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [400, 440, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["projectile", "fx"],
+          "components": [],
+          "data": { "color": "#ff8a2a", "radius": 14 }
+        }
+      ]
+    }
+  ],
+  "assets": { "root": "Assets", "folders": [], "entries": [] },
+  "editor": { "mode": "2d" },
+  "game": {
+    "templateId": null,
+    "source": {
+      "game": "magic-battleground-2d",
+      "notes": "Side-view 2D fighter inspired by Poki's Magic Battleground. Scene authored as rectangle + circle types — rendered inside the editor's 2D viewport via PhaserRuntimeMount. Gameplay (WASD movement, mouse-click fireball, ragdoll on KO) requires a script component system which the engine doesn't have yet — this is the static scene representation."
+    }
+  }
+}

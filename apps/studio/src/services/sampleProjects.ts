@@ -13,6 +13,13 @@ const SAMPLE_PROJECTS: Record<string, { projectUrl: string; assetBaseUrl?: strin
   'magic-battleground-mvp': {
     projectUrl: '/sample-projects/magic-battleground-mvp/project.pixlproject.json',
     // No external assetBaseUrl — every entity is a pixl.primitive, no GLBs to resolve.
+    // (NB: this is a 3D demo of the new pixl.primitive feature, not the canonical
+    // Magic Battleground recreation. The actual game is 2D side-view — see the
+    // 'magic-battleground-2d' sample below.)
+  },
+  'magic-battleground-2d': {
+    projectUrl: '/sample-projects/magic-battleground-2d/project.pixlproject.json',
+    // 2D side-view fighter. Open with ?kind=2d to route to PhaserRuntimeMount.
   },
 };
 
