@@ -71,16 +71,17 @@ Aberto / follow-ups:
 - `pack <dir> <out.pixl>` — empacota projeto em ZIP único com manifest sha256-hashado (Phase 1, 2026-05-22)
 - `unpack <in.pixl> <dir>` — desempacota verificando hashes
 - `inspect <in.pixl>` — lê só o manifest header (sem verificar hashes)
-- `export-three <project> <out-dir>` — bundle standalone HTML+main.js (esbuild) + Assets/, runtime via `Game.loadFromPixlProject` (Phase 2, 2026-05-22 session 3). `--asset-search <dir>` pra resolver assets que vivem fora do project dir; `--skip-bundle` pra emit raw entry (debug).
+- `export-three <project> <out-dir>` — bundle standalone via **vite.build** + Assets/ via Vite publicDir, runtime via `Game.loadFromPixlProject` (Phase 2, 2026-05-22 session 3+4+5; migrado de esbuild pra Vite na session 4 pra unificar com `apps/studio` e a convenção Phaser/PlayCanvas; session 5 fechou os follow-ups). `--asset-search <dir>` pra resolver assets que vivem fora do project dir; `--skip-bundle` pra emit raw entry (debug); `--sourcemap` pra emitir `.js.map` ao lado dos chunks; `--no-minify` pra bundle inspectável.
 
 Próximos comandos (precisam de design ao vivo):
 - `pixl-engine export-phaser <project> <out>` — bundle HTML+JS Phaser 4+DOM standalone (espelho 2D do export-three)
 - `pixl-engine export-pixlland <project> <out>` — bundle pronto pra upload no Pixlland
 
 Follow-ups do export-three:
-- 🟡 **Asset URL mismatch**: runtime fetcha pelo `modelUrl` normalizado (ex `assets/vendor/farm-pack/Farm.glb`) mas o exporter copia preservando `entry.path` (`Assets/3D_Models/...`). Smoke test mostrou 404 em todos os GLBs do Harvest Rush. Fix: ou copiar usando `normalizeAssetPath(entry.url)` como destino, ou rewrite os `data.modelUrl` no `project.pixlproject.json` copiado para apontar pra `entry.path`. A segunda é mais limpa mas exige walk dos componentes.
-- 🟡 **Sourcemap opcional**: hoje esbuild bundla sem sourcemap. Adicionar opção `--sourcemap` no CLI.
-- 🟡 **Tree-shake / minify**: bundle atual é 3.5MB raw. Para publicação real, ligar minify; pra dev keep raw.
+- ✅ **Asset URL mismatch** (2026-05-22 session 5): `exportProjectToThree` agora chama `rewriteAssetUrlsInProject`, que reescreve `data.modelUrl` / `data.assetPath` / `data.url` / `data.customData.sourceAsset` no project doc copiado pra apontar pra `entry.path`. Runtime normaliza (strip `public/`) e fetcha `<outDir>/<entry.path>` direto — onde o Vite publicDir colocou o binário. Round-trip de URL fica fechado. `rewriteCount` aparece no log final. 7 testes novos em [`exportThree.test.ts`](./packages/cli/src/commands/exportThree.test.ts) (6 pure + 1 IO).
+- ✅ **Sourcemap opcional** (session 5): flag `--sourcemap` no CLI, `sourcemap?: boolean` em `RunExportThreeOptions`, repassado pra `vite.build({ build: { sourcemap } })`. Default off.
+- ✅ **Minify control** (session 5): flag `--no-minify` no CLI, `minify?: boolean` em `RunExportThreeOptions`. Quando explicitamente `false`, passa `minify: false` pro Vite; quando undefined, deixa o default do Vite (esbuild minify em production). Combined real-vite test cobre os dois flags juntos.
+- ✅ **Code-split / hashing**: Vite faz automático — bundle live em `assets/index-<hash>.js`, cacheável.
 
 Risco: baixo. Aditivo, sem UI.
 

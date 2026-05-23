@@ -21,7 +21,7 @@
     "@pixlland/engine-core": "workspace:*",
     "@pixlland/engine-ops": "workspace:*",
     "@pixlland/three-runtime": "workspace:*",
-    "esbuild": "^0.21.5"
+    "vite": "^5.4.19"
   },
   "devDependencies": {
     "@types/node": "^22.16.5",

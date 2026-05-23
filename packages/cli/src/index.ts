@@ -30,7 +30,7 @@ Commands:
   new <dir> --kind 2d|3d [--name <name>]       Scaffold a new project folder.
   import-level3d <src.level3d.json> <out.pixlproject.json>   Convert level3d.json -> project doc.
   export-level3d <project.pixlproject.json> <out.level3d.json>   Reverse: project doc -> level3d.json.
-  export-three <project.pixlproject.json> <out-dir> [--asset-search <dir>...] [--skip-bundle]
+  export-three <project.pixlproject.json> <out-dir> [--asset-search <dir>...] [--skip-bundle] [--sourcemap] [--no-minify]
                                                Emit a standalone Three.js+Rapier web bundle for the project.
   pack    <project-dir> <out.pixl>             Pack a project folder into a single .pixl archive.
   unpack  <in.pixl> <project-dir>              Unpack a .pixl archive into a project folder (verifies hashes).
@@ -134,9 +134,12 @@ const main = async (): Promise<number> => {
         console.error(USAGE);
         return 1;
       }
-      // Parse --asset-search <dir> (repeatable) and --skip-bundle flags.
+      // Parse --asset-search <dir> (repeatable), --skip-bundle, --sourcemap,
+      // and --no-minify flags. Unknown flags abort with a clear error.
       const assetSearchPaths: string[] = [];
       let skipBundle = false;
+      let sourcemap = false;
+      let minify: boolean | undefined = undefined;
       for (let i = 2; i < rest.length; i += 1) {
         const arg = rest[i];
         if (arg === '--asset-search') {
@@ -149,12 +152,21 @@ const main = async (): Promise<number> => {
           i += 1;
         } else if (arg === '--skip-bundle') {
           skipBundle = true;
+        } else if (arg === '--sourcemap') {
+          sourcemap = true;
+        } else if (arg === '--no-minify') {
+          minify = false;
         } else {
           console.error(`export-three: opcao desconhecida "${arg}".`);
           return 1;
         }
       }
-      const result = await runExportThree(source, out, { assetSearchPaths, skipBundle });
+      const result = await runExportThree(source, out, {
+        assetSearchPaths,
+        skipBundle,
+        sourcemap,
+        minify,
+      });
       printExportThreeResult(result);
       return result.missingAssets.length > 0 ? 0 : 0;
     }
