@@ -378,6 +378,26 @@ export function PhaserRuntimeMount({
         // Phase 6B debug.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__pixlPhaserGame = gameRef.current;
+
+        // Keyboard capture only works when the canvas can take focus and
+        // is in fact focused. Phaser DOES listen on window by default, but
+        // when the studio toolbar steals focus to a button the user's
+        // WASD keypresses go to the button (or, worse, trigger button
+        // accesskey behaviour) and never reach the game loop. Fix on both
+        // ends: make the canvas tab-focusable, auto-focus it on mount,
+        // and re-focus on click.
+        const canvas = gameRef.current.canvas as HTMLCanvasElement | undefined;
+        if (canvas) {
+          canvas.setAttribute('tabindex', '0');
+          canvas.style.outline = 'none';
+          // First mount: pull focus so WASD works without the user having
+          // to click the canvas first.
+          requestAnimationFrame(() => canvas.focus({ preventScroll: true }));
+          // Click anywhere on the canvas reclaims focus from the toolbar.
+          canvas.addEventListener('pointerdown', () => {
+            try { canvas.focus({ preventScroll: true }); } catch { /* noop */ }
+          });
+        }
         setLoad({ status: 'ready' });
       } catch (error) {
         if (disposed) return;
