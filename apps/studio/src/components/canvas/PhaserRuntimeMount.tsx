@@ -225,6 +225,20 @@ export function PhaserRuntimeMount({
   // Round 1: subscribe to the existing editor-store selection so the
   // outline + InspectorPanel work uniformly for the 2D viewport.
   const selectedObjectId = useEditorStore((s) => s.selectedObjectId);
+  // Round 2: subscribe to the currently-selected SceneObject's transform
+  // and visibility so Inspector edits flow back into the Phaser scene
+  // without a reload. Use scalar derived deps (px, py, rz, sx, sy) instead
+  // of the whole object reference so the effect only re-runs when a value
+  // we actually care about changes.
+  const selectedStoreObject = useEditorStore((s) =>
+    s.objects.find((o) => o.id === s.selectedObjectId),
+  );
+  const selStorePx = selectedStoreObject?.position?.[0];
+  const selStorePy = selectedStoreObject?.position?.[1];
+  const selStoreRz = selectedStoreObject?.rotation?.[2];
+  const selStoreSx = selectedStoreObject?.scale?.[0];
+  const selStoreSy = selectedStoreObject?.scale?.[1];
+  const selStoreVisible = selectedStoreObject?.visible;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -618,6 +632,60 @@ export function PhaserRuntimeMount({
       console.error('[PhaserRuntimeMount] selection outline / drag toggle failed:', err);
     }
   }, [selectedObjectId, load.status, isPlaying]);
+
+  // Round 2: Inspector edits → live Phaser GO sync. When the selected
+  // SceneObject's transform/visible changes in the editor store (typically
+  // because the user typed a new value in the InspectorPanel), find the
+  // matching Phaser GameObject by pixlId and apply the values. Idempotent
+  // for the drag path: drag handler calls updateObject(pixlId, {position})
+  // which triggers this effect with the same values it just set on the
+  // GO — Phaser setPosition/setRotation/etc are no-ops when the values
+  // already match, so no loop.
+  useEffect(() => {
+    if (!selectedObjectId || load.status !== 'ready') return;
+    const game = gameRef.current;
+    const scene = game?.scene?.scenes?.[0] as import('phaser').Scene | undefined;
+    if (!scene) return;
+    const target = scene.children.list.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (go) => (go as any).getData?.('pixlId') === selectedObjectId,
+    );
+    if (!target) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyGo = target as any;
+    try {
+      if (typeof selStorePx === 'number' && typeof selStorePy === 'number') {
+        if (typeof anyGo.setPosition === 'function') {
+          anyGo.setPosition(selStorePx, selStorePy);
+        } else {
+          anyGo.x = selStorePx;
+          anyGo.y = selStorePy;
+        }
+      }
+      if (typeof selStoreRz === 'number' && typeof anyGo.setRotation === 'function') {
+        // 2D rotation maps to z-axis rotation from the 3D-shaped editor
+        // store. Phaser uses radians on the canvas.
+        anyGo.setRotation(selStoreRz);
+      }
+      if (typeof selStoreSx === 'number' && typeof selStoreSy === 'number') {
+        if (typeof anyGo.setScale === 'function') {
+          anyGo.setScale(selStoreSx, selStoreSy);
+        }
+      }
+      if (typeof selStoreVisible === 'boolean' && typeof anyGo.setVisible === 'function') {
+        anyGo.setVisible(selStoreVisible);
+      }
+      // Re-draw the outline at the new bounds.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (scene as any).__pixlRedrawOutline?.(selectedObjectId);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[PhaserRuntimeMount] store→GO sync failed:', err);
+    }
+  }, [
+    selectedObjectId, load.status,
+    selStorePx, selStorePy, selStoreRz, selStoreSx, selStoreSy, selStoreVisible,
+  ]);
 
   // Mirror the Play/Stop toggle into the live Phaser scene. Pause freezes
   // the update loop (so the runtime script's tick stops running); resume
