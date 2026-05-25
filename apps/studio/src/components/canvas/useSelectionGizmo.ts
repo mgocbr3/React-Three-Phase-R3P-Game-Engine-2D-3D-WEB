@@ -26,6 +26,12 @@ export interface UseSelectionGizmoArgs {
   orbitControls?: OrbitControls | null;
   mode?: GizmoMode;
   enabled?: boolean;
+  /**
+   * Externally-driven selection (e.g. the editor's hierarchy panel sets this
+   * via `useEditorStore.selectedObjectId`). When provided, the gizmo attaches
+   * to this object regardless of canvas raycast. Passing `null` detaches.
+   */
+  externalSelected?: THREE.Object3D | null;
   onSelectionChange?: (object: THREE.Object3D | null) => void;
 }
 
@@ -36,6 +42,7 @@ export const useSelectionGizmo = ({
   orbitControls,
   mode = 'translate',
   enabled = true,
+  externalSelected,
   onSelectionChange,
 }: UseSelectionGizmoArgs): void => {
   const transformRef = useRef<TransformControls | null>(null);
@@ -105,6 +112,17 @@ export const useSelectionGizmo = ({
       canvas.removeEventListener('pointerdown', onPointerDown);
     };
   }, [canvas, camera, scene, enabled]);
+
+  // External selection wins over internal raycast selection. This is the
+  // hierarchy → gizmo bridge: when the editor's SceneGraphPanel updates
+  // `useEditorStore.selectedObjectId`, the parent component looks up the
+  // matching THREE.Object3D and passes it here. Without this hook, clicking
+  // a row in the hierarchy never attached the native gizmo because the
+  // gizmo only listened to canvas pointer-down raycasts.
+  useEffect(() => {
+    if (externalSelected === undefined) return; // arg not used by this caller
+    setSelected(externalSelected);
+  }, [externalSelected]);
 
   // Wire selection state → transform attach/detach + onSelectionChange.
   useEffect(() => {

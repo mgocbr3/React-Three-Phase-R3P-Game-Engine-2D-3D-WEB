@@ -16,6 +16,8 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useProjectAutoSave } from '@/legacy/cloud/hooks/useProjectAutoSave';
+import { useEditorAutosave } from '@/hooks/useEditorAutosave';
+import { useEditorArrowNudge } from '@/hooks/useEditorArrowNudge';
 import { TemplateId, GAME_TEMPLATES } from '@/stores/gameStore';
 import { usePixllandBridge } from '@/hooks/usePixllandBridge';
 import { usePixllandProjectStore } from '@/stores/pixllandProjectStore';
@@ -44,6 +46,19 @@ const EditorPage = () => {
 
   //  Ativar auto-save híbrido (local + nuvem quando logado)
   const { setCloudProjectId, pendingConflict, isResolvingConflict, resolveConflict } = useProjectAutoSave();
+
+  // Local autosave — writes `pixl-project-document` + per-id snapshot after
+  // any editor mutation. Without this, Inspector edits / drags / gizmo moves
+  // are lost on reload because the singleton doc only gets written by
+  // `applyProjectDocumentToEditor` (at load time) and `saveActiveProjectDocumentToDirectory`
+  // (manual File→Save). The 500 ms debounce coalesces drag streams.
+  useEditorAutosave();
+
+  // Arrow-key nudge for the selected object in edit mode (Shift = 10×,
+  // Alt = 0.1× step). Pair with PhaserRuntimeMount's keyboard-plugin
+  // toggle: in edit mode Phaser keys go silent so the runtime script
+  // can't steal arrows; this hook claims them for the editor instead.
+  useEditorArrowNudge();
 
   const searchParams = new URLSearchParams(window.location.search);
   const isEmbedded = ENGINE_CLOUD_ENABLED && searchParams.get('embedded') === 'true';

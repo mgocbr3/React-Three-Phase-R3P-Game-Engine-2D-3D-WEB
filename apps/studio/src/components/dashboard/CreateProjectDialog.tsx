@@ -14,10 +14,12 @@ import { Label } from '@/components/ui/label';
 import { useCreateProject } from '@/hooks/useProjects';
 import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { createEmptyLocalProject } from '@/services/localProjectFiles';
+import type { PixlSceneKind } from '@/engine/project/schema';
 import { isPixllandConfigured } from '@/legacy/cloud/integrations/pixlland/client';
 import { ENGINE_CLOUD_ENABLED, ENGINE_LOCAL_ONLY } from '@/config/engineMode';
 import { AuthModal } from '@/components/auth/AuthModal';
-import { Sparkles, FolderPlus, Loader2, LogIn } from 'lucide-react';
+import { Sparkles, FolderPlus, Loader2, LogIn, Box, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CreateProjectDialogProps {
@@ -34,6 +36,7 @@ export const CreateProjectDialog = ({
   templateName,
 }: CreateProjectDialogProps) => {
   const [projectName, setProjectName] = useState('');
+  const [projectKind, setProjectKind] = useState<PixlSceneKind>('3d');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -64,14 +67,33 @@ export const CreateProjectDialog = ({
     if (canCreateLocalProject) {
       const project = createLocalProject(name, templateId);
 
-      toast.success('Projeto local criado!');
+      // Forking a template lets the template viewport seed the editor.
+      // For a from-scratch project, seed an EMPTY PixlProjectDocument matching
+      // the chosen kind so the editor opens to a blank scene (instead of
+      // inheriting the previous project's objects from the singleton doc).
+      if (!templateId) {
+        try {
+          createEmptyLocalProject({
+            id: project.id,
+            name,
+            kind: projectKind,
+            templateId: null,
+          });
+        } catch (err) {
+          console.warn('[CreateProjectDialog] Failed to seed empty document:', err);
+        }
+      }
+
+      toast.success(`Projeto ${projectKind === '2d' ? '2D' : '3D'} criado.`);
       onOpenChange(false);
       setProjectName('');
+      setProjectKind('3d');
 
       if (templateId) {
         navigate(`/editor/${templateId}?localProject=${project.id}`);
       } else {
-        navigate(`/editor?localProject=${project.id}`);
+        const kindParam = projectKind === '2d' ? '&kind=2d' : '';
+        navigate(`/editor?localProject=${project.id}${kindParam}`);
       }
       return;
     }
@@ -164,6 +186,50 @@ export const CreateProjectDialog = ({
                     disabled={createProjectMutation.isPending}
                   />
                 </div>
+
+                {!isForking && (
+                  <div className="space-y-2">
+                    <Label>Tipo de Projeto</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        data-testid="project-kind-3d"
+                        onClick={() => setProjectKind('3d')}
+                        className={`flex flex-col items-start gap-1 rounded-md border p-3 text-left transition ${
+                          projectKind === '3d'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border/50 hover:border-border'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Box className="h-4 w-4" />
+                          <span className="font-semibold text-sm">3D</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Three.js + R3F + Rapier
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="project-kind-2d"
+                        onClick={() => setProjectKind('2d')}
+                        className={`flex flex-col items-start gap-1 rounded-md border p-3 text-left transition ${
+                          projectKind === '2d'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border/50 hover:border-border'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Square className="h-4 w-4" />
+                          <span className="font-semibold text-sm">2D</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Phaser 4 + Rapier 2D
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {isForking && (
                   <p className="text-xs text-muted-foreground">

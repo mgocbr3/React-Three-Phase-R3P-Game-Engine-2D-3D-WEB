@@ -18,6 +18,18 @@ import {
   normalizeProjectDocument,
 } from '@/engine/project/editorProjectAdapter';
 import { withFilePicker } from './filePickerLock';
+import {
+  SINGLE_PROJECT_DOC_KEY,
+  saveProjectDocSnapshot,
+  loadProjectDocSnapshot,
+  removeProjectDocSnapshot,
+  createEmptyProjectDocument,
+} from './projectDocStorage';
+import type { PixlSceneKind } from '@/engine/project/schema';
+
+// sampleProjects.ts imports from THIS file (applyProjectDocumentToEditor),
+// so we resolve it lazily to avoid a top-level circular import in Vite.
+const loadSampleHelpers = async () => import('./sampleProjects');
 
 export const PIXL_PROJECT_FILE = 'project.pixlproject.json';
 
@@ -305,6 +317,16 @@ export const getCurrentProjectWorkspace = (): LocalProjectWorkspace => ({
 
 export const hasActiveProjectWorkspace = () => Boolean(currentProjectDirectory);
 
+/**
+ * True once `applyProjectDocumentToEditor` has been called at least once
+ * during the current page lifetime. Used by `useEditorAutosave` to avoid
+ * persisting empty/orphan docs during the brief window between component
+ * mount and the sample/local-project being loaded.
+ */
+export const hasLoadedAnyProjectDocument = (): boolean => Boolean(currentProjectDocument);
+
+export const getActiveProjectDocumentId = (): string | null => currentProjectDocument?.id ?? null;
+
 const openWorkspaceDb = (): Promise<IDBDatabase | null> => {
   if (typeof indexedDB === 'undefined') return Promise.resolve(null);
 
@@ -365,6 +387,34 @@ const getStoredProjectWorkspace = async (projectId: string) => (
     updatedAt: number;
   }>('readonly', (store) => store.get(projectId))
 );
+
+/**
+ * Initialize a brand-new local project: writes metadata to useProjectStore,
+ * seeds an empty PixlProjectDocument (per `kind`), applies it to the editor,
+ * and persists it both in the singleton key and the per-id snapshot.
+ *
+ * This replaces the previous "create metadata only" flow that left the editor
+ * still showing whatever scene was loaded before.
+ */
+export const createEmptyLocalProject = (params: {
+  id: string;
+  name: string;
+  kind?: PixlSceneKind;
+  templateId?: string | null;
+}): PixlProjectDocument => {
+  const doc = createEmptyProjectDocument({
+    id: params.id,
+    name: params.name,
+    kind: params.kind,
+    templateId: params.templateId ?? null,
+  });
+  applyProjectDocumentToEditor(doc);
+  return doc;
+};
+
+export const deleteLocalProjectDoc = (projectId: string): void => {
+  removeProjectDocSnapshot(projectId);
+};
 
 export const createProjectDocumentFromEditor = (name = 'Untitled Project'): PixlProjectDocument => {
   const {
@@ -550,8 +600,14 @@ export const applyProjectDocumentToEditor = (
     updatedAt: project.savedAt,
   });
 
-  localStorage.setItem('pixl-project-document', JSON.stringify(portableProject));
-  localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableProject)));
+  try {
+    localStorage.setItem(SINGLE_PROJECT_DOC_KEY, JSON.stringify(portableProject));
+    localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableProject)));
+  } catch (error) {
+    console.warn('[localProjectFiles] Failed to persist singleton document keys:', error);
+  }
+  // Per-project snapshot — enables true multi-project switching without losing scenes.
+  saveProjectDocSnapshot(portableProject);
 };
 
 const ensurePermission = async (directory: FileSystemDirectoryHandle) => {
@@ -684,6 +740,28 @@ export const openProjectDocumentFromDirectory = async () => {
 export const openStoredProjectWorkspace = async (projectId: string) => {
   const stored = await getStoredProjectWorkspace(projectId);
   if (!stored?.directory) {
+    // Fallback 1: per-project snapshot in localStorage (set by applyProjectDocumentToEditor).
+    const snapshot = loadProjectDocSnapshot(projectId);
+    if (snapshot) {
+      const resolved = await resolveProjectDocumentAssetUrls(snapshot);
+      applyProjectDocumentToEditor(resolved);
+      return {
+        directory: null,
+        document: resolved,
+        workspace: getCurrentProjectWorkspace(),
+      };
+    }
+    // Fallback 2: maybe this projectId is actually a sample slug we shipped.
+    const { hasSampleProject, loadSampleProjectDocument } = await loadSampleHelpers();
+    if (hasSampleProject(projectId)) {
+      const sampleDoc = await loadSampleProjectDocument(projectId);
+      applyProjectDocumentToEditor(sampleDoc);
+      return {
+        directory: null,
+        document: sampleDoc,
+        workspace: getCurrentProjectWorkspace(),
+      };
+    }
     throw new Error('Projeto local nao encontrado neste navegador. Abra a pasta do projeto novamente.');
   }
 

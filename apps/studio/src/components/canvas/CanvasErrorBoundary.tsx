@@ -13,6 +13,18 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
+// Module-level dedupe — without this an unloadable GLB throws on every Suspense
+// retry, producing 40+ identical errors per session. We log once per unique
+// message and silently swallow the rest.
+const loggedErrorFingerprints = new Set<string>();
+const errorCountByFingerprint = new Map<string, number>();
+
+const fingerprint = (err: Error): string => {
+  const message = err.message || String(err);
+  // Strip variable URL tokens so retries with the same URL collapse to one fingerprint.
+  return message.replace(/\?v=[a-f0-9]+/g, '').replace(/\d{3,}/g, '<n>').slice(0, 200);
+};
+
 /**
  * ErrorBoundary specifically for Canvas components.
  * Catches React errors (including R3F/postprocessing crashes) and provides recovery options.
@@ -28,8 +40,18 @@ export class CanvasErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[CanvasErrorBoundary] Caught error:', error);
-    console.error('[CanvasErrorBoundary] Component stack:', errorInfo.componentStack);
+    const fp = fingerprint(error);
+    const count = (errorCountByFingerprint.get(fp) ?? 0) + 1;
+    errorCountByFingerprint.set(fp, count);
+
+    if (!loggedErrorFingerprints.has(fp)) {
+      loggedErrorFingerprints.add(fp);
+      console.error('[CanvasErrorBoundary] Caught error:', error);
+      console.error('[CanvasErrorBoundary] Component stack:', errorInfo.componentStack);
+    } else if (count === 5) {
+      // One follow-up so users know the loop is happening, then silence.
+      console.warn(`[CanvasErrorBoundary] Same error repeating (${count}+ times) — suppressing further logs for: ${fp}`);
+    }
     this.setState({ errorInfo });
   }
 

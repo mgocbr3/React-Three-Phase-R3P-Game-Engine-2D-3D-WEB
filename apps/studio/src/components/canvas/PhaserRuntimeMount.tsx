@@ -14,6 +14,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { pixlSceneToPhaserScene, type GameObjectJSON, type SceneJSON } from '@pixlland/phaser-runtime';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
+import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
+import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 
 export interface PhaserRuntimeMountProps {
   visible: boolean;
@@ -256,7 +258,23 @@ export function PhaserRuntimeMount({
       try {
         const Phaser = (await import('phaser')) as unknown as typeof import('phaser');
         if (disposed) return;
-        const project = await fetchPixlProject(assetBaseUrl);
+        const fresh = await fetchPixlProject(assetBaseUrl);
+        // Merge autosaved edits ONTO the fresh sample (vs replacing wholesale).
+        // The snapshot only preserves transform/visible/locked/name — render
+        // data like `data.imageUrl` lives in the sample. Direct replacement
+        // would make every sprite render as the magenta "missing texture"
+        // placeholder because the snapshot lacks the texture key.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const freshAny = fresh as any;
+        const freshId = typeof freshAny?.id === 'string' ? freshAny.id : null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const freshSavedAt = typeof freshAny?.savedAt === 'number' ? freshAny.savedAt : 0;
+        const snapshot = freshId ? loadProjectDocSnapshot(freshId) : null;
+        const useSnapshot = !!(snapshot
+          && typeof snapshot.savedAt === 'number'
+          && snapshot.savedAt > freshSavedAt);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const project = (useSnapshot && snapshot ? mergeSnapshotOntoFresh(fresh as any, snapshot) : fresh) as any;
         const activeScene = (project.scenes as unknown as Array<{ id: string; kind?: string }>).find(
           (s) => s.id === project.activeSceneId,
         ) ?? (project.scenes as unknown as Array<unknown>)[0];
@@ -294,6 +312,27 @@ export function PhaserRuntimeMount({
               queueSpriteLoads(this, phaserScene.rootObjects, assetBaseUrl);
             },
             create(this: import('phaser').Scene) {
+              // FIRST THING in create(): pin the keyboard plugin to the
+              // current play state. Phaser initializes keyboard.enabled=true
+              // by default during scene boot, AFTER the post-construct IIFE
+              // in PhaserRuntimeMount runs — so without this we ended up
+              // with kb.enabled=true even though isPlaying=false, which let
+              // the Magic Battleground script's `keys.W.isDown` poll move
+              // the player in edit mode (user complaint: "selecting HP bar +
+              // arrows moves Player Mage when not in play mode").
+              //
+              // The useEffect in the component still owns the LIVE toggle
+              // (Play/Stop button), but this guarantees a sane initial
+              // state at the exact moment the runtime script first calls
+              // scene.input.keyboard.addKey('W').
+              const initIsPlaying = useRuntimeGameStore.getState().isPlaying;
+              if (this.input?.keyboard) {
+                this.input.keyboard.enabled = initIsPlaying;
+                try {
+                  if (!initIsPlaying) this.input.keyboard.clearCaptures();
+                } catch { /* depends on Phaser version */ }
+              }
+
               for (const obj of phaserScene.rootObjects) {
                 drawObject(this, obj);
               }
@@ -329,6 +368,19 @@ export function PhaserRuntimeMount({
                   _pointer: import('phaser').Input.Pointer,
                   hits: import('phaser').GameObjects.GameObject[],
                 ) => {
+                  // Don't deselect when the user clicks our own internal
+                  // editor handles (scale corners, rotate dot, rotate ring).
+                  // Previously a missed click on the small rotate dot
+                  // landed on the canvas → deselect → handle disappears →
+                  // user can't grab it anymore. We now (a) make the
+                  // handles much bigger, AND (b) treat ANY internal-handle
+                  // hit as a non-deselect event.
+                  const hitInternal = (hits ?? []).some((g) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const n = (g as any)?.name as string | undefined;
+                    return typeof n === 'string' && n.startsWith('__pixl_');
+                  });
+                  if (hitInternal) return;
                   if (!hits || hits.length === 0) {
                     useEditorStore.getState().selectObject(null);
                   }
@@ -353,28 +405,44 @@ export function PhaserRuntimeMount({
               // handler at scene level (below) reads HANDLE_NAMES to know
               // which corner is moving and computes uniform scale based
               // on distance from the object's center.
+              // Scale corner handles. Sized to be CLEARLY GRABBABLE on mouse
+              // and touch (was 14×14 — way too small, "clique impreciso"
+              // feedback from QA). The HIT area gets +14 px padding on each
+              // side so the user has a forgiving grab zone even on a shaky
+              // pointer — common Phaser-editor UX trick: visible 24, grab 38.
               const HANDLE_NAMES = ['__pixl_handle_nw', '__pixl_handle_ne', '__pixl_handle_sw', '__pixl_handle_se'] as const;
-              const HANDLE_SIZE = 14;
+              const HANDLE_SIZE = 24;
+              const HANDLE_HIT_PAD = 7;
+              const HANDLE_FILL = 0x4aa6ff;
+              const HANDLE_FILL_HOVER = 0x77ccff;
               const handles: import('phaser').GameObjects.Rectangle[] = [];
               for (const name of HANDLE_NAMES) {
-                const h = this.add.rectangle(0, 0, HANDLE_SIZE, HANDLE_SIZE, 0x4aa6ff, 0.95);
-                h.setStrokeStyle(2, 0xffffff, 1);
-                // Way above any normal game content so it always wins
-                // hit-testing, even over UI sprites in the project doc.
+                const h = this.add.rectangle(0, 0, HANDLE_SIZE, HANDLE_SIZE, HANDLE_FILL, 0.95);
+                h.setStrokeStyle(2.5, 0xffffff, 1);
                 h.setDepth(100000);
                 h.setVisible(false);
                 h.setName(name);
-                // Explicit hit area centered on the rectangle's origin.
-                // The setInteractive({ draggable: true }) signature has
-                // historically been flaky for primitive Shapes — passing
-                // an explicit Phaser.Geom.Rectangle hitArea + Contains
-                // callback is the canonical safe path.
+                // Hit area is bigger than the visual so the user can grab
+                // slightly around the edge of the colored square.
+                const hitSize = HANDLE_SIZE + HANDLE_HIT_PAD * 2;
                 const hitArea = new Phaser.Geom.Rectangle(
-                  -HANDLE_SIZE / 2, -HANDLE_SIZE / 2,
-                  HANDLE_SIZE, HANDLE_SIZE,
+                  -hitSize / 2, -hitSize / 2,
+                  hitSize, hitSize,
                 );
                 h.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
                 this.input.setDraggable(h, true);
+                // Hover feedback: cursor + color brighten so the user sees
+                // they're over a grabbable target.
+                h.on('pointerover', () => {
+                  this.input.setDefaultCursor('grab');
+                  h.setFillStyle(HANDLE_FILL_HOVER, 1);
+                });
+                h.on('pointerout', () => {
+                  this.input.setDefaultCursor('default');
+                  h.setFillStyle(HANDLE_FILL, 0.95);
+                });
+                h.on('dragstart', () => this.input.setDefaultCursor('grabbing'));
+                h.on('dragend', () => this.input.setDefaultCursor('default'));
                 handles.push(h);
               }
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -388,17 +456,47 @@ export function PhaserRuntimeMount({
               // Unity/Godot idiom and easier to discover for users.
               // Drag math is the same: angleBetweenTwoPointsWithFixedPoint.
               const ROTATE_HANDLE_NAME = '__pixl_rotate_handle';
-              const ROTATE_HANDLE_RADIUS = 9;
-              const rotateHandle = this.add.circle(0, 0, ROTATE_HANDLE_RADIUS, 0x4cd964, 0.95);
-              rotateHandle.setStrokeStyle(2, 0xffffff, 1);
+              const ROTATE_RING_NAME = '__pixl_rotate_ring';
+              const ROTATE_HANDLE_RADIUS = 14;
+              const ROTATE_HIT_PAD = 8;
+              const ROTATE_FILL = 0x4cd964;
+              const ROTATE_FILL_HOVER = 0x7fee92;
+
+              // Phaser Editor 2D-style rotation RING — drawn around the
+              // object so the user can grab ANYWHERE on the circumference,
+              // not just a single dot. The ring is purely visual; the
+              // drag interaction is owned by `rotateHandle` (the green
+              // dot above the top edge) AND by `rotateRing` (an invisible
+              // hit zone that follows the ring). Both dispatch the same
+              // dragstart/drag with name === ROTATE_HANDLE_NAME so the
+              // existing rotation math kicks in for either.
+              const rotateRingViz = this.add.graphics();
+              rotateRingViz.setDepth(99999);
+              rotateRingViz.setVisible(false);
+              rotateRingViz.setName('__pixl_rotate_ring_viz');
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (this as any).__pixlRotateRingViz = rotateRingViz;
+
+              const rotateHandle = this.add.circle(0, 0, ROTATE_HANDLE_RADIUS, ROTATE_FILL, 0.95);
+              rotateHandle.setStrokeStyle(2.5, 0xffffff, 1);
               rotateHandle.setDepth(100000);
               rotateHandle.setVisible(false);
               rotateHandle.setName(ROTATE_HANDLE_NAME);
               rotateHandle.setInteractive(
-                new Phaser.Geom.Circle(0, 0, ROTATE_HANDLE_RADIUS + 2),
+                new Phaser.Geom.Circle(0, 0, ROTATE_HANDLE_RADIUS + ROTATE_HIT_PAD),
                 Phaser.Geom.Circle.Contains,
               );
               this.input.setDraggable(rotateHandle, true);
+              rotateHandle.on('pointerover', () => {
+                this.input.setDefaultCursor('grab');
+                rotateHandle.setFillStyle(ROTATE_FILL_HOVER, 1);
+              });
+              rotateHandle.on('pointerout', () => {
+                this.input.setDefaultCursor('default');
+                rotateHandle.setFillStyle(ROTATE_FILL, 0.95);
+              });
+              rotateHandle.on('dragstart', () => this.input.setDefaultCursor('grabbing'));
+              rotateHandle.on('dragend', () => this.input.setDefaultCursor('default'));
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (this as any).__pixlRotateHandle = rotateHandle;
 
@@ -420,11 +518,28 @@ export function PhaserRuntimeMount({
               // reads it to decide handle visibility.
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (sceneAny as any).__pixlTransformMode = 'translate';
+              // Toggle the hit-tester for handles together with their
+              // visibility. Without this, invisible handles still SHOW UP
+              // in `scene.input.hitTest` results — they linger at the
+              // last selected object's corners, and then any click in
+              // that region gets eaten by the invisible handle and the
+              // anti-deselect guard treats it as an internal-handle
+              // click, silently doing nothing. End result: user clicks
+              // on a sprite, selection appears to not change.
+              const setHandleInteractive = (h: import('phaser').GameObjects.GameObject, on: boolean): void => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const inputObj = (h as any).input;
+                if (inputObj) inputObj.enabled = on;
+              };
               sceneAny.__pixlRedrawOutline = (pixlId: string | null): void => {
                 outline.clear();
-                // Hide handles by default; show them only when an object
-                // is selected AND the toolbar's transform mode wants them.
-                for (const h of handles) h.setVisible(false);
+                // Hide handles by default + disable their input. Invisible
+                // handles must NOT consume pointer hits — see comment above.
+                for (const h of handles) { h.setVisible(false); setHandleInteractive(h, false); }
+                setHandleInteractive(rotateHandle, false);
+                rotateHandle.setVisible(false);
+                rotateRingViz.clear();
+                rotateRingViz.setVisible(false);
                 if (!pixlId) return;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const mode = ((sceneAny as any).__pixlTransformMode ?? 'translate') as string;
@@ -456,12 +571,44 @@ export function PhaserRuntimeMount({
                 handles[1].setPosition(x1, y0).setVisible(wantHandles);  // NE
                 handles[2].setPosition(x0, y1).setVisible(wantHandles);  // SW
                 handles[3].setPosition(x1, y1).setVisible(wantHandles);  // SE
+                for (const h of handles) setHandleInteractive(h, wantHandles);
 
-                // Rotate handle: green dot 24px above top-center.
+                // Rotate handle: green dot 28px above top-center + a visual
+                // ring around the object (PhaserEditor2D-v3 style — the user
+                // sees the rotation axis explicitly instead of just a lone
+                // dot floating in space).
                 const wantRotate = mode === 'rotate';
                 const cxRot = (x0 + x1) / 2;
-                const cyRot = y0 - 24;
+                const cyRot = y0 - 28;
                 rotateHandle.setPosition(cxRot, cyRot).setVisible(wantRotate);
+                setHandleInteractive(rotateHandle, wantRotate);
+                rotateRingViz.clear();
+                if (wantRotate) {
+                  const cxRing = (x0 + x1) / 2;
+                  const cyRing = (y0 + y1) / 2;
+                  // Ring radius hugs the corners of the bbox so it looks
+                  // tied to the object. Min 32 so tiny sprites still get
+                  // a usable ring.
+                  const ringRadius = Math.max(
+                    32,
+                    Math.hypot((x1 - x0) / 2, (y1 - y0) / 2) + 6,
+                  );
+                  rotateRingViz.lineStyle(2, ROTATE_FILL, 0.45);
+                  rotateRingViz.strokeCircle(cxRing, cyRing, ringRadius);
+                  // Tick lines at 0 / 90 / 180 / 270 — gives a sense of
+                  // rotation reference while dragging.
+                  rotateRingViz.lineStyle(1, ROTATE_FILL, 0.3);
+                  const tickInner = ringRadius - 4;
+                  const tickOuter = ringRadius + 4;
+                  for (let i = 0; i < 4; i += 1) {
+                    const a = (i * Math.PI) / 2;
+                    rotateRingViz.beginPath();
+                    rotateRingViz.moveTo(cxRing + Math.cos(a) * tickInner, cyRing + Math.sin(a) * tickInner);
+                    rotateRingViz.lineTo(cxRing + Math.cos(a) * tickOuter, cyRing + Math.sin(a) * tickOuter);
+                    rotateRingViz.strokePath();
+                  }
+                  rotateRingViz.setVisible(true);
+                }
 
                 // Translate indicator: small + at object's geometric center,
                 // visible in 'translate' or 'select' so users see the pivot.
@@ -884,10 +1031,25 @@ export function PhaserRuntimeMount({
         // can inspect the scene before scripts start moving things; click
         // Play in the toolbar to begin. The useEffect below keeps it in
         // sync with later toggles.
+        //
+        // We ALSO mirror the play state onto the keyboard plugin here
+        // because the useEffect runs in a separate microtask and may not
+        // catch the initial state before the runtime script's tick fires
+        // its first poll. Verified live: with only the useEffect, the
+        // Magic Battleground script moved the player 120px on a held W
+        // key during edit mode because the keyboard plugin was still
+        // enabled at boot.
         try {
           const sceneRef = gameRef.current.scene.scenes[0] as import('phaser').Scene | undefined;
-          if (sceneRef && !useRuntimeGameStore.getState().isPlaying) {
+          const playing = useRuntimeGameStore.getState().isPlaying;
+          if (sceneRef && !playing) {
             sceneRef.scene.pause();
+          }
+          if (sceneRef?.input?.keyboard) {
+            sceneRef.input.keyboard.enabled = playing;
+            try {
+              if (!playing) sceneRef.input.keyboard.clearCaptures();
+            } catch { /* depends on Phaser version */ }
           }
         } catch { /* scene may not be fully booted yet — useEffect will catch up */ }
 
@@ -929,9 +1091,20 @@ export function PhaserRuntimeMount({
       // interactive objects keep their hit-testing for click-select but
       // shouldn't move. In play mode (isPlaying true) the drag handler
       // is a no-op anyway, so we leave the flag alone.
+      //
+      // IMPORTANT: skip our internal transform handles (`__pixl_*`). They
+      // are set draggable=true at scene `create()` time so the user can
+      // grab the scale corners and rotate dot. Without this guard, the
+      // for-loop below disabled them on every selection change because
+      // they have no `pixlId` — which is why Rotate + Scale visually
+      // appeared but did nothing on mouse drag. Found by:
+      //   __pixlRotateHandle.input.draggable === false
+      // even though rotation worked when emitted via scene.input.emit().
       for (const go of scene.children.list) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const anyGo = go as any;
+        const goName = (anyGo.name ?? '') as string;
+        if (goName.startsWith('__pixl_')) continue; // internal handle, leave its drag state alone
         const id = anyGo.getData?.('pixlId') as string | undefined;
         if (typeof anyGo.input?.draggable === 'boolean') {
           // Re-set via the Phaser API which keeps the flag in sync.
@@ -1023,6 +1196,24 @@ export function PhaserRuntimeMount({
   // re-enables it. Input handlers attached at scene.input level still
   // fire on either side of pause, which is fine — they just don't see
   // motion until tick runs again.
+  //
+  // ADDITIONAL: we also TOGGLE THE KEYBOARD PLUGIN in edit mode. The user
+  // reported that selecting the HP bar and pressing arrow keys was moving
+  // the Player Mage even while NOT in Play mode. Root cause was twofold:
+  //   1. `scene.scene.pause()` only stops the update loop — Phaser's
+  //      `keyboard.isDown` flags KEEP updating even on a paused scene,
+  //      because the keyboard plugin lives at the input-manager level.
+  //      Some boot/HMR paths also leave the scene `paused=false` despite
+  //      `isPlaying=false` (observed live: active=true, paused=false).
+  //   2. The Magic Battleground script polls `keys.W.isDown` and
+  //      `cursors.left.isDown` in tick() — but the editor canvas had
+  //      focus from clicking selection, so even a single tick from a
+  //      stray frame moves the player one PLAYER_SPEED * dt step.
+  // Disabling the keyboard plugin while !isPlaying makes every key's
+  // isDown stay false → poll-based input in scripts becomes a no-op.
+  // Also releases keyboard capture so the editor's React-level handlers
+  // (e.g. useEditorArrowNudge) can own arrow keys without fighting
+  // Phaser's preventDefault.
   useEffect(() => {
     const game = gameRef.current;
     if (!game || load.status !== 'ready') return;
@@ -1033,12 +1224,44 @@ export function PhaserRuntimeMount({
       const currentlyPaused = sceneMgr?.isPaused?.() ?? false;
       if (isPlaying && currentlyPaused) {
         sceneMgr.resume();
-        // Re-focus the canvas so WASD reaches the game on resume — the
-        // user usually clicked the Play button, which stole focus.
-        try { game.canvas?.focus?.({ preventScroll: true }); } catch { /* noop */ }
       } else if (!isPlaying && !currentlyPaused) {
         sceneMgr.pause();
       }
+      // Re-focus the canvas on EVERY play→true transition, regardless of
+      // pause state. The previous version only did this inside the
+      // `currentlyPaused` branch — but in practice the scene often shows
+      // `paused: false` even in edit mode (Phaser scene-pause is finicky
+      // around boot/HMR), so the focus call never fired and WASD went
+      // to the Play button instead of the game canvas. User report:
+      // "WASD não move".
+      if (isPlaying) {
+        try { game.canvas?.focus?.({ preventScroll: true }); } catch { /* noop */ }
+      }
+      // Keyboard plugin sync — INDEPENDENT of the pause state above so it
+      // protects against the bug class even when pause didn't take.
+      const kb = scene.input?.keyboard;
+      if (kb) {
+        kb.enabled = !!isPlaying;
+        // Release the captured keys so the browser (and React) get them.
+        if (isPlaying) {
+          // Re-capture the game keys in play mode so the script can use
+          // cursors/wasd without the page scrolling on arrow press.
+          try {
+            kb.addCapture([
+              'UP', 'DOWN', 'LEFT', 'RIGHT',
+              'W', 'A', 'S', 'D', 'SPACE',
+            ]);
+          } catch { /* depending on Phaser ver, may not exist */ }
+        } else {
+          try { kb.clearCaptures(); } catch { /* noop */ }
+        }
+      }
+      // Same idea for the pointer system: in edit mode the script
+      // shouldn't fire its onGameInput pointerdown (cast spell, etc.).
+      // The script wraps its own listener with isPlaying — but if the
+      // user re-binds raw `scene.input.on('pointerdown', ...)`, this
+      // would still leak. Leaving pointer enabled (so click-to-select
+      // works) but the script's wrap covers gameplay.
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[PhaserRuntimeMount] play/stop toggle failed:', err);

@@ -26,6 +26,9 @@ import type { ProjectEvent } from '@pixlland/engine-ops';
 import type * as THREE from 'three';
 
 import { useEngineApiBridge } from '@/hooks/useEngineApiBridge';
+import { useEditorStore } from '@/stores/editorStore';
+import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
+import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 import { useOrbitControls } from './useOrbitControls';
 import { useSelectionGizmo, type GizmoMode } from './useSelectionGizmo';
 
@@ -98,13 +101,87 @@ export function ThreeRuntimeMount({
   // when the load resolves.
   const [threeScene, setThreeScene] = useState<THREE.Scene | null>(null);
 
+  // Subscribe directly to the editor store so the toolbar's
+  // Move(W)/Rotate(E)/Scale(R) buttons reach the native runtime gizmo. Prior
+  // behavior: `gizmoMode` prop was never wired by any parent, so the prop
+  // default (`'translate'`) made the gizmo permanently stuck on translate
+  // even though `useEditorStore.transformMode` updated correctly. The toolbar
+  // appeared to do nothing in the native engine path because the props chain
+  // didn't reach this component.
+  const storeTransformMode = useEditorStore((state) => state.transformMode);
+  // The store distinguishes a 4th 'select' mode (camera-priority). For the
+  // native gizmo, treat 'select' as translate behind the scenes — the hook's
+  // `enabled` flag would also tear it down, but we keep the controls alive
+  // so the selection state survives mode toggles.
+  const effectiveGizmoMode: GizmoMode =
+    storeTransformMode === 'rotate' || storeTransformMode === 'scale'
+      ? storeTransformMode
+      : 'translate';
+  // gizmoMode prop is kept for backwards compat but the store wins when both
+  // are present. If neither is set, fall back to gizmoMode (which itself
+  // defaults to 'translate').
+  void gizmoMode;
+
+  // Hierarchy → native gizmo bridge. The SceneGraphPanel writes
+  // `selectedObjectId` to the editor store; we resolve the matching
+  // THREE.Object3D in the loaded scene and hand it to useSelectionGizmo.
+  //
+  // Matching strategy (in priority order):
+  //   1. `userData.pixlObjectId` — the stable schema id stamped by the
+  //      runtime adapter onto every loaded object. This is the canonical
+  //      pairing and resolves things like `selectedObjectId =
+  //      "farm-part-group-bus"` → the `gameObject-Bus` Group3D.
+  //   2. `userData.pixlId` — older naming kept for back-compat.
+  //   3. `Object3D.name` literal match against id.
+  //   4. `gameObject-<displayName>` prefix match against the store
+  //      object's name (the adapter prefixes group nodes that way).
+  const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
+  const [externalSelectedThree, setExternalSelectedThree] = useState<THREE.Object3D | null>(null);
+  useEffect(() => {
+    if (!threeScene) {
+      setExternalSelectedThree(null);
+      return;
+    }
+    if (!selectedObjectId) {
+      setExternalSelectedThree(null);
+      return;
+    }
+    let match: THREE.Object3D | null = null;
+    threeScene.traverse((obj) => {
+      if (match) return;
+      const ud = obj.userData as { pixlObjectId?: string; pixlId?: string } | undefined;
+      if (ud?.pixlObjectId === selectedObjectId || ud?.pixlId === selectedObjectId) {
+        match = obj;
+        return;
+      }
+      if (obj.name && obj.name === selectedObjectId) {
+        match = obj;
+      }
+    });
+    // Fallback: editor object lookup → match by gameObject-<name> prefix.
+    if (!match) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const storeObj = (useEditorStore.getState().objects ?? []).find((o: any) => o.id === selectedObjectId);
+      const storeName = storeObj?.name;
+      if (storeName) {
+        const prefixed = `gameObject-${storeName}`;
+        threeScene.traverse((obj) => {
+          if (match) return;
+          if (obj.name === storeName || obj.name === prefixed) match = obj;
+        });
+      }
+    }
+    setExternalSelectedThree(match);
+  }, [selectedObjectId, threeScene]);
+
   useSelectionGizmo({
     canvas: canvasEl,
     camera,
     scene: threeScene,
     orbitControls: orbitControlsInstance,
-    mode: gizmoMode,
+    mode: effectiveGizmoMode,
     enabled: visible,
+    externalSelected: externalSelectedThree,
   });
 
   // Re-load when a non-editor agent broadcasts a change. Re-fetches the
@@ -138,7 +215,19 @@ export function ThreeRuntimeMount({
 
     (async () => {
       try {
-        const project = await fetchPixlProject(assetBaseUrl);
+        const fresh = await fetchPixlProject(assetBaseUrl);
+        // Merge autosaved edits ONTO the fresh sample (snapshot only ports
+        // transform/visible/locked/name). See PhaserRuntimeMount / snapshotMerge.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const freshAny = fresh as any;
+        const freshId = typeof freshAny?.id === 'string' ? freshAny.id : null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const freshSavedAt = typeof freshAny?.savedAt === 'number' ? freshAny.savedAt : 0;
+        const snapshot = freshId ? loadProjectDocSnapshot(freshId) : null;
+        const useSnapshot = !!(snapshot
+          && typeof snapshot.savedAt === 'number'
+          && snapshot.savedAt > freshSavedAt);
+        const project = useSnapshot && snapshot ? mergeSnapshotOntoFresh(fresh as any, snapshot) : fresh;
         if (disposed) return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await game.loadFromPixlProject(project as any, initialScene);

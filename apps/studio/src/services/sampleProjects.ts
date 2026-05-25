@@ -1,6 +1,8 @@
 import { applyProjectDocumentToEditor, resolveProjectDocumentAssetUrls } from './localProjectFiles';
 import type { AnyPixlProjectDocument, PixlProjectDocument } from '@/engine/project/schema';
 import { normalizeProjectDocument } from '@/engine/project/editorProjectAdapter';
+import { loadProjectDocSnapshot } from './projectDocStorage';
+import { mergeSnapshotOntoFresh } from './snapshotMerge';
 
 const REPO_ROOT = import.meta.env.VITE_PIXL_REPO_ROOT as string | undefined;
 const REPO_FS_ROOT = REPO_ROOT?.replace(/^\/+/, '');
@@ -94,7 +96,18 @@ export const loadSampleProjectDocument = async (slug: string): Promise<PixlProje
 };
 
 export const openSampleProject = async (slug: string): Promise<PixlProjectDocument> => {
-  const document = await loadSampleProjectDocument(slug);
+  const fresh = await loadSampleProjectDocument(slug);
+  // Merge the user's autosaved edits ONTO the fresh sample. The snapshot
+  // only carries transform / visible / locked / name per object — render
+  // data (imageUrl, color, etc.) stays from the sample author, because
+  // the editor adapter that writes the snapshot doesn't preserve them.
+  // See `snapshotMerge.ts` for the rationale + the PLAN.md item that
+  // would eventually let us replace the doc wholesale.
+  const snapshot = loadProjectDocSnapshot(fresh.id);
+  const useSnapshot = !!(snapshot
+    && typeof snapshot.savedAt === 'number'
+    && snapshot.savedAt > (fresh.savedAt ?? 0));
+  const document = useSnapshot ? mergeSnapshotOntoFresh(fresh, snapshot) : fresh;
   applyProjectDocumentToEditor(document, { assetBaseUrl: SAMPLE_PROJECTS[slug].assetBaseUrl ?? null });
   return document;
 };

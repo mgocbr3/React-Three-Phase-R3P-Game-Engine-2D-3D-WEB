@@ -225,14 +225,20 @@ export const TransformGizmo = ({
     };
   }, [controls]);
 
+  // Attach to target object — runs on mount and whenever the selected target changes.
+  // IMPORTANT: We previously bundled attach + setMode/setSpace/setSize into a single
+  // effect keyed on [mode, space, size]. That meant changing the gizmo mode forced a
+  // full `controls.detach()` then `controls.attach()` cycle, which left the internal
+  // helper picker meshes in an inconsistent state — the visual would stick on the
+  // previous mode (e.g. translate arrows even after clicking Rotate). Three.js
+  // `TransformControls.setMode/setSpace/setSize` are designed to be called on an
+  // ALREADY-attached controls instance, so we keep attachment lifecycle separate
+  // from the per-frame configuration writes below.
   useEffect(() => {
     const target = targetRef.current;
     if (!target) return;
 
     controls.attach(target);
-    controls.setMode(mode);
-    controls.setSpace(effectiveSpace);
-    controls.setSize(gizmoSize);
     controls.showX = true;
     controls.showY = true;
     controls.showZ = true;
@@ -242,7 +248,28 @@ export const TransformGizmo = ({
       controls.detach();
       invalidate();
     };
-  }, [controls, effectiveSpace, gizmoSize, invalidate, mode, targetRef]);
+  }, [controls, invalidate, targetRef]);
+
+  // Mode change — no detach/attach, just swap the gizmo visual.
+  useEffect(() => {
+    if (!targetRef.current) return;
+    controls.setMode(mode);
+    invalidate();
+  }, [controls, invalidate, mode, targetRef]);
+
+  // Space change (world vs local).
+  useEffect(() => {
+    if (!targetRef.current) return;
+    controls.setSpace(effectiveSpace);
+    invalidate();
+  }, [controls, effectiveSpace, invalidate, targetRef]);
+
+  // Size change (touch vs mouse).
+  useEffect(() => {
+    if (!targetRef.current) return;
+    controls.setSize(gizmoSize);
+    invalidate();
+  }, [controls, gizmoSize, invalidate, targetRef]);
 
   // Handle dragging state with pointer capture
   const handleDraggingChanged = useCallback((event: any) => {
