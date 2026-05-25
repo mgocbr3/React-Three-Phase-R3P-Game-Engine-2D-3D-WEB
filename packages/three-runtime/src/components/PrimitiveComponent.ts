@@ -42,6 +42,7 @@ export interface PrimitiveComponentJSON extends ComponentJSON {
   color?: string;
   emissive?: string;
   emissiveIntensity?: number;
+  opacity?: number;
   metalness?: number;
   roughness?: number;
   castShadow?: boolean;
@@ -94,10 +95,15 @@ class PrimitiveComponent extends Component {
     const json = this.jsonData as PrimitiveComponentJSON;
 
     const geometry = buildGeometry(json);
+    const opacity = typeof json.opacity === 'number' && Number.isFinite(json.opacity)
+      ? Math.max(0, Math.min(1, json.opacity))
+      : 1;
     const material = new THREE.MeshStandardMaterial({
       color: parseColor(json.color, 0xcccccc),
       metalness: json.metalness ?? 0,
       roughness: json.roughness ?? 0.7,
+      opacity,
+      transparent: opacity < 1,
     });
     if (json.emissive) {
       material.emissive = parseColor(json.emissive, 0x000000);

@@ -9,6 +9,8 @@ import { SceneGraphPanel } from '@/components/editor/SceneGraphPanel';
 import { InspectorPanel } from '@/components/editor/InspectorPanel';
 import { BottomPanel } from '@/components/editor/BottomPanel';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
+import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
+import { RuntimePreviewOverlay } from '@/components/editor/RuntimePreviewOverlay';
 import { MobileEditorLayout } from '@/components/editor/mobile';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { ConflictResolutionDialog } from '@/components/editor/ConflictResolutionDialog';
@@ -309,6 +311,16 @@ const EditorPage = () => {
     return <MobileEditorLayout />;
   }
 
+  const shouldRenderEditorViewport = previewSession?.launchTarget.kind !== 'web-runtime';
+  const editorRuntimeSurface = (
+    <>
+      {shouldRenderEditorViewport && (useNativeViewport ? <Viewport /> : <EditorCanvas />)}
+      {shouldRenderEditorViewport && <CameraSpeedIndicator />}
+      {previewSession && <RuntimeGameFrame session={previewSession} />}
+      <RuntimePreviewOverlay />
+    </>
+  );
+
   return (
     <div className="editor-shell fixed inset-0 flex flex-col">
       {/* Top Header */}
@@ -318,7 +330,7 @@ const EditorPage = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {isRuntimeFullscreen ? (
           <div className="relative h-full bg-[#080808]">
-            {useNativeViewport ? <Viewport /> : <EditorCanvas />}
+            {editorRuntimeSurface}
           </div>
         ) : (
           <ResizablePanelGroup direction="horizontal" className="flex-1">
@@ -342,8 +354,7 @@ const EditorPage = () => {
                     {/* Center - Canvas */}
                     <ResizablePanel defaultSize={panels.scene ? 82 : 100} minSize={50}>
                       <div className="relative h-full border-x border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]">
-                        {useNativeViewport ? <Viewport /> : <EditorCanvas />}
-                        <CameraSpeedIndicator />
+                        {editorRuntimeSurface}
                       </div>
                     </ResizablePanel>
                   </ResizablePanelGroup>

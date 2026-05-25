@@ -8,6 +8,9 @@ build/
 out/
 *.tsbuildinfo
 
+# Local reference engine mirrors
+tools/vendor/
+
 # Test/coverage
 coverage/
 .nyc_output/

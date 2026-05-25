@@ -23,14 +23,14 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { Game } from '@pixlland/three-runtime';
 import type { ProjectEvent } from '@pixlland/engine-ops';
-import type * as THREE from 'three';
+import * as THREE from 'three';
 
 import { useEngineApiBridge } from '@/hooks/useEngineApiBridge';
 import { useEditorStore } from '@/stores/editorStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 import { useOrbitControls } from './useOrbitControls';
-import { useSelectionGizmo, type GizmoMode } from './useSelectionGizmo';
+import { resolveSelectableObject, useSelectionGizmo, type GizmoMode } from './useSelectionGizmo';
 
 export interface ThreeRuntimeMountProps {
   /** display: block when true, none when false. Both mounts live in the DOM. */
@@ -58,6 +58,72 @@ const fetchPixlProject = async (baseUrl: string): Promise<unknown> => {
     throw new Error(`project.pixlproject.json: ${response.status} ${response.statusText}`);
   }
   return response.json();
+};
+
+type EditorObjectSummary = {
+  id: string;
+  name?: string;
+};
+
+export const findThreeObjectForEditorSelection = (
+  threeScene: THREE.Scene | null,
+  selectedObjectId: string | null,
+  storeObjects: EditorObjectSummary[],
+): THREE.Object3D | null => {
+  if (!threeScene || !selectedObjectId) return null;
+
+  let match: THREE.Object3D | null = null;
+  threeScene.traverse((obj) => {
+    if (match) return;
+    const ud = obj.userData as { pixlObjectId?: string; pixlId?: string } | undefined;
+    if (ud?.pixlObjectId === selectedObjectId || ud?.pixlId === selectedObjectId) {
+      match = obj;
+      return;
+    }
+    if (obj.name && obj.name === selectedObjectId) {
+      match = obj;
+    }
+  });
+
+  if (!match) {
+    const storeObj = storeObjects.find((object) => object.id === selectedObjectId);
+    const storeName = storeObj?.name;
+    if (storeName) {
+      const prefixed = `gameObject-${storeName}`;
+      threeScene.traverse((obj) => {
+        if (match) return;
+        if (obj.name === storeName || obj.name === prefixed) match = obj;
+      });
+    }
+  }
+
+  return resolveSelectableObject(match, threeScene);
+};
+
+const getFrameForObject = (
+  object: THREE.Object3D | null,
+  fallbackPosition: [number, number, number],
+  fallbackDistance: number | undefined,
+): { center: THREE.Vector3; distance: number } => {
+  const center = new THREE.Vector3(...fallbackPosition);
+  let distance = fallbackDistance ?? 10;
+
+  if (!object) {
+    return { center, distance };
+  }
+
+  object.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(object);
+  if (!box.isEmpty()) {
+    box.getCenter(center);
+    const size = box.getSize(new THREE.Vector3()).length();
+    distance = Math.max(distance, size * 1.35, 6);
+  } else {
+    const elements = object.matrixWorld.elements;
+    center.set(elements[12] ?? fallbackPosition[0], elements[13] ?? fallbackPosition[1], elements[14] ?? fallbackPosition[2]);
+  }
+
+  return { center, distance };
 };
 
 export function ThreeRuntimeMount({
@@ -136,43 +202,45 @@ export function ThreeRuntimeMount({
   //   4. `gameObject-<displayName>` prefix match against the store
   //      object's name (the adapter prefixes group nodes that way).
   const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
+  const focusTarget = useEditorStore((state) => state.focusTarget);
   const [externalSelectedThree, setExternalSelectedThree] = useState<THREE.Object3D | null>(null);
   useEffect(() => {
-    if (!threeScene) {
-      setExternalSelectedThree(null);
-      return;
-    }
-    if (!selectedObjectId) {
-      setExternalSelectedThree(null);
-      return;
-    }
-    let match: THREE.Object3D | null = null;
-    threeScene.traverse((obj) => {
-      if (match) return;
-      const ud = obj.userData as { pixlObjectId?: string; pixlId?: string } | undefined;
-      if (ud?.pixlObjectId === selectedObjectId || ud?.pixlId === selectedObjectId) {
-        match = obj;
-        return;
-      }
-      if (obj.name && obj.name === selectedObjectId) {
-        match = obj;
-      }
-    });
-    // Fallback: editor object lookup → match by gameObject-<name> prefix.
-    if (!match) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const storeObj = (useEditorStore.getState().objects ?? []).find((o: any) => o.id === selectedObjectId);
-      const storeName = storeObj?.name;
-      if (storeName) {
-        const prefixed = `gameObject-${storeName}`;
-        threeScene.traverse((obj) => {
-          if (match) return;
-          if (obj.name === storeName || obj.name === prefixed) match = obj;
-        });
-      }
-    }
-    setExternalSelectedThree(match);
+    setExternalSelectedThree(findThreeObjectForEditorSelection(
+      threeScene,
+      selectedObjectId,
+      useEditorStore.getState().objects ?? [],
+    ));
   }, [selectedObjectId, threeScene]);
+
+  useEffect(() => {
+    if (!focusTarget || !camera || !orbitControlsInstance) return;
+
+    const objectToFrame = externalSelectedThree
+      ?? findThreeObjectForEditorSelection(
+        threeScene,
+        selectedObjectId,
+        useEditorStore.getState().objects ?? [],
+      );
+    const { center, distance } = getFrameForObject(
+      objectToFrame,
+      focusTarget.position,
+      focusTarget.distance,
+    );
+    const previousTarget = orbitControlsInstance.target instanceof THREE.Vector3
+      ? orbitControlsInstance.target
+      : center;
+    const viewDirection = camera.position.clone().sub(previousTarget);
+
+    if (!Number.isFinite(viewDirection.lengthSq()) || viewDirection.lengthSq() < 0.0001) {
+      viewDirection.set(5, 4, 8);
+    }
+
+    viewDirection.normalize();
+    camera.position.copy(center).addScaledVector(viewDirection, distance);
+    camera.lookAt(center);
+    orbitControlsInstance.target?.copy?.(center);
+    orbitControlsInstance.update?.();
+  }, [camera, externalSelectedThree, focusTarget, orbitControlsInstance, selectedObjectId, threeScene]);
 
   useSelectionGizmo({
     canvas: canvasEl,

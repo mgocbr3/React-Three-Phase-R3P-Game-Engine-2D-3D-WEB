@@ -171,6 +171,64 @@ const mapComponent = (instance: PixlComponentInstance): ComponentJSON | null => 
   }
 };
 
+const getEditorColor = (object: PixlSceneObject): string | undefined => {
+  const editor = object.data?.editor as { color?: unknown } | undefined;
+  return typeof editor?.color === 'string' ? editor.color : undefined;
+};
+
+const getVisualData = (object: PixlSceneObject): Record<string, unknown> => {
+  const visual = object.components?.find((component) => component.type === 'pixl.visual');
+  return visual?.data ?? {};
+};
+
+const synthesizePrimitiveComponent = (
+  object: PixlSceneObject,
+  renderComponents: ComponentJSON[],
+): ComponentJSON[] => {
+  if (object.visible === false) return [];
+  if (renderComponents.some((component) => (
+    component.type === 'model' ||
+    component.type === 'gltfNode' ||
+    component.type === 'primitive' ||
+    component.type === 'light'
+  ))) {
+    return [];
+  }
+
+  const visual = getVisualData(object);
+  const base = {
+    type: 'primitive',
+    name: `${object.id}-primitive`,
+    color: getEditorColor(object) ?? '#cccccc',
+    opacity: visual.opacity,
+    metalness: visual.metalness,
+    roughness: visual.roughness,
+    emissive: typeof visual.emissiveColor === 'string'
+      ? visual.emissiveColor
+      : undefined,
+    emissiveIntensity: visual.emissiveIntensity,
+    castShadow: visual.castShadow,
+    receiveShadow: visual.receiveShadow,
+  };
+
+  switch (object.type) {
+    case 'box':
+    case 'mesh':
+      return [{ ...base, shape: 'box', size: { x: 1, y: 1, z: 1 } }];
+    case 'sphere':
+      return [{ ...base, shape: 'sphere', radius: 0.5 }];
+    case 'cylinder':
+      return [{ ...base, shape: 'cylinder', radius: 0.5, height: 1 }];
+    case 'ring':
+      return [{ ...base, shape: 'torus', radius: 1, tube: 0.08, radialSegments: 32 }];
+    case 'plane':
+    case 'platform':
+      return [{ ...base, shape: 'plane', size: { x: 1, y: 1 } }];
+    default:
+      return [];
+  }
+};
+
 // Strip leading "public/" — Pixl projects sometimes carry the dev-time
 // folder prefix in modelUrl/assetPath, but the studio's published path
 // (e.g. /sample-projects/<slug>/assets/...) drops it. Leading slashes
@@ -217,7 +275,8 @@ const buildGameObjectJSON = (object: PixlSceneObject, children: PixlSceneObject[
     .map(mapComponent)
     .filter((c): c is ComponentJSON => c !== null);
   const synthesized = synthesizeGltfNodeComponents(object);
-  const components = [...synthesized, ...mapped];
+  const primitive = synthesizePrimitiveComponent(object, [...synthesized, ...mapped]);
+  const components = [...synthesized, ...primitive, ...mapped];
 
   return {
     type: object.type,

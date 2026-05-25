@@ -7,6 +7,7 @@ import {
   createProjectDocumentFromEditor,
   getPortableAssetPath,
   makeProjectDocumentPortable,
+  prepareProjectDocumentForRuntimePreview,
   resolveProjectDocumentAssetUrls,
 } from './localProjectFiles';
 
@@ -175,5 +176,25 @@ describe('local project files', () => {
     expect(object.name).toBe('Renamed Farm Scene');
     expect(object.transform.position).toEqual([4, 1, -2]);
     expect(object.data?.editorObject).toBeUndefined();
+  });
+
+  it('keeps explicit runtime bases when preparing a sample preview', () => {
+    const project = createProject('public/assets/vendor/farm-pack/Farm.glb');
+    project.game.source = {
+      game: 'sample-3d-runtime',
+      runtimeFile: 'src/main.js',
+      runtimeBaseUrl: '/sample-projects/sample-3d-runtime/runtime/',
+      documentBaseUrl: '/sample-projects/sample-3d-runtime/',
+    };
+    applyProjectDocumentToEditor(project, {
+      assetBaseUrl: '/@fs/private/tmp/game-repo/apps/portal/games-src/sample-3d-runtime/',
+    });
+
+    const preview = prepareProjectDocumentForRuntimePreview(project);
+
+    expect(preview.game.source).toMatchObject({
+      runtimeBaseUrl: '/sample-projects/sample-3d-runtime/runtime/',
+      documentBaseUrl: '/sample-projects/sample-3d-runtime/',
+    });
   });
 });

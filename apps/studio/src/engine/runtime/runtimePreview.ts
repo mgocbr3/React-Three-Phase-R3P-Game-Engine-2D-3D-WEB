@@ -117,7 +117,9 @@ export const resolveRuntimeLaunchTarget = (document: PixlProjectDocument): Runti
     gameSlug,
     runtimeFile: runtimePath,
     scriptUrl: joinUrl(projectRootUrl, runtimePath),
-    documentBaseUrl: joinUrl(projectRootUrl, 'public/'),
+    documentBaseUrl: isNonEmptyString(source.documentBaseUrl)
+      ? source.documentBaseUrl.trim()
+      : joinUrl(projectRootUrl, 'public/'),
     sdkUrl: document.integrations?.pixlland ? PIXLLAND_SDK_URL : null,
   };
 };

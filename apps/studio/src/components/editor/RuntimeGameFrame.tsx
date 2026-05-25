@@ -31,7 +31,14 @@ const escapeJsonScriptValue = (value: string) => (
   JSON.stringify(value).replace(/</g, '\\u003c')
 );
 
-const buildRuntimeHtml = (session: RuntimePreviewSession) => {
+const buildImportMap = () => `{
+        "imports": {
+          "three": "/node_modules/three/build/three.module.js",
+          "three/": "/node_modules/three/"
+        }
+      }`;
+
+export const buildRuntimeHtml = (session: RuntimePreviewSession) => {
   const target = session.launchTarget;
   if (target.kind !== 'web-runtime') return '';
 
@@ -51,6 +58,7 @@ const buildRuntimeHtml = (session: RuntimePreviewSession) => {
     <base href="${baseHref}" />
     <title>${title}</title>
     ${sdkScript}
+    <script type="importmap">${buildImportMap()}</script>
     <style>
       html,
       body,

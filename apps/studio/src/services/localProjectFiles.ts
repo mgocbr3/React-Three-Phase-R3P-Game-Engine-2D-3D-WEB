@@ -496,12 +496,17 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
 export const prepareProjectDocumentForRuntimePreview = (document: PixlProjectDocument): PixlProjectDocument => {
   if (!currentProjectAssetBaseUrl) return document;
 
+  const source = document.game.source ?? {};
+  if (typeof source.runtimeBaseUrl === 'string' && source.runtimeBaseUrl.trim()) {
+    return document;
+  }
+
   return {
     ...cloneJson(document),
     game: {
       ...document.game,
       source: {
-        ...(document.game.source ?? {}),
+        ...source,
         runtimeBaseUrl: currentProjectAssetBaseUrl,
       },
     },

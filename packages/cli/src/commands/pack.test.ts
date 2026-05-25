@@ -19,14 +19,7 @@ const harvestProjectDir = path.join(
   'harvest-rush-3d',
   'pixlplayground',
 );
-
-const requireHarvest = (): void => {
-  if (!existsSync(harvestProjectDir)) {
-    throw new Error(
-      `Harvest Rush 3D project not found at ${harvestProjectDir}. Fixture missing.`,
-    );
-  }
-};
+const describeWithHarvestFixture = existsSync(harvestProjectDir) ? describe : describe.skip;
 
 let workdir = '';
 
@@ -40,9 +33,8 @@ afterEach(() => {
   }
 });
 
-describe('cli pack / unpack', () => {
+describeWithHarvestFixture('cli pack / unpack', () => {
   it('packs the Harvest Rush 3D project into a .pixl with a valid manifest', async () => {
-    requireHarvest();
     const outFile = path.join(workdir, 'harvest-rush.pixl');
     const result = await runPack(harvestProjectDir, outFile);
 
@@ -55,7 +47,6 @@ describe('cli pack / unpack', () => {
   });
 
   it('unpacks the same .pixl back to a project folder, verifying hashes', async () => {
-    requireHarvest();
     const outFile = path.join(workdir, 'harvest-rush.pixl');
     const restoreDir = path.join(workdir, 'restore');
 
@@ -67,7 +58,6 @@ describe('cli pack / unpack', () => {
   });
 
   it('produces a deterministic .pixl byte stream (same input -> same archive)', async () => {
-    requireHarvest();
     const a = path.join(workdir, 'a.pixl');
     const b = path.join(workdir, 'b.pixl');
     // Use the same packedAt so the manifest is byte-identical.
@@ -82,7 +72,6 @@ describe('cli pack / unpack', () => {
   });
 
   it('inspect reads the manifest header without touching file payloads', async () => {
-    requireHarvest();
     const outFile = path.join(workdir, 'harvest-rush.pixl');
     await runPack(harvestProjectDir, outFile);
 
@@ -91,7 +80,6 @@ describe('cli pack / unpack', () => {
   });
 
   it('re-pack of the unpacked project yields the same contentHash', async () => {
-    requireHarvest();
     const out1 = path.join(workdir, 'pack-1.pixl');
     const restoreDir = path.join(workdir, 'restore');
     const out2 = path.join(workdir, 'pack-2.pixl');

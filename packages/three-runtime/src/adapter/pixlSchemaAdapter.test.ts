@@ -107,6 +107,78 @@ describe('pixlSceneToWesScene', () => {
       pixlVisible: true,
     });
   });
+
+  it('synthesizes native primitive visuals for Pixl built-in object types', () => {
+    const scene = makeScene([
+      makeObject({
+        id: 'station-1',
+        name: 'Unload Station',
+        type: 'ring',
+        components: [
+          {
+            id: 'visual',
+            type: 'pixl.visual',
+            enabled: true,
+            data: {
+              opacity: 0.72,
+              roughness: 0.8,
+              emissiveIntensity: 0.35,
+            },
+          },
+          {
+            id: 'physics',
+            type: 'pixl.physics',
+            enabled: true,
+            data: { bodyType: 'fixed', isSensor: true },
+          },
+        ],
+        data: { editor: { color: '#d2a64f' } },
+      }),
+    ]);
+
+    const out = pixlSceneToWesScene(scene);
+    expect(out.gameObjects![0].components).toEqual([
+      expect.objectContaining({
+        type: 'primitive',
+        shape: 'torus',
+        color: '#d2a64f',
+        opacity: 0.72,
+      }),
+      expect.objectContaining({ type: 'rigidBody' }),
+    ]);
+  });
+
+  it('does not add a primitive fallback when a GLB node already renders the object', () => {
+    const scene = makeScene([
+      makeObject({
+        type: 'mesh',
+        components: [
+          {
+            id: 'logic',
+            type: 'pixl.logic',
+            enabled: true,
+            data: {
+              customData: {
+                sourceAsset: 'assets/Farm.glb',
+                sourceNodeName: 'Barn',
+              },
+            },
+          },
+          {
+            id: 'anim',
+            type: 'pixl.animation',
+            enabled: true,
+            data: { modelUrl: 'assets/Farm.glb' },
+          },
+        ],
+      }),
+    ]);
+
+    const out = pixlSceneToWesScene(scene);
+    expect(out.gameObjects![0].components).toEqual([
+      expect.objectContaining({ type: 'gltfNode', nodeName: 'Barn' }),
+    ]);
+  });
 });
 
 describe('pixlProjectToWesGame', () => {

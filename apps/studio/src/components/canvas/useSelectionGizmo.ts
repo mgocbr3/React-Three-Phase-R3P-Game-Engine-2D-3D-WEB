@@ -18,6 +18,14 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 
 export type GizmoMode = 'translate' | 'rotate' | 'scale';
 
+const TRANSFORM_PICKER_HIT_SCALE = 1.65;
+
+type TransformControlsWithPickers = TransformControls & {
+  axis?: string | null;
+  object?: THREE.Object3D;
+  _gizmo?: { picker?: Partial<Record<GizmoMode, THREE.Object3D>> };
+};
+
 export interface UseSelectionGizmoArgs {
   canvas: HTMLCanvasElement | null;
   camera: THREE.PerspectiveCamera | null;
@@ -34,6 +42,80 @@ export interface UseSelectionGizmoArgs {
   externalSelected?: THREE.Object3D | null;
   onSelectionChange?: (object: THREE.Object3D | null) => void;
 }
+
+export const resolveSelectableObject = (
+  object: THREE.Object3D | null | undefined,
+  scene?: THREE.Scene | null,
+): THREE.Object3D | null => {
+  let current: THREE.Object3D | null | undefined = object;
+  while (current) {
+    const userData = current.userData as {
+      pixlObjectId?: unknown;
+      pixlId?: unknown;
+      gameObjectID?: unknown;
+    };
+    if (
+      typeof userData.pixlObjectId === 'string' ||
+      typeof userData.pixlId === 'string' ||
+      typeof userData.gameObjectID === 'string'
+    ) {
+      return current;
+    }
+    if (scene && current === scene) break;
+    current = current.parent;
+  }
+  return object ?? null;
+};
+
+const findVisibleTransformHit = (
+  raycaster: THREE.Raycaster,
+  helper: THREE.Object3D | null | undefined,
+  active = true,
+): THREE.Intersection | null => {
+  if (!helper || !active) return null;
+  return raycaster.intersectObject(helper, true).find((hit) => {
+    let current: THREE.Object3D | null = hit.object;
+    while (current && current !== helper) {
+      if (!current.visible) return false;
+      current = current.parent;
+    }
+    return current === helper;
+  }) ?? null;
+};
+
+export const rayHitsTransformHelper = (
+  raycaster: THREE.Raycaster,
+  helper: THREE.Object3D | null | undefined,
+  active = true,
+): boolean => {
+  return Boolean(findVisibleTransformHit(raycaster, helper, active));
+};
+
+export const findTransformPickerHitAxis = (
+  raycaster: THREE.Raycaster,
+  picker: THREE.Object3D | null | undefined,
+  active = true,
+): string | null => {
+  return findVisibleTransformHit(raycaster, picker, active)?.object.name ?? null;
+};
+
+export const enlargeTransformPickerHitArea = (
+  pickers: Array<THREE.Object3D | null | undefined>,
+  scale = TRANSFORM_PICKER_HIT_SCALE,
+): void => {
+  pickers.forEach((picker) => {
+    if (!picker) return;
+    picker.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.geometry || mesh.userData.pixlPickerHitScale === scale) return;
+      mesh.geometry.scale(scale, scale, scale);
+      mesh.geometry.computeBoundingBox();
+      mesh.geometry.computeBoundingSphere();
+      mesh.userData.pixlPickerHitScale = scale;
+    });
+    picker.updateMatrixWorld(true);
+  });
+};
 
 export const useSelectionGizmo = ({
   canvas,
@@ -53,6 +135,8 @@ export const useSelectionGizmo = ({
   useEffect(() => {
     if (!canvas || !camera || !scene || !enabled) return;
     const transform = new TransformControls(camera, canvas);
+    const transformWithPickers = transform as TransformControlsWithPickers;
+    enlargeTransformPickerHitArea(Object.values(transformWithPickers._gizmo?.picker ?? {}));
     // Phase 6B debug — strip later alongside __pixlGame / __pixlOrbitControls.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__pixlGizmo = transform;
@@ -86,29 +170,59 @@ export const useSelectionGizmo = ({
     const raycaster = raycasterRef.current;
     const ndc = new THREE.Vector2();
 
+    const syncRaycasterFromPointer = (event: PointerEvent): void => {
+      const rect = canvas.getBoundingClientRect();
+      ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+    };
+
+    const getActivePicker = (): {
+      helper: THREE.Object3D | undefined;
+      picker: THREE.Object3D | undefined;
+      transform: TransformControlsWithPickers | null;
+    } => {
+      const transform = transformRef.current as TransformControlsWithPickers | null;
+      const helper = transform?.getHelper();
+      const picker = transform?._gizmo?.picker?.[mode] ?? helper;
+      return { helper, picker, transform };
+    };
+
+    const onPointerDownCapture = (event: PointerEvent): void => {
+      if (event.button !== 0) return;
+      const { picker, transform } = getActivePicker();
+      if (!transform?.object) return;
+      syncRaycasterFromPointer(event);
+      const axis = findTransformPickerHitAxis(raycaster, picker, true);
+      transform.axis = axis as TransformControls['axis'];
+    };
+
     const onPointerDown = (event: PointerEvent): void => {
       // Skip if the gizmo itself is being grabbed (TransformControls handles).
       if (transformRef.current && (transformRef.current as unknown as { dragging?: boolean }).dragging) return;
       // Only respond to primary mouse button.
       if (event.button !== 0) return;
-      const rect = canvas.getBoundingClientRect();
-      ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(ndc, camera);
-      // Exclude the gizmo helper from the raycast.
-      const helper = transformRef.current?.getHelper();
+      syncRaycasterFromPointer(event);
+      const { helper, picker, transform } = getActivePicker();
+      if (rayHitsTransformHelper(raycaster, picker, Boolean(transform?.object))) {
+        return;
+      }
+
+      // Exclude the gizmo helper from the scene-object raycast.
       const candidates: THREE.Object3D[] = [];
       scene.children.forEach((child) => {
         if (child !== helper) candidates.push(child);
       });
       const hits = raycaster.intersectObjects(candidates, true);
       const first = hits.find((h) => h.object.visible);
-      const newSelection = first?.object ?? null;
+      const newSelection = resolveSelectableObject(first?.object, scene);
       setSelected(newSelection);
     };
 
+    canvas.addEventListener('pointerdown', onPointerDownCapture, { capture: true });
     canvas.addEventListener('pointerdown', onPointerDown);
     return () => {
+      canvas.removeEventListener('pointerdown', onPointerDownCapture, { capture: true });
       canvas.removeEventListener('pointerdown', onPointerDown);
     };
   }, [canvas, camera, scene, enabled]);

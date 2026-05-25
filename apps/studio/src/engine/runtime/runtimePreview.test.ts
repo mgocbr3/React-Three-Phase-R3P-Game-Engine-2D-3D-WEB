@@ -112,4 +112,20 @@ describe('runtime preview', () => {
       documentBaseUrl: '/@fs/private/tmp/pixlland-poki/apps/portal/games-src/harvest-rush-3d/public/',
     });
   });
+
+  it('supports packaged samples with separate runtime and document bases', () => {
+    const project = createProject();
+    project.game.source = {
+      game: 'sample-3d-runtime',
+      runtimeFile: 'src/main.js',
+      runtimeBaseUrl: '/sample-projects/sample-3d-runtime/runtime/',
+      documentBaseUrl: '/sample-projects/sample-3d-runtime/',
+    };
+
+    expect(resolveRuntimeLaunchTarget(project)).toMatchObject({
+      kind: 'web-runtime',
+      scriptUrl: '/sample-projects/sample-3d-runtime/runtime/src/main.js',
+      documentBaseUrl: '/sample-projects/sample-3d-runtime/',
+    });
+  });
 });
