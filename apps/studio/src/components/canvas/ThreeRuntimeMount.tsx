@@ -22,10 +22,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { Game } from '@pixlland/three-runtime';
-import type { ProjectEvent } from '@pixlland/engine-ops';
 import * as THREE from 'three';
 
-import { useEngineApiBridge } from '@/hooks/useEngineApiBridge';
 import { useEditorStore } from '@/stores/editorStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
@@ -250,23 +248,6 @@ export function ThreeRuntimeMount({
     mode: effectiveGizmoMode,
     enabled: visible,
     externalSelected: externalSelectedThree,
-  });
-
-  // Re-load when a non-editor agent broadcasts a change. Re-fetches the
-  // Pixl doc and rebuilds the scene via the adapter — keeps the studio in
-  // sync with whatever an MCP/CLI/HTTP agent just wrote to disk.
-  useEngineApiBridge({
-    onEvent: async (event: ProjectEvent) => {
-      if (!gameRef.current) return;
-      if ('byAgent' in event && event.byAgent === 'editor') return;
-      try {
-        const project = await fetchPixlProject(assetBaseUrl);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await gameRef.current.loadFromPixlProject(project as any, initialScene);
-      } catch {
-        // intentional: WS-driven reloads stay silent if the fetch fails
-      }
-    },
   });
 
   useEffect(() => {

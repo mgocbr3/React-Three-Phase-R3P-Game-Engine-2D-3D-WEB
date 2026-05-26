@@ -13,19 +13,12 @@ import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
 import { RuntimePreviewOverlay } from '@/components/editor/RuntimePreviewOverlay';
 import { MobileEditorLayout } from '@/components/editor/mobile';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
-import { ConflictResolutionDialog } from '@/components/editor/ConflictResolutionDialog';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useProjectAutoSave } from '@/legacy/cloud/hooks/useProjectAutoSave';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
 import { useEditorArrowNudge } from '@/hooks/useEditorArrowNudge';
-import { usePixllandBridge } from '@/hooks/usePixllandBridge';
-import { usePixllandProjectStore } from '@/stores/pixllandProjectStore';
-import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
-import { fetchProject } from '@/legacy/cloud/services/projectService';
-import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { hasSampleProject, openSampleProject } from '@/services/sampleProjects';
 import {
   hasActiveProjectWorkspace,
@@ -38,16 +31,12 @@ import { toast } from 'sonner';
 const EditorPage = () => {
   const isMobile = useIsMobile();
   const { templateId } = useParams<{ templateId: string }>();
-  const { loadTemplate, saveProject, loadSavedProject, hasSavedProject, objects } = useEditorStore();
+  const { loadTemplate, saveProject, loadSavedProject, hasSavedProject } = useEditorStore();
   const hasLoadedTemplateRef = useRef<boolean>(false);
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const previewDisplayMode = useRuntimeGameStore((s) => s.previewDisplayMode);
-  const { user } = useAuthStore();
   const panels = useEditorLayoutStore((s) => s.panels);
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
-
-  //  Ativar auto-save híbrido (local + nuvem quando logado)
-  const { setCloudProjectId, pendingConflict, isResolvingConflict, resolveConflict } = useProjectAutoSave();
 
   // Local autosave — writes `pixl-project-document` + per-id snapshot after
   // any editor mutation. Without this, Inspector edits / drags / gizmo moves
@@ -63,7 +52,6 @@ const EditorPage = () => {
   useEditorArrowNudge();
 
   const searchParams = new URLSearchParams(window.location.search);
-  const isEmbedded = ENGINE_CLOUD_ENABLED && searchParams.get('embedded') === 'true';
   // GDD §6.6 — Phase 6A. New native mount toggled via ?engine=native.
   // Phase 6B will remove the flag and make Viewport the only path
   // (which is when the §5.3 R3F deletion happens). For now both paths
@@ -72,20 +60,10 @@ const EditorPage = () => {
   const useNativeViewport = searchParams.get('engine') === 'native';
   const rawProjectParam = searchParams.get('project');
   const sampleProjectSlug = searchParams.get('sampleProject') || (rawProjectParam && hasSampleProject(rawProjectParam) ? rawProjectParam : null);
-  const urlProjectId = searchParams.get('projectId') || (sampleProjectSlug ? null : rawProjectParam);
   const localProjectId = searchParams.get('localProject');
-  const autoCreate = searchParams.get('autocreate') === 'true';
-  const autoCreateTitle = searchParams.get('title') || undefined;
-
-  const { openProject, saveToPixlland, requestProjects } = usePixllandBridge();
-  const currentProjectId = usePixllandProjectStore((s) => s.currentProjectId);
-  const setCurrentProjectId = usePixllandProjectStore((s) => s.setCurrentProjectId);
 
   const lastSaveRef = useRef<number>(Date.now());
   const hasLoadedSavedRef = useRef<boolean>(false);
-  const hasRequestedRemoteProjectRef = useRef<boolean>(false);
-  const hasAutoCreatedRef = useRef<boolean>(false);
-  const hasLoadedFromCloudRef = useRef<boolean>(false);
   const hasLoadedSampleProjectRef = useRef<boolean>(false);
   const hasLoadedLocalProjectRef = useRef<boolean>(false);
   const [isOpeningDiskProject, setIsOpeningDiskProject] = useState(Boolean(sampleProjectSlug || localProjectId));
@@ -93,19 +71,6 @@ const EditorPage = () => {
 
   // Manual save function with toast notification
   const handleSave = useCallback(() => {
-    if (isEmbedded) {
-      const pid = urlProjectId || currentProjectId;
-      if (!pid) {
-        toast.error('Abra ou crie um projeto antes de salvar.');
-        return;
-      }
-      saveToPixlland({ projectId: pid, title: autoCreateTitle || 'Meu Projeto' });
-      requestProjects();
-      lastSaveRef.current = Date.now();
-      toast.success('Projeto salvo e sincronizado!', { duration: 2000 });
-      return;
-    }
-
     if (hasActiveProjectWorkspace()) {
       saveActiveProjectDocumentToDirectory()
         .then(() => {
@@ -128,8 +93,8 @@ const EditorPage = () => {
     saveProject();
     lastSaveRef.current = Date.now();
     toast.success('Projeto salvo!', { duration: 2000 });
-  }, [isEmbedded, urlProjectId, currentProjectId, saveToPixlland, requestProjects, autoCreateTitle, saveProject]);
-  
+  }, [saveProject]);
+
   // Keyboard shortcut: Ctrl+S to save
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -138,12 +103,12 @@ const EditorPage = () => {
         handleSave();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleSave]);
 
-  // Load real local/sample Pixlland games directly into the editor for dogfooding.
+  // Load sample projects directly into the editor for dogfooding.
   useEffect(() => {
     if (!sampleProjectSlug) return;
     if (hasLoadedSampleProjectRef.current) return;
@@ -182,48 +147,12 @@ const EditorPage = () => {
         setIsOpeningDiskProject(false);
       });
   }, [localProjectId]);
-  
-  // Try to load project from cloud if user is logged in and has projectId in URL
-  useEffect(() => {
-    const loadCloudProject = async () => {
-      if (hasLoadedFromCloudRef.current) return;
-      if (!ENGINE_CLOUD_ENABLED) return;
-      if (sampleProjectSlug) return;
-      if (localProjectId) return;
-      if (!user || !urlProjectId || isEmbedded) return;
-      
-      hasLoadedFromCloudRef.current = true;
-      
-      try {
-        const project = await fetchProject(urlProjectId);
 
-        if (project && project.game_data) {
-          const gameData = project.game_data as any;
-
-          useEditorStore.setState({
-            objects: gameData.objects || [],
-            gameScript: gameData.gameScript || '// Game Script\n',
-          });
-
-          setCloudProjectId(urlProjectId);
-          toast.success('Projeto carregado da nuvem!');
-          return;
-        }
-      } catch (error) {
-        console.error('[EditorPage] Erro ao carregar projeto:', error);
-      }
-    };
-    
-    loadCloudProject();
-  }, [user, urlProjectId, isEmbedded, setCloudProjectId, sampleProjectSlug, localProjectId]);
-  
-  // Try to load saved project on first mount (automatic restore) - only if no cloud project
+  // Try to load saved project on first mount (automatic restore)
   useEffect(() => {
     if (sampleProjectSlug) return;
     if (localProjectId) return;
-    if (hasLoadedFromCloudRef.current) return;
-    if (urlProjectId && user) return; // Espera carregar da nuvem
-    
+
     // Always try to restore last local save first
     if (!hasLoadedSavedRef.current && hasSavedProject()) {
       const restored = loadSavedProject();
@@ -241,56 +170,8 @@ const EditorPage = () => {
       hasLoadedTemplateRef.current = true;
       loadTemplate(templateId ?? 'blank');
     }
-  }, [templateId, loadTemplate, hasSavedProject, loadSavedProject, urlProjectId, user, sampleProjectSlug, localProjectId]);
+  }, [templateId, loadTemplate, hasSavedProject, loadSavedProject, sampleProjectSlug, localProjectId]);
 
-  // Embedded: if URL has projectId, ask platform to load it.
-  useEffect(() => {
-    if (!isEmbedded) return;
-    if (!urlProjectId) return;
-    if (hasRequestedRemoteProjectRef.current) return;
-    hasRequestedRemoteProjectRef.current = true;
-
-    setCurrentProjectId(urlProjectId);
-    openProject(urlProjectId);
-  }, [isEmbedded, urlProjectId, openProject, setCurrentProjectId]);
-
-  // Embedded: create a platform project automatically when coming from dashboard.
-  useEffect(() => {
-    if (!isEmbedded) return;
-    if (!autoCreate) return;
-    if (hasAutoCreatedRef.current) return;
-    if (urlProjectId) return; // already created
-
-    // Wait a moment so template loading applies objects before saving.
-    hasAutoCreatedRef.current = true;
-    const timer = setTimeout(async () => {
-      try {
-        const resp: any = await saveToPixlland({ projectId: null, title: autoCreateTitle || 'Novo Projeto' });
-        const newId = resp?.projectId || resp?.id || resp?.gameId;
-
-        if (newId) {
-          setCurrentProjectId(newId);
-
-          const url = new URL(window.location.href);
-          url.searchParams.set('embedded', 'true');
-          url.searchParams.set('projectId', newId);
-          url.searchParams.delete('autocreate');
-          url.searchParams.delete('title');
-          window.history.replaceState({}, '', url.toString());
-
-          requestProjects();
-          toast.success('Projeto criado e sincronizado!', { duration: 2000 });
-        } else {
-          toast.error('Projeto criado, mas sem ID retornado pela plataforma.');
-        }
-      } catch (e) {
-        toast.error('Falha ao criar projeto na plataforma.');
-      }
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [isEmbedded, autoCreate, urlProjectId, saveToPixlland, autoCreateTitle, requestProjects, setCurrentProjectId]);
-  
   if (isOpeningDiskProject) {
     return (
       <div className="editor-shell fixed inset-0 flex items-center justify-center bg-[var(--editor-bg)] text-[var(--editor-text)]">
@@ -318,7 +199,7 @@ const EditorPage = () => {
     <div className="editor-shell fixed inset-0 flex flex-col">
       {/* Top Header */}
       <EditorHeader />
-      
+
       {/* Main Content with Resizable Panels */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {isRuntimeFullscreen ? (
@@ -353,7 +234,7 @@ const EditorPage = () => {
                   </ResizablePanelGroup>
                 </ResizablePanel>
 
-                {/* Bottom Section: Assets Browser / Console / Store */}
+                {/* Bottom Section: Assets Browser / Console */}
                 {panels.bottom && (
                   <>
                     <ResizableHandle withHandle />
@@ -377,25 +258,12 @@ const EditorPage = () => {
           </ResizablePanelGroup>
         )}
       </div>
-      
+
       {/* Bottom Status Bar */}
       <EditorStatusBar />
-      
+
       {/* Motion Control Overlay - renders on top of everything when enabled */}
       <MotionControlOverlay />
-      
-      {/* Conflict Resolution Dialog */}
-      {ENGINE_CLOUD_ENABLED && (
-        <ConflictResolutionDialog
-          conflict={pendingConflict}
-          onResolve={resolveConflict}
-          onCancel={() => {
-            // User canceled - could show warning about unsaved changes
-            toast.warning('Conflito não resolvido. Suas mudanças não foram salvas na nuvem.');
-          }}
-          isResolving={isResolvingConflict}
-        />
-      )}
     </div>
   );
 };

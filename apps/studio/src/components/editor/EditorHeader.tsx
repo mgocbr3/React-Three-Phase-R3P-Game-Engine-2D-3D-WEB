@@ -48,17 +48,13 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { EngineSettingsModal } from './EngineSettingsModal';
-import { EmbeddedActions } from './EmbeddedActions';
 import { defaultTerrainSettings, useTerrainStore, TerrainSettings } from '@/stores/terrainStore';
 import { TerrainSettingsModal } from '@/components/terrain/TerrainSettingsModal';
-import { usePixllandStore, usePixllandBridge } from '@/hooks/usePixllandBridge';
 import { toast } from 'sonner';
 import { useInterfaceStore } from '@/stores/interfaceStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { cn } from '@/lib/utils';
-import { ProjectVersionHistory } from './ProjectVersionHistory';
-import { ENGINE_CLOUD_ENABLED, ENGINE_LOCAL_ONLY } from '@/config/engineMode';
 import {
   getCurrentProjectWorkspace,
   openProjectDocumentFromDirectory,
@@ -74,8 +70,6 @@ import { FilePickerBusyError } from '@/services/filePickerLock';
 import { EditorToolbar } from './EditorToolbar';
 import { toggleRuntimePreviewFromEditor } from '@/engine/runtime/runtimePreviewControls';
 import { getRuntimeAdapterLabel } from '@/engine/runtime/runtimePreview';
-
-const PIXLLAND_PLATFORM_ORIGIN = import.meta.env.VITE_PIXLLAND_PLATFORM_ORIGIN || 'http://localhost:3000';
 
 interface MenuItem {
   label: string;
@@ -95,14 +89,8 @@ export const EditorHeader = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [localWorkspace, setLocalWorkspace] = useState(() => getCurrentProjectWorkspace());
   const menuRef = useRef<HTMLDivElement>(null);
-  const isEmbedded = usePixllandStore((s) => s.isEmbedded);
-  const { publishToPixlland } = usePixllandBridge();
-  const cloudProjectId = ENGINE_CLOUD_ENABLED
-    ? new URLSearchParams(window.location.search).get('project') || new URLSearchParams(window.location.search).get('projectId')
-    : null;
 
   const {
     isEditMode,
@@ -170,40 +158,6 @@ export const EditorHeader = () => {
 
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
   const toggleStats = () => updateSettings({ showStats: !showStats });
-
-  const handlePublish = async () => {
-    try {
-      saveProject();
-      toast.success('Projeto salvo localmente...', { duration: 1000 });
-
-      const { objects, gameScript } = useEditorStore.getState();
-      const bridgePayload = {
-        title: projectName,
-        description: 'Projeto criado no PixlPlayground',
-      };
-
-      if (isEmbedded) {
-        publishToPixlland(bridgePayload);
-        toast.success('Publicando no Pixlland...', { duration: 2000 });
-      } else {
-        const projectData = {
-          name: projectName,
-          gameScript,
-          objects: JSON.parse(JSON.stringify(objects)),
-          timestamp: Date.now(),
-        };
-        const params = new URLSearchParams({
-          from: 'pixlplayground',
-          projectName: projectData.name,
-        });
-        window.open(`${PIXLLAND_PLATFORM_ORIGIN}/developers/submit?${params.toString()}`, '_blank');
-        toast.success('Abrindo pagina de publicacao da Pixlland...', { duration: 2000 });
-      }
-    } catch (error) {
-      console.error('Erro ao publicar:', error);
-      toast.error('Erro ao publicar projeto', { duration: 2000 });
-    }
-  };
 
   const handleSaveToDisk = async () => {
     try {
@@ -350,7 +304,6 @@ export const EditorHeader = () => {
       { label: '', divider: true },
       { label: 'Save', shortcut: 'Ctrl+S', icon: Save, action: handleSaveToDisk },
       { label: 'Save as .pixl Package', shortcut: 'Ctrl+Shift+S', icon: FileArchive, action: handleSaveAsPixl },
-      { label: 'Version History', icon: History, action: () => setShowVersionHistory(true), disabled: ENGINE_LOCAL_ONLY || !cloudProjectId },
       { label: '', divider: true },
       { label: 'Exit to Hub', action: () => navigate('/') },
     ],
@@ -400,7 +353,6 @@ export const EditorHeader = () => {
         action: togglePreviewFullscreen,
         disabled: !previewSession,
       },
-      ...(ENGINE_CLOUD_ENABLED ? [{ label: 'Publish to Pixlland', icon: Upload, action: handlePublish }] : []),
     ],
     Window: [
       { label: panels.scene ? 'Hide Scene Dock' : 'Show Scene Dock', icon: PanelLeft, action: () => togglePanel('scene') },
@@ -516,26 +468,12 @@ export const EditorHeader = () => {
               />
             )}
 
-            {ENGINE_CLOUD_ENABLED && isEmbedded ? (
-              <EmbeddedActions variant="header" />
-            ) : ENGINE_CLOUD_ENABLED ? (
-              <button
-                onClick={handlePublish}
-                className="editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground"
-                title="Publicar na Pixlland"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                Publish
-                <ExternalLink className="h-3 w-3 opacity-70" />
-              </button>
-            ) : null}
             <IconButton icon={Settings} label="Settings" onClick={() => setIsSettingsOpen(true)} />
             <IconButton
               icon={isFullscreen ? Minimize2 : Maximize2}
               label={isFullscreen ? 'Exit Editor Fullscreen' : 'Editor Fullscreen'}
               onClick={toggleFullscreen}
             />
-            {ENGINE_CLOUD_ENABLED && <IconButton icon={User} label="User" />}
           </div>
         </div>
 
@@ -578,13 +516,6 @@ export const EditorHeader = () => {
         onGenerate={handleTerrainGenerate}
       />
 
-      {ENGINE_CLOUD_ENABLED && cloudProjectId && (
-        <ProjectVersionHistory
-          projectId={cloudProjectId}
-          open={showVersionHistory}
-          onOpenChange={setShowVersionHistory}
-        />
-      )}
     </>
   );
 };

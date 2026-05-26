@@ -1,87 +1,30 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useAuthStore } from "@/legacy/cloud/stores/authStore";
-import { PIXLLAND_CONFIG, pixllandClient } from "@/legacy/cloud/integrations/pixlland/client";
-import { ENGINE_CLOUD_ENABLED } from "@/config/engineMode";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import Index from "./pages/Index";
 import EditorPage from "./pages/EditorPage";
 import NotFound from "./pages/NotFound";
-import { PixllandBridgeInitializer } from "@/components/pixlland/PixllandBridgeInitializer";
 
 const queryClient = new QueryClient();
-
-// Auth initializer component
-function AuthInitializer({ children }: { children: React.ReactNode }) {
-  const { initialize } = useAuthStore();
-  
-  // Handle handoff token from Pixlland platform
-  useEffect(() => {
-    if (!ENGINE_CLOUD_ENABLED) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const handoffToken = params.get('handoff');
-    
-    if (handoffToken && PIXLLAND_CONFIG.enabled) {
-      console.log('[Auth] Handoff token detected, exchanging for session...');
-      
-      // Exchange handoff for session
-      fetch(`${PIXLLAND_CONFIG.url}/functions/v1/auth-handoff`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'exchange', handoffToken })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.accessToken && data.refreshToken) {
-          console.log('[Auth] Handoff exchange successful, setting session...');
-          pixllandClient.auth.setSession({
-            access_token: data.accessToken,
-            refresh_token: data.refreshToken
-          });
-        } else {
-          console.error('[Auth] Handoff exchange failed:', data);
-        }
-      })
-      .catch(err => {
-        console.error('[Auth] Handoff exchange error:', err);
-      });
-      
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-  
-  useEffect(() => {
-    if (!ENGINE_CLOUD_ENABLED) return;
-    initialize();
-  }, [initialize]);
-  
-  return <>{children}</>;
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <ThemeProvider>
-        <AuthInitializer>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            {ENGINE_CLOUD_ENABLED && <PixllandBridgeInitializer />}
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/editor" element={<EditorPage />} />
-              <Route path="/editor/:templateId" element={<EditorPage />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthInitializer>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/editor" element={<EditorPage />} />
+            <Route path="/editor/:templateId" element={<EditorPage />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
       </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>

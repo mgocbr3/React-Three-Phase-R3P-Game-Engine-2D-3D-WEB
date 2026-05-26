@@ -40,15 +40,10 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/editorStore';
 import { useNavigate } from 'react-router-dom';
-import { usePixllandBridge } from '@/hooks/usePixllandBridge';
 import { useTerrainStore } from '@/stores/terrainStore';
 import { useInterfaceStore } from '@/stores/interfaceStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { cn } from '@/lib/utils';
-import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
-import { toast } from 'sonner';
-
-const PIXLLAND_PLATFORM_ORIGIN = import.meta.env.VITE_PIXLLAND_PLATFORM_ORIGIN || 'http://localhost:3000';
 
 // No props needed - hierarchy moved to toolbar
 
@@ -78,31 +73,12 @@ export const MobileHeader = () => {
     duplicateObject,
     selectedObjectId
   } = useEditorStore();
-  const { isEmbedded, saveToPixlland, publishToPixlland, closeOverlay } = usePixllandBridge();
   const { setModalOpen: setTerrainModalOpen } = useTerrainStore();
   const { interfaceMode, setInterfaceMode } = useInterfaceStore();
   const { showGrid, showStats, updateSettings } = useEngineSettings();
-  
+
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
   const toggleStats = () => updateSettings({ showStats: !showStats });
-  
-  const projectName = 'Project';
-
-  // Publish to Pixlland platform
-  const handlePublish = () => {
-    if (isEmbedded) {
-      publishToPixlland({ title: projectName });
-      toast.success('Publicando no Pixlland...', { duration: 2000 });
-    } else {
-      const projectData = {
-        name: projectName,
-        timestamp: Date.now(),
-      };
-      const encodedData = encodeURIComponent(JSON.stringify(projectData));
-      window.open(`${PIXLLAND_PLATFORM_ORIGIN}/?import=${encodedData}`, '_blank');
-      toast.success('Abrindo Pixlland para publicação...', { duration: 2000 });
-    }
-  };
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -178,46 +154,22 @@ export const MobileHeader = () => {
     ],
   };
 
-  // Embedded mode has different menu
-  const embeddedMenuConfig: Record<string, MenuItem[]> = {
-    File: [
-      { label: 'Salvar na Pixlland', icon: Save, action: saveToPixlland, color: 'text-muted-foreground' },
-      { label: 'Publicar no Arcade', icon: Upload, action: () => publishToPixlland(), color: 'text-muted-foreground' },
-      { label: '', divider: true },
-      { label: 'Fechar Editor', icon: X, action: closeOverlay, color: 'text-muted-foreground' },
-    ],
-    Edit: menuConfig.Edit,
-    Add: menuConfig.Add,
-    Window: menuConfig.Window,
-    Help: menuConfig.Help,
-  };
-
-  const currentMenuConfig = isEmbedded ? embeddedMenuConfig : menuConfig;
+  const currentMenuConfig = menuConfig;
 
   return (
-    <header 
+    <header
       className="h-11 shrink-0 px-2 flex items-center justify-between border-b border-white/10 relative z-[100]"
       style={glassStyle}
     >
-      {/* Left - Back/Close */}
+      {/* Left - Back */}
       <div className="flex items-center gap-1">
-        {isEmbedded ? (
-          <button 
-            onClick={closeOverlay}
-            className="w-8 h-8 rounded-lg bg-destructive/20 flex items-center justify-center active:scale-95 transition-transform"
-            aria-label="Fechar"
-          >
-            <X className="w-4 h-4 text-destructive" />
-          </button>
-        ) : (
-          <button 
-            onClick={() => navigate('/')}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center active:scale-95 transition-all border border-white/10"
-            aria-label="Voltar"
-          >
-            <ArrowLeft className="w-4 h-4 text-white/80" />
-          </button>
-        )}
+        <button
+          onClick={() => navigate('/')}
+          className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center active:scale-95 transition-all border border-white/10"
+          aria-label="Voltar"
+        >
+          <ArrowLeft className="w-4 h-4 text-white/80" />
+        </button>
       </div>
 
       {/* Center - Desktop-style Menu */}
@@ -272,24 +224,8 @@ export const MobileHeader = () => {
         ))}
         </nav>
 
-      {/* Right - Publish Button */}
-      {ENGINE_CLOUD_ENABLED && (
-        <div className="flex items-center">
-          <button
-            onClick={handlePublish}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%)',
-              color: 'hsl(var(--primary-foreground))',
-              boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)',
-            }}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Publicar</span>
-            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
-          </button>
-        </div>
-      )}
+      {/* Right - spacer */}
+      <div className="w-8" />
     </header>
   );
 };

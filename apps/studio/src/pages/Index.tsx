@@ -4,19 +4,15 @@ import { toast } from 'sonner';
 
 import { Header } from '@/components/dashboard/Header';
 import { CreateProjectDialog } from '@/components/dashboard/CreateProjectDialog';
-import { EmbeddedProjectsSection } from '@/components/dashboard/EmbeddedProjectsSection';
 import { MyProjectsSection } from '@/components/dashboard/MyProjectsSection';
 import { NewProjectSection } from '@/components/dashboard/NewProjectSection';
 import { SamplesSection } from '@/components/dashboard/SamplesSection';
 import { SectionErrorBoundary } from '@/components/dashboard/SectionErrorBoundary';
-import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { openProjectDocumentFromDirectory } from '@/services/localProjectFiles';
 
 const Index = () => {
   const navigate = useNavigate();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-
-  const isEmbedded = ENGINE_CLOUD_ENABLED && new URLSearchParams(window.location.search).get('embedded') === 'true';
 
   const handleCreateBlank = () => {
     setCreateDialogOpen(true);
@@ -51,18 +47,12 @@ const Index = () => {
             onOpenProjectFolder={handleOpenProjectFolder}
           />
 
-          {isEmbedded ? (
-            <SectionErrorBoundary sectionName="Projetos embarcados">
-              <EmbeddedProjectsSection onCreateNew={handleCreateBlank} />
-            </SectionErrorBoundary>
-          ) : (
-            <SectionErrorBoundary sectionName="Projetos recentes">
-              <MyProjectsSection
-                onCreateNew={handleCreateBlank}
-                onOpenProjectFolder={handleOpenProjectFolder}
-              />
-            </SectionErrorBoundary>
-          )}
+          <SectionErrorBoundary sectionName="Projetos recentes">
+            <MyProjectsSection
+              onCreateNew={handleCreateBlank}
+              onOpenProjectFolder={handleOpenProjectFolder}
+            />
+          </SectionErrorBoundary>
 
           <SectionErrorBoundary sectionName="Samples">
             <SamplesSection />
