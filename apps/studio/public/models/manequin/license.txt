@@ -1,0 +1,11 @@
+Model Information:
+* title:	MANEQUIN
+* source:	https://sketchfab.com/3d-models/manequin-3087ff2a167241ae997291667dc9f079
+* author:	rato biônico games (https://sketchfab.com/felip32pppp)
+
+Model License:
+* license type:	MIT  (http://creativecommons.org/licenses/by/MIT/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "MANEQUIN" (https://sketchfab.com/3d-models/manequin-3087ff2a167241ae997291667dc9f079) by rato biônico games (https://sketchfab.com/felip32pppp) licensed under CC-BY-MIT (http://creativecommons.org/licenses/by/MIT/)

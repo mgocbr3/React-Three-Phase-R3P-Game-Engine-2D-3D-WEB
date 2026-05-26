@@ -38,6 +38,33 @@ interface EditableObjectProps {
 // Prevent decorative meshes from intercepting clicks (raycasting)
 const NO_RAYCAST = () => null;
 
+// Loads + clones a GLTF for the player object. Cloning avoids re-using
+// the cached scene across multiple players (would share the same skeleton
+// pose and break independent animation later). useGLTF caches the source
+// load by URL so swapping the model URL is cheap. The model is auto-scaled
+// so the bounding-box height fits 1.8 world units — keeps the manequim at
+// roughly the same size as the legacy MinecraftCharacter so existing
+// physics colliders and camera offsets stay valid.
+const PlayerGltfModel = ({ url }: { url: string }) => {
+  const { scene } = useGLTF(url);
+  const playerModel = useMemo(() => {
+    const clone = scene.clone(true);
+    const bbox = new THREE.Box3().setFromObject(clone);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+    if (size.y > 0.0001) {
+      const targetHeight = 1.8;
+      const scale = targetHeight / size.y;
+      clone.scale.setScalar(scale);
+      // Recompute the bbox after scaling so we can drop the model on y=0.
+      const scaledBox = new THREE.Box3().setFromObject(clone);
+      clone.position.y -= scaledBox.min.y;
+    }
+    return clone;
+  }, [scene]);
+  return <primitive object={playerModel} />;
+};
+
 const markObjectPickHandled = () => {
   if (typeof window === 'undefined') return;
   (window as typeof window & { __PIXL_EDITOR_LAST_OBJECT_PICK__?: number }).__PIXL_EDITOR_LAST_OBJECT_PICK__ = performance.now();
@@ -1198,11 +1225,14 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
     }
     
     switch (object.type) {
-      case 'player':
+      case 'player': {
+        // New projects ship with a default 3rd-person GLTF (manequim
+        // CC-BY-4.0 in public/models/manequin). Legacy projects without
+        // a modelUrl fall back to the stylized Minecraft character so
+        // they keep rendering exactly as before.
+        const playerModelUrl = object.animationSettings?.modelUrl;
         return (
-          <group
-            {...pointerSelectHandlers}
-          >
+          <group {...pointerSelectHandlers}>
             {/* Selection indicator */}
             {isSelected && (
               <mesh position={[0, 1, 0]}>
@@ -1210,24 +1240,45 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
                 <meshBasicMaterial color="#ff8c00" transparent opacity={0.2} wireframe />
               </mesh>
             )}
-            {/* Minecraft-style player */}
-            <MinecraftCharacter 
-              skinColors={{
-                skin: '#c4a574',
-                hair: '#3d2314',
-                shirt: '#00aaaa',
-                pants: '#1a1a7a',
-                shoes: '#4a4a4a',
-              }}
-              animate={true}
-              animationSpeed={0.5}
-            />
+
+            {playerModelUrl ? (
+              <Suspense
+                fallback={
+                  <MinecraftCharacter
+                    skinColors={{
+                      skin: '#c4a574',
+                      hair: '#3d2314',
+                      shirt: '#00aaaa',
+                      pants: '#1a1a7a',
+                      shoes: '#4a4a4a',
+                    }}
+                    animate={true}
+                    animationSpeed={0.5}
+                  />
+                }
+              >
+                <PlayerGltfModel url={playerModelUrl} />
+              </Suspense>
+            ) : (
+              <MinecraftCharacter
+                skinColors={{
+                  skin: '#c4a574',
+                  hair: '#3d2314',
+                  shirt: '#00aaaa',
+                  pants: '#1a1a7a',
+                  shoes: '#4a4a4a',
+                }}
+                animate={true}
+                animationSpeed={0.5}
+              />
+            )}
+
             {/* Ground indicator ring */}
             <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_RAYCAST}>
               <ringGeometry args={[0.6, 0.8, 32]} />
-              <meshStandardMaterial 
-                color="#6366f1" 
-                emissive="#6366f1" 
+              <meshStandardMaterial
+                color="#6366f1"
+                emissive="#6366f1"
                 emissiveIntensity={0.5}
                 side={THREE.DoubleSide}
                 transparent
@@ -1236,6 +1287,7 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
             </mesh>
           </group>
         );
+      }
 
       case 'camera':
         return (
