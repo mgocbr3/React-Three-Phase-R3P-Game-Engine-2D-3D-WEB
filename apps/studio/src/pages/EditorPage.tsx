@@ -10,7 +10,6 @@ import { InspectorPanel } from '@/components/editor/InspectorPanel';
 import { BottomPanel } from '@/components/editor/BottomPanel';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { RuntimePreviewOverlay } from '@/components/editor/RuntimePreviewOverlay';
 import { MobileEditorLayout } from '@/components/editor/mobile';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
@@ -191,7 +190,6 @@ const EditorPage = () => {
       {shouldRenderEditorViewport && (useNativeViewport ? <Viewport /> : <EditorCanvas />)}
       {shouldRenderEditorViewport && <CameraSpeedIndicator />}
       {previewSession && <RuntimeGameFrame session={previewSession} />}
-      <RuntimePreviewOverlay />
     </>
   );
 

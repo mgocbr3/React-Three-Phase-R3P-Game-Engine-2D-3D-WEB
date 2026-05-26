@@ -11,7 +11,6 @@ import { MobileVibeCodePanel } from './MobileVibeCodePanel';
 import { MobileSettingsSheet } from './MobileSettingsSheet';
 import { MobileGameControls } from '@/components/canvas/MobileGameControls';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
-import { RuntimePreviewOverlay } from '@/components/editor/RuntimePreviewOverlay';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -66,7 +65,6 @@ export const MobileEditorLayout = () => {
 
       <div className="flex-1 relative overflow-hidden">
         <EditorCanvas />
-        <RuntimePreviewOverlay />
         <MobileToolbar onOpenSettings={() => setShowSettings(true)} onOpenHierarchy={() => setShowHierarchy(true)} />
         <MobileFloatingActions />
         <MobileBottomNav 
