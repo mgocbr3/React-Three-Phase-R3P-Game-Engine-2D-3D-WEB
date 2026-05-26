@@ -68,7 +68,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
   } = useEditorStore();
 
   const { setModalOpen: setTerrainModalOpen } = useTerrainStore();
-  const { viewportMode, setViewportMode } = useViewportStore();
+  const { viewportMode, setViewportMode, lockedKind } = useViewportStore();
   
   const { showGrid, updateSettings } = useEngineSettings();
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
@@ -139,21 +139,52 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
             : 'border border-border bg-[var(--editor-toolbar)] p-1 shadow-xl'
         )}
       >
+        {/*
+         * Project kind (2D Phaser vs 3D Three.js) is locked at creation
+         * time and persisted in the project document. Once a project is
+         * loaded we render only the matching badge — clicking the wrong
+         * engine mid-project causes too many cross-runtime bugs to be
+         * worth keeping as a toggle.
+         *
+         * The toggle still appears when no project is loaded (Hub boot,
+         * direct `/editor?kind=...` URL), so dev mode and tests can flip
+         * it freely.
+         */}
         {isInline && (
           <>
             <div className="mr-1 flex h-7 items-center border border-border bg-[var(--editor-panel-sunken)]">
-              <ModeButton
-                icon={Grid3X3}
-                label="2D"
-                active={viewportMode === '2d'}
-                onClick={() => setViewportMode('2d')}
-              />
-              <ModeButton
-                icon={Box}
-                label="3D"
-                active={viewportMode === '3d'}
-                onClick={() => setViewportMode('3d')}
-              />
+              {lockedKind === null ? (
+                <>
+                  <ModeButton
+                    icon={Grid3X3}
+                    label="2D"
+                    active={viewportMode === '2d'}
+                    onClick={() => setViewportMode('2d')}
+                  />
+                  <ModeButton
+                    icon={Box}
+                    label="3D"
+                    active={viewportMode === '3d'}
+                    onClick={() => setViewportMode('3d')}
+                  />
+                </>
+              ) : (
+                <div
+                  className="flex h-7 items-center gap-1.5 px-2 text-[11px] font-semibold text-foreground"
+                  title={
+                    lockedKind === '2d'
+                      ? 'Projeto 2D (Phaser) — engine fixa na criação'
+                      : 'Projeto 3D (Three.js) — engine fixa na criação'
+                  }
+                >
+                  {lockedKind === '2d' ? (
+                    <Grid3X3 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Box className="h-3.5 w-3.5" />
+                  )}
+                  <span>{lockedKind.toUpperCase()}</span>
+                </div>
+              )}
             </div>
             <Separator />
           </>

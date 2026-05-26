@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -9,10 +9,18 @@ import { NewProjectSection } from '@/components/dashboard/NewProjectSection';
 import { SamplesSection } from '@/components/dashboard/SamplesSection';
 import { SectionErrorBoundary } from '@/components/dashboard/SectionErrorBoundary';
 import { openProjectDocumentFromDirectory } from '@/services/localProjectFiles';
+import { useViewportStore } from '@/stores/viewportStore';
 
 const Index = () => {
   const navigate = useNavigate();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // Returning to the Hub means "no project active" — clear the viewport
+  // lock so a future project (or a direct `/editor?kind=` URL) can pick
+  // its own kind freely.
+  useEffect(() => {
+    useViewportStore.getState().setLockedKind(null);
+  }, []);
 
   const handleCreateBlank = () => {
     setCreateDialogOpen(true);

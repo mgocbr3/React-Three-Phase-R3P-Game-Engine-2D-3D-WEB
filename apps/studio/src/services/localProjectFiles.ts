@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { useEditorStore } from '@/stores/editorStore';
 import { useAssetStore } from '@/stores/assetStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { useViewportStore, type ViewportMode } from '@/stores/viewportStore';
 import {
   AnyPixlProjectDocument,
   DEFAULT_PROJECT_FOLDERS,
@@ -593,6 +594,13 @@ export const applyProjectDocumentToEditor = (
   useAssetStore.setState({
     projectAssets: snapshot.projectAssets,
   });
+
+  // Lock the viewport to the project's declared kind. Projects with kind
+  // 'hybrid' fall back to 3d (Three.js host) so the editor still mounts; a
+  // future iteration may render both runtimes side-by-side for hybrid.
+  const activeScene = project.scenes.find((s) => s.id === project.activeSceneId) ?? project.scenes[0];
+  const sceneKind: ViewportMode = activeScene?.kind === '2d' ? '2d' : '3d';
+  useViewportStore.getState().setLockedKind(sceneKind);
 
   useProjectStore.getState().upsertProject({
     id: project.id,

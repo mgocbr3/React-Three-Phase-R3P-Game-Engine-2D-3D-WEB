@@ -61,10 +61,21 @@ export const FlyCamera = ({
       initialized.current = true;
     }
 
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      const el = target as HTMLElement | null;
+      if (!el || !el.tagName) return false;
+      // Bail on anything that takes typed text: native inputs, textareas,
+      // and `contenteditable` regions (script editor, inline rename, etc.).
+      // Without this guard, typing "Wasd" into the Inspector would also
+      // move the camera, which is jarring.
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture if user is typing in input
-      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
-      
+      if (isEditableTarget(e.target)) return;
+
       const key = e.key.toLowerCase();
       if (key in keys.current) {
         keys.current[key as keyof typeof keys.current] = true;
