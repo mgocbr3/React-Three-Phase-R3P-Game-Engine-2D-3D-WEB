@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { useEditorStore } from '@/stores/editorStore';
-import { GAME_TEMPLATES } from '@/stores/gameStore';
 import { SavedProject, useProjectStore } from '@/stores/projectStore';
 
 interface MyProjectsSectionProps {
@@ -45,12 +44,6 @@ export const MyProjectsSection = ({ onCreateNew, onOpenProjectFolder }: MyProjec
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<SavedProject | null>(null);
   const [newName, setNewName] = useState('');
-
-  const getTemplateName = (templateId: string | null | undefined) => {
-    if (!templateId) return 'Projeto em branco';
-    const template = GAME_TEMPLATES.find((t) => t.id === templateId);
-    return template?.name || 'Template';
-  };
 
   const handleOpenLocalProject = (project: SavedProject) => {
     if (project.templateId) {
@@ -138,7 +131,7 @@ export const MyProjectsSection = ({ onCreateNew, onOpenProjectFolder }: MyProjec
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="truncate text-sm font-semibold text-foreground">{project.name}</h3>
-                <p className="truncate text-xs text-muted-foreground">{getTemplateName(project.templateId)}</p>
+                <p className="truncate text-xs text-muted-foreground">Projeto em branco</p>
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   {(() => {

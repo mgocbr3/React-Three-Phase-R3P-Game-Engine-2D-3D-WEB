@@ -45,7 +45,6 @@ import { useTerrainStore } from '@/stores/terrainStore';
 import { useInterfaceStore } from '@/stores/interfaceStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { cn } from '@/lib/utils';
-import { GAME_TEMPLATES } from '@/stores/gameStore';
 import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { toast } from 'sonner';
 
@@ -67,18 +66,17 @@ export const MobileHeader = () => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   
-  const { 
-    isEditMode, 
-    toggleEditMode, 
-    currentTemplateId, 
-    undo, 
-    redo, 
-    canUndo, 
+  const {
+    isEditMode,
+    toggleEditMode,
+    undo,
+    redo,
+    canUndo,
     canRedo,
     addObject,
     deleteObject,
     duplicateObject,
-    selectedObjectId 
+    selectedObjectId
   } = useEditorStore();
   const { isEmbedded, saveToPixlland, publishToPixlland, closeOverlay } = usePixllandBridge();
   const { setModalOpen: setTerrainModalOpen } = useTerrainStore();
@@ -88,18 +86,16 @@ export const MobileHeader = () => {
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
   const toggleStats = () => updateSettings({ showStats: !showStats });
   
-  const currentTemplate = GAME_TEMPLATES.find(t => t.id === currentTemplateId);
-  const templateName = currentTemplate?.name || 'Project';
+  const projectName = 'Project';
 
   // Publish to Pixlland platform
   const handlePublish = () => {
     if (isEmbedded) {
-      publishToPixlland({ title: templateName });
+      publishToPixlland({ title: projectName });
       toast.success('Publicando no Pixlland...', { duration: 2000 });
     } else {
       const projectData = {
-        templateId: currentTemplateId,
-        name: templateName,
+        name: projectName,
         timestamp: Date.now(),
       };
       const encodedData = encodeURIComponent(JSON.stringify(projectData));

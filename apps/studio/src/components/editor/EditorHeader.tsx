@@ -47,7 +47,6 @@ import logo from '@/assets/logo.png';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
-import { GAME_TEMPLATES } from '@/stores/gameStore';
 import { EngineSettingsModal } from './EngineSettingsModal';
 import { EmbeddedActions } from './EmbeddedActions';
 import { defaultTerrainSettings, useTerrainStore, TerrainSettings } from '@/stores/terrainStore';
@@ -106,7 +105,6 @@ export const EditorHeader = () => {
     : null;
 
   const {
-    currentTemplateId,
     isEditMode,
     undo,
     redo,
@@ -143,8 +141,7 @@ export const EditorHeader = () => {
   const resetLayout = useEditorLayoutStore((s) => s.resetLayout);
   const applyLayoutPreset = useEditorLayoutStore((s) => s.applyPreset);
 
-  const currentTemplate = GAME_TEMPLATES.find((template) => template.id === currentTemplateId);
-  const projectName = localProject?.name || (currentTemplate ? currentTemplate.name : 'Untitled Project');
+  const projectName = localProject?.name || 'Untitled Project';
   const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
   const isRuntimeFullscreen = previewDisplayMode === 'fullscreen';
   const runtimeLabel = previewSession?.launchTarget.kind === 'web-runtime'
@@ -179,10 +176,10 @@ export const EditorHeader = () => {
       saveProject();
       toast.success('Projeto salvo localmente...', { duration: 1000 });
 
-      const { objects, currentTemplateId: templateId, gameScript } = useEditorStore.getState();
+      const { objects, gameScript } = useEditorStore.getState();
       const bridgePayload = {
         title: projectName,
-        description: `Projeto criado com template ${templateId}`,
+        description: 'Projeto criado no PixlPlayground',
       };
 
       if (isEmbedded) {
@@ -191,7 +188,6 @@ export const EditorHeader = () => {
       } else {
         const projectData = {
           name: projectName,
-          templateId,
           gameScript,
           objects: JSON.parse(JSON.stringify(objects)),
           timestamp: Date.now(),
