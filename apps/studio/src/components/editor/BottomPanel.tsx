@@ -54,39 +54,6 @@ const INITIAL_CONSOLE: ConsoleMessage[] = [
   { id: '1', type: 'info', message: 'PixlPlayground inicializado', timestamp: new Date().toLocaleTimeString() },
 ];
 
-interface StoreAsset {
-  id: string;
-  name: string;
-  category: string;
-  license: string;
-  prefab: string;
-  hasPreview?: boolean;
-  isSystem?: boolean;
-}
-
-// Built-in Minecraft-style prefab assets — still referenced by content browser
-// for drag-and-drop into the scene. No cloud lookup; everything is local.
-const STORE_ASSETS: StoreAsset[] = [
-  // NPCs - Minecraft Style
-  { id: 'npc-villager', name: 'Villager NPC', category: 'characters', license: 'Built-in', prefab: 'MinecraftVillager', hasPreview: true },
-  { id: 'npc-guard', name: 'Guard NPC', category: 'characters', license: 'Built-in', prefab: 'MinecraftGuard', hasPreview: true },
-  { id: 'npc-merchant', name: 'Merchant NPC', category: 'characters', license: 'Built-in', prefab: 'MinecraftMerchant', hasPreview: true },
-  { id: 'npc-zombie', name: 'Zombie Enemy', category: 'characters', license: 'Built-in', prefab: 'MinecraftZombie', hasPreview: true },
-  { id: 'npc-skeleton', name: 'Skeleton Enemy', category: 'characters', license: 'Built-in', prefab: 'MinecraftSkeleton', hasPreview: true },
-  // Animals - Minecraft Style
-  { id: 'animal-pig', name: 'Pig', category: 'animals', license: 'Built-in', prefab: 'MinecraftPig', hasPreview: true },
-  { id: 'animal-chicken', name: 'Chicken', category: 'animals', license: 'Built-in', prefab: 'MinecraftChicken', hasPreview: true },
-  { id: 'animal-cow', name: 'Cow', category: 'animals', license: 'Built-in', prefab: 'MinecraftCow', hasPreview: true },
-  { id: 'animal-sheep', name: 'Sheep', category: 'animals', license: 'Built-in', prefab: 'MinecraftSheep', hasPreview: true },
-  // Environment
-  { id: 'env-tree', name: 'Minecraft Tree', category: 'nature', license: 'Built-in', prefab: 'MinecraftTree' },
-  { id: 'env-house', name: 'Minecraft House', category: 'construction', license: 'Built-in', prefab: 'MinecraftHouse' },
-  { id: 'env-fence', name: 'Wooden Fence', category: 'construction', license: 'Built-in', prefab: 'MinecraftFence' },
-  { id: 'env-lamp', name: 'Lamp Post', category: 'construction', license: 'Built-in', prefab: 'MinecraftLampPost' },
-  // Motion Controls - Wii Style
-  { id: 'ctrl-motion', name: 'Motion Control', category: 'controls', license: 'Built-in', prefab: 'MotionControl', hasPreview: true, isSystem: true },
-];
-
 type BottomTabId = 'assets' | 'ui' | 'console' | 'timeline';
 
 const BOTTOM_TAB_ORDER_KEY = 'pixlplayground.bottomTabOrder';
@@ -220,9 +187,7 @@ export const BottomPanel = () => {
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
   const [consoleCommand, setConsoleCommand] = useState('');
   const [selectedFolder, setSelectedFolder] = useState('project');
-  const [storeCategory, setStoreCategory] = useState('all');
   const [assetSearch, setAssetSearch] = useState('');
-  const [storeSearch, setStoreSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [storeTab, setStoreTab] = useState<'library' | 'project'>('library');
   const [isResizingFolderTree, setIsResizingFolderTree] = useState(false);
@@ -329,11 +294,6 @@ export const BottomPanel = () => {
 
   const filteredMessages = consoleMessages.filter(
     m => consoleFilter === 'all' || m.type === consoleFilter
-  );
-
-  const filteredStoreAssets = STORE_ASSETS.filter(
-    a => (storeCategory === 'all' || a.category === storeCategory) &&
-         a.name.toLowerCase().includes(storeSearch.toLowerCase())
   );
 
   const filteredProjectAssets = projectAssets.filter(

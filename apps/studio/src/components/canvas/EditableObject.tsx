@@ -12,22 +12,7 @@ import { ParticleEmitter } from './ParticleEmitter';
 import { useIsInstanced } from './AutoInstancer';
 import { TransformGizmo, GizmoInteractionLock } from './TransformGizmo';
 import { useTapIntent } from './hooks/useTapIntent';
-import { 
-  MinecraftCharacter,
-  MinecraftTree,
-  MinecraftHouse,
-  MinecraftLampPost,
-  MinecraftFence,
-  MinecraftGround
-} from './primitives/MinecraftCharacter';
-import { 
-  MinecraftVillager, 
-  MinecraftGuard, 
-  MinecraftMerchant, 
-  MinecraftZombie, 
-  MinecraftSkeleton,
-  StaticMinecraftNPC 
-} from './primitives/MinecraftNPCs';
+import { PlayerGltfModel } from './primitives/PlayerGltfModel';
 
 interface EditableObjectProps {
   object: SceneObject;
@@ -38,32 +23,6 @@ interface EditableObjectProps {
 // Prevent decorative meshes from intercepting clicks (raycasting)
 const NO_RAYCAST = () => null;
 
-// Loads + clones a GLTF for the player object. Cloning avoids re-using
-// the cached scene across multiple players (would share the same skeleton
-// pose and break independent animation later). useGLTF caches the source
-// load by URL so swapping the model URL is cheap. The model is auto-scaled
-// so the bounding-box height fits 1.8 world units — keeps the manequim at
-// roughly the same size as the legacy MinecraftCharacter so existing
-// physics colliders and camera offsets stay valid.
-const PlayerGltfModel = ({ url }: { url: string }) => {
-  const { scene } = useGLTF(url);
-  const playerModel = useMemo(() => {
-    const clone = scene.clone(true);
-    const bbox = new THREE.Box3().setFromObject(clone);
-    const size = new THREE.Vector3();
-    bbox.getSize(size);
-    if (size.y > 0.0001) {
-      const targetHeight = 1.8;
-      const scale = targetHeight / size.y;
-      clone.scale.setScalar(scale);
-      // Recompute the bbox after scaling so we can drop the model on y=0.
-      const scaledBox = new THREE.Box3().setFromObject(clone);
-      clone.position.y -= scaledBox.min.y;
-    }
-    return clone;
-  }, [scene]);
-  return <primitive object={playerModel} />;
-};
 
 const markObjectPickHandled = () => {
   if (typeof window === 'undefined') return;
@@ -1226,11 +1185,17 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
     
     switch (object.type) {
       case 'player': {
-        // New projects ship with a default 3rd-person GLTF (manequim
-        // CC-BY-4.0 in public/models/manequin). Legacy projects without
-        // a modelUrl fall back to the stylized Minecraft character so
-        // they keep rendering exactly as before.
-        const playerModelUrl = object.animationSettings?.modelUrl;
+        // Every project ships with a default 3rd-person GLTF (manequim
+        // CC-BY-4.0 in public/models/manequin/). The fallback during
+        // Suspense and for legacy projects without modelUrl is a neutral
+        // grey capsule — no more Minecraft "Steve" sneaking back in.
+        const playerModelUrl = object.animationSettings?.modelUrl || '/models/manequin/scene.gltf';
+        const fallbackCapsule = (
+          <mesh position={[0, 0.9, 0]} castShadow>
+            <capsuleGeometry args={[0.3, 1.2, 4, 8]} />
+            <meshStandardMaterial color="#8a8a8a" />
+          </mesh>
+        );
         return (
           <group {...pointerSelectHandlers}>
             {/* Selection indicator */}
@@ -1241,37 +1206,9 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
               </mesh>
             )}
 
-            {playerModelUrl ? (
-              <Suspense
-                fallback={
-                  <MinecraftCharacter
-                    skinColors={{
-                      skin: '#c4a574',
-                      hair: '#3d2314',
-                      shirt: '#00aaaa',
-                      pants: '#1a1a7a',
-                      shoes: '#4a4a4a',
-                    }}
-                    animate={true}
-                    animationSpeed={0.5}
-                  />
-                }
-              >
-                <PlayerGltfModel url={playerModelUrl} />
-              </Suspense>
-            ) : (
-              <MinecraftCharacter
-                skinColors={{
-                  skin: '#c4a574',
-                  hair: '#3d2314',
-                  shirt: '#00aaaa',
-                  pants: '#1a1a7a',
-                  shoes: '#4a4a4a',
-                }}
-                animate={true}
-                animationSpeed={0.5}
-              />
-            )}
+            <Suspense fallback={fallbackCapsule}>
+              <PlayerGltfModel url={playerModelUrl} />
+            </Suspense>
 
             {/* Ground indicator ring */}
             <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_RAYCAST}>
@@ -1576,17 +1513,20 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
           />
         );
 
-      case 'npc':
-        // Render Minecraft-style prefabs based on customData.prefab
-        const prefab = object.logicSettings?.customData?.prefab || 'MinecraftCharacter';
-        const npcSkinColors = {
-          skin: object.color || '#c4a574',
-          hair: '#3d2314',
-          shirt: '#00aaaa',
-          pants: '#1a1a7a',
-          shoes: '#4a4a4a',
-        };
-        
+      case 'npc': {
+        // NPCs render as a neutral capsule placeholder. The legacy
+        // "MinecraftVillager / Tree / House / Lamp / Fence / Zombie"
+        // prefab set was deleted along with the Lovable starter — users
+        // import their own GLTFs via the Content Browser and the NPC
+        // object points at them via animationSettings.modelUrl (same
+        // pattern as the player).
+        const npcModelUrl = object.animationSettings?.modelUrl;
+        const npcFallback = (
+          <mesh position={[0, 0.9, 0]} castShadow>
+            <capsuleGeometry args={[0.3, 1.2, 4, 8]} />
+            <meshStandardMaterial color={object.color || '#a78bfa'} />
+          </mesh>
+        );
         return (
           <group
             onPointerDown={tapSelect.onPointerDown as any}
@@ -1600,22 +1540,16 @@ export const EditableObject = ({ object, rigidBodies, groups }: EditableObjectPr
                 <meshBasicMaterial color="#ff8c00" transparent opacity={0.2} wireframe />
               </mesh>
             )}
-            {/* Render appropriate prefab */}
-            {prefab === 'MinecraftTree' && <MinecraftTree position={[0, 0, 0]} />}
-            {prefab === 'MinecraftHouse' && <MinecraftHouse position={[0, 0, 0]} />}
-            {prefab === 'MinecraftLampPost' && <MinecraftLampPost position={[0, 0, 0]} />}
-            {prefab === 'MinecraftFence' && <MinecraftFence position={[0, 0, 0]} length={5} />}
-            {prefab === 'MinecraftVillager' && <StaticMinecraftNPC position={[0, 0, 0]} skinColors={{ skin: '#c4a574', hair: '#5c4033', shirt: '#8B4513', pants: '#654321', shoes: '#2a2a2a' }} />}
-            {prefab === 'MinecraftGuard' && <StaticMinecraftNPC position={[0, 0, 0]} skinColors={{ skin: '#c4a574', hair: '#3d2314', shirt: '#808080', pants: '#606060', shoes: '#4a4a4a' }} />}
-            {prefab === 'MinecraftMerchant' && <StaticMinecraftNPC position={[0, 0, 0]} skinColors={{ skin: '#deb887', hair: '#8b4513', shirt: '#daa520', pants: '#8b4513', shoes: '#654321' }} />}
-            {prefab === 'MinecraftZombie' && <StaticMinecraftNPC position={[0, 0, 0]} skinColors={{ skin: '#4a7c4e', hair: '#2d4f30', shirt: '#3d5c40', pants: '#2d4f30', shoes: '#1a2e1c' }} />}
-            {prefab === 'MinecraftSkeleton' && <StaticMinecraftNPC position={[0, 0, 0]} skinColors={{ skin: '#e8e8d0', hair: '#e8e8d0', shirt: '#d8d8c0', pants: '#d0d0b8', shoes: '#c8c8b0' }} />}
-            {prefab === 'MinecraftCharacter' && <MinecraftCharacter skinColors={npcSkinColors} animate={true} animationSpeed={0.5} />}
-            {!['MinecraftTree', 'MinecraftHouse', 'MinecraftLampPost', 'MinecraftFence', 'MinecraftVillager', 'MinecraftGuard', 'MinecraftMerchant', 'MinecraftZombie', 'MinecraftSkeleton', 'MinecraftCharacter'].includes(prefab) && (
-              <MinecraftCharacter skinColors={npcSkinColors} animate={true} animationSpeed={0.5} />
+            {npcModelUrl ? (
+              <Suspense fallback={npcFallback}>
+                <PlayerGltfModel url={npcModelUrl} />
+              </Suspense>
+            ) : (
+              npcFallback
             )}
           </group>
         );
+      }
 
       case 'ring':
         return (

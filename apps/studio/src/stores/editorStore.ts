@@ -926,12 +926,12 @@ const createCameraObject = (mode: CameraMode = 'third-person'): SceneObject => {
 
 // Default 3rd-person player model — manequim CC-BY-4.0 baked into the
 // studio's public/ folder so every new 3D project starts with a real
-// character instead of a placeholder box. The renderer (EditableObject)
-// checks `animationSettings.modelUrl` and falls back to the Minecraft-style
-// stylized character if absent (e.g. legacy projects loaded from disk).
+// character. The renderer (EditableObject + DefaultPlayer) reads
+// `animationSettings.modelUrl`; legacy projects without it fall back
+// to this same default, never to the deleted Minecraft "Steve".
 //
 // Attribution required by CC-BY-4.0 lives in `apps/studio/public/models/manequin/license.txt`
-// and is surfaced in the Help → Credits panel.
+// and is documented in `docs/THIRD-PARTY-ASSETS.md`.
 const DEFAULT_PLAYER_MODEL_URL = '/models/manequin/scene.gltf';
 
 // Create the default player. The Lovable starter mapped each template to a

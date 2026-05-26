@@ -12,7 +12,7 @@ import { useAssetDragStore } from '@/stores/assetDragStore';
 import { useThreeMemoryMonitor } from '@/hooks/useThreeCleanup';
 import { EditableObject } from './EditableObject';
 import { GizmoInteractionLock, TransformGizmo } from './TransformGizmo';
-import { MinecraftPlayer } from './primitives/MinecraftPlayer';
+import { DefaultPlayer } from './primitives/DefaultPlayer';
 import { FPSController } from './controllers/FPSController';
 import { PlatformerController } from './controllers/PlatformerController';
 import { FlyCamera } from './FlyCamera';
@@ -583,16 +583,10 @@ const EditorScene = () => {
               playerSettings={playerSettings}
             />
           ) : !isEditMode && (
-            <MinecraftPlayer 
+            <DefaultPlayer
               ref={playerRef}
-              position={playerPosition as [number, number, number]} 
-              skinColors={{
-                skin: '#c4a574',
-                hair: '#3d2314',
-                shirt: '#00aaaa',
-                pants: '#1a1a7a',
-                shoes: '#4a4a4a',
-              }}
+              position={playerPosition as [number, number, number]}
+              modelUrl={playerObject?.animationSettings?.modelUrl ?? '/models/manequin/scene.gltf'}
               playerSettings={playerSettings}
               cameraSettings={cameraSettings}
             />
