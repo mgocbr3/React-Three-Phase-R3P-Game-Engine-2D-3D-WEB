@@ -22,15 +22,6 @@ const BACKGROUND_TYPES: { value: BackgroundType; label: string }[] = [
   { value: '3d-scene', label: 'Cena 3D' },
 ];
 
-const TEMPLATE_OPTIONS = [
-  { value: 'adventure', label: 'Adventure' },
-  { value: 'fps-horror', label: 'Horror' },
-  { value: 'rpg-topdown', label: 'RPG Topdown' },
-  { value: 'platformer-2d', label: 'Plataforma 2D' },
-  { value: 'racing', label: 'Corrida' },
-  { value: 'social-hub', label: 'Social Hub' },
-];
-
 const ANIMATED_TYPES = [
   { value: 'particles', label: 'Partículas' },
   { value: 'stars', label: 'Estrelas' },
@@ -292,37 +283,6 @@ export const UIEditorPanel = () => {
                           max={1}
                           step={0.05}
                         />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label>Template da Cena 3D</Label>
-                          <Switch
-                            checked={config.menuUseProjectTemplate}
-                            onCheckedChange={(checked) => updateConfig({ menuUseProjectTemplate: checked })}
-                          />
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          {config.menuUseProjectTemplate
-                            ? 'Usando o cenário atual do projeto (ignora seleção abaixo)'
-                            : 'Selecione um template específico para o menu'}
-                        </p>
-                        <Select
-                          value={config.menuTemplateId}
-                          onValueChange={(value) => updateConfig({ menuTemplateId: value as any })}
-                          disabled={config.menuUseProjectTemplate}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TEMPLATE_OPTIONS.map((tpl) => (
-                              <SelectItem key={tpl.value} value={tpl.value}>
-                                {tpl.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </div>
 
                       <div className="flex items-center justify-between">

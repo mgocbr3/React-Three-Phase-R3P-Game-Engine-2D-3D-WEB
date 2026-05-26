@@ -3,7 +3,6 @@ import { create } from 'zustand';
 export type FontFamily = 'Inter' | 'Roboto' | 'Orbitron' | 'Press Start 2P' | 'Bangers' | 'Permanent Marker' | 'Righteous';
 export type BackgroundType = 'color' | 'gradient' | 'image' | 'animated' | '3d-scene';
 export type AnimatedBackground = 'particles' | 'stars' | 'waves' | 'none';
-export type MenuTemplateId = 'adventure' | 'fps-horror' | 'rpg-topdown' | 'platformer-2d' | 'racing' | 'social-hub';
 
 export interface MenuButton {
   id: string;
@@ -34,8 +33,6 @@ export interface UIConfig {
   // 3D Scene
   use3DScene: boolean;
   sceneOpacity: number;
-  menuTemplateId: MenuTemplateId;
-  menuUseProjectTemplate: boolean;
   menuCameraEnabled: boolean;
   menuCameraPosition: { x: number; y: number; z: number };
   menuCameraTarget: { x: number; y: number; z: number };
@@ -98,8 +95,6 @@ const defaultConfig: UIConfig = {
   // 3D Scene
   use3DScene: false,
   sceneOpacity: 1.0,
-  menuTemplateId: 'adventure',
-  menuUseProjectTemplate: false,
   menuCameraEnabled: false,
   menuCameraPosition: { x: 0, y: 5, z: 10 },
   menuCameraTarget: { x: 0, y: 0, z: 0 },
