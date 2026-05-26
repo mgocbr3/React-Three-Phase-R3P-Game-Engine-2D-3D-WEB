@@ -9,10 +9,8 @@ import { PIXLLAND_CONFIG, pixllandClient } from "@/legacy/cloud/integrations/pix
 import { ENGINE_CLOUD_ENABLED } from "@/config/engineMode";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import Index from "./pages/Index";
-import PlayPage from "./pages/PlayPage";
 import EditorPage from "./pages/EditorPage";
 import NotFound from "./pages/NotFound";
-import { MenuPreviewPage } from "./pages/MenuPreviewPage";
 import { PixllandBridgeInitializer } from "@/components/pixlland/PixllandBridgeInitializer";
 
 const queryClient = new QueryClient();
@@ -77,10 +75,8 @@ const App = () => (
             {ENGINE_CLOUD_ENABLED && <PixllandBridgeInitializer />}
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/play/:templateId" element={<PlayPage />} />
               <Route path="/editor" element={<EditorPage />} />
               <Route path="/editor/:templateId" element={<EditorPage />} />
-              <Route path="/menu-preview" element={<MenuPreviewPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

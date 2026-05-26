@@ -9,20 +9,16 @@ import { MyProjectsSection } from '@/components/dashboard/MyProjectsSection';
 import { NewProjectSection } from '@/components/dashboard/NewProjectSection';
 import { SamplesSection } from '@/components/dashboard/SamplesSection';
 import { SectionErrorBoundary } from '@/components/dashboard/SectionErrorBoundary';
-import { TemplateCard } from '@/components/dashboard/TemplateCard';
 import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { openProjectDocumentFromDirectory } from '@/services/localProjectFiles';
-import { GAME_TEMPLATES, GameTemplate } from '@/stores/gameStore';
 
 const Index = () => {
   const navigate = useNavigate();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<GameTemplate | null>(null);
 
   const isEmbedded = ENGINE_CLOUD_ENABLED && new URLSearchParams(window.location.search).get('embedded') === 'true';
 
   const handleCreateBlank = () => {
-    setSelectedTemplate(null);
     setCreateDialogOpen(true);
   };
 
@@ -37,15 +33,6 @@ const Index = () => {
     }
   };
 
-  const handleEditTemplate = (template: GameTemplate) => {
-    setSelectedTemplate(template);
-    setCreateDialogOpen(true);
-  };
-
-  const handlePlayTemplate = (template: GameTemplate) => {
-    navigate(`/play/${template.id}`);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -55,7 +42,7 @@ const Index = () => {
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl font-semibold text-foreground">Hub</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Projetos e templates.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Projetos e samples.</p>
             </div>
           </div>
 
@@ -80,32 +67,12 @@ const Index = () => {
           <SectionErrorBoundary sectionName="Samples">
             <SamplesSection />
           </SectionErrorBoundary>
-
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Templates</h2>
-              <span className="text-xs text-muted-foreground">{GAME_TEMPLATES.length}</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {GAME_TEMPLATES.map((template) => (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  onEdit={handleEditTemplate}
-                  onPlay={handlePlayTemplate}
-                />
-              ))}
-            </div>
-          </section>
         </div>
       </main>
 
       <CreateProjectDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        templateId={selectedTemplate?.id}
-        templateName={selectedTemplate?.name}
       />
     </div>
   );
