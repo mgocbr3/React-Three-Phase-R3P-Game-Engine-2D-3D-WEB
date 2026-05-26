@@ -63,7 +63,6 @@ export const useEditorAutosave = ({
   const snapTranslate = useEditorStore((s) => s.snapTranslate);
   const snapRotate = useEditorStore((s) => s.snapRotate);
   const snapScale = useEditorStore((s) => s.snapScale);
-  const currentTemplateId = useEditorStore((s) => s.currentTemplateId);
   const gameScript = useEditorStore((s) => s.gameScript);
 
   useEffect(() => {
@@ -122,7 +121,6 @@ export const useEditorAutosave = ({
     snapTranslate,
     snapRotate,
     snapScale,
-    currentTemplateId,
     gameScript,
   ]);
 };

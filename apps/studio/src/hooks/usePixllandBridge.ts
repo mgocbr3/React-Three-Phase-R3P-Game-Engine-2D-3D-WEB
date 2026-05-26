@@ -119,7 +119,7 @@ export const usePixllandBridge = () => {
     })();
     return originParam || referrerOrigin || DEFAULT_PIXLLAND_ORIGIN;
   })());
-  const { objects, currentTemplateId, setObjects } = useEditorStore();
+  const { objects, setObjects } = useEditorStore();
 
   // Send message to parent with optional promise-based response
   const sendToParent = useCallback((message: PixllandMessage): Promise<any> | void => {
@@ -571,7 +571,7 @@ export const usePixllandBridge = () => {
       r3fScene: {
         objects: sceneObjects,
         lights: lights,
-        environment: currentTemplateId || 'default',
+        environment: 'default',
       },
       r3fAssets: {
         models: [],
@@ -582,7 +582,7 @@ export const usePixllandBridge = () => {
         shadows: true,
       },
     };
-  }, [objects, currentTemplateId]);
+  }, [objects]);
 
   // Save project to Pixlland
   const saveToPixlland = useCallback((options?: { 

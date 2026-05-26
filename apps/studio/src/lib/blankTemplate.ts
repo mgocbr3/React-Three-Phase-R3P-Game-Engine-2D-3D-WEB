@@ -173,10 +173,9 @@ export function getBlankTemplateObjects(): SceneObject[] {
 /**
  * Cria game_data completo com objetos padrão
  */
-export function createBlankGameData(templateId?: string) {
+export function createBlankGameData() {
   return {
     objects: getBlankTemplateObjects(),
-    currentTemplateId: templateId || 'blank',
     gameScript: '// Game Script\n// Escreva sua lógica aqui\n',
   };
 }

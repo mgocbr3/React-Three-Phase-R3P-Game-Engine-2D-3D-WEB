@@ -419,7 +419,6 @@ export const deleteLocalProjectDoc = (projectId: string): void => {
 export const createProjectDocumentFromEditor = (name = 'Untitled Project'): PixlProjectDocument => {
   const {
     objects,
-    currentTemplateId,
     gameScript,
     transformSpace,
     snapEnabled,
@@ -431,7 +430,6 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
   const now = Date.now();
   const stateDocument = createProjectDocumentFromEditorState({
     objects,
-    currentTemplateId,
     gameScript,
     transformSpace,
     snapEnabled,
@@ -576,7 +574,6 @@ export const applyProjectDocumentToEditor = (
 
   useEditorStore.setState({
     objects: snapshot.objects,
-    currentTemplateId: snapshot.currentTemplateId,
     gameScript: snapshot.gameScript,
     transformSpace: (snapshot.transformSpace as any) || 'world',
     snapEnabled: snapshot.snapEnabled,

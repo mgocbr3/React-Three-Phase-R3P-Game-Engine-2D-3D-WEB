@@ -383,11 +383,6 @@ export interface EditorCameraPoseTarget {
 }
 
 interface EditorState {
-  // Kept as a free-form string for retrocompatibility with saved projects
-  // that still carry a templateId on disk. New scenes start as null. The
-  // editor itself no longer branches on this value — the field is a label,
-  // not behavior. Persistence (Commit 4) will stop writing it.
-  currentTemplateId: string | null;
   isEditMode: boolean;
   activeSceneKind: SceneKind;
   transformMode: TransformMode;
@@ -1008,7 +1003,6 @@ const getTemplateObjects = (_templateId?: string | null): SceneObject[] => {
 };
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  currentTemplateId: null,
   isEditMode: true,
   activeSceneKind: readSceneKindFromUrl(),
   transformMode: 'translate',
@@ -1031,9 +1025,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   loadTemplate: (templateId) => {
     const objects = getTemplateObjects(templateId);
-    set({ 
-      currentTemplateId: templateId,
-      objects, 
+    set({
+      objects,
       selectedObjectId: null,
       isEditMode: true,
       history: [JSON.parse(JSON.stringify(objects))],
@@ -1238,11 +1231,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // Manual save/load implementation
   saveProject: async () => {
-    const { objects, currentTemplateId, gameScript, transformSpace, snapEnabled, snapTranslate, snapRotate, snapScale } = get();
+    const { objects, gameScript, transformSpace, snapEnabled, snapTranslate, snapRotate, snapScale } = get();
     const saveData = {
       version: 1,
       savedAt: Date.now(),
-      currentTemplateId,
       gameScript,
       transformSpace,
       snapEnabled,
@@ -1273,7 +1265,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       
       set({
         objects: data.objects,
-        currentTemplateId: data.currentTemplateId || null,
         gameScript: data.gameScript || '// Game Script\n',
         transformSpace: data.transformSpace || 'world',
         snapEnabled: data.snapEnabled ?? false,

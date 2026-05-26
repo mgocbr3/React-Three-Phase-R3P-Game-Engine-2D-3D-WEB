@@ -34,7 +34,6 @@ const modelObject: SceneObject = {
 describe('editor project adapter', () => {
   it('roundtrips editor objects through the PixlPlayground project schema', () => {
     const project = createProjectDocumentFromEditorState({
-      currentTemplateId: null,
       gameScript: '// test',
       transformSpace: 'world',
       snapEnabled: true,
@@ -65,7 +64,6 @@ describe('editor project adapter', () => {
 
   it('restores from structured components even when a stale editorObject blob exists', () => {
     const project = createProjectDocumentFromEditorState({
-      currentTemplateId: null,
       gameScript: '// test',
       transformSpace: 'world',
       snapEnabled: true,

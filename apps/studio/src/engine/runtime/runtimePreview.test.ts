@@ -10,7 +10,6 @@ import {
 } from './runtimePreview';
 
 const createProject = (): PixlProjectDocument => createProjectDocumentFromEditorState({
-  currentTemplateId: null,
   gameScript: '// runtime',
   transformSpace: 'world',
   snapEnabled: false,

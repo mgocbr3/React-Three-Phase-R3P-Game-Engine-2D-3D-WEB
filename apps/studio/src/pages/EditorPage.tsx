@@ -38,7 +38,8 @@ import { toast } from 'sonner';
 const EditorPage = () => {
   const isMobile = useIsMobile();
   const { templateId } = useParams<{ templateId: string }>();
-  const { loadTemplate, currentTemplateId, saveProject, loadSavedProject, hasSavedProject, objects } = useEditorStore();
+  const { loadTemplate, saveProject, loadSavedProject, hasSavedProject, objects } = useEditorStore();
+  const hasLoadedTemplateRef = useRef<boolean>(false);
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const previewDisplayMode = useRuntimeGameStore((s) => s.previewDisplayMode);
   const { user } = useAuthStore();
@@ -201,7 +202,6 @@ const EditorPage = () => {
 
           useEditorStore.setState({
             objects: gameData.objects || [],
-            currentTemplateId: gameData.currentTemplateId || null,
             gameScript: gameData.gameScript || '// Game Script\n',
           });
 
@@ -234,15 +234,14 @@ const EditorPage = () => {
       }
     }
 
-    // If nothing restored, seed the default scene. `loadTemplate` no longer
-    // branches on templateId — it always loads the empty default. The URL
-    // templateId is preserved only as a label (see editorStore).
-    if (templateId && templateId !== currentTemplateId) {
-      loadTemplate(templateId);
-    } else if (!templateId && !currentTemplateId) {
-      loadTemplate('blank');
+    // If nothing restored, seed the default scene once per editor mount.
+    // `loadTemplate` no longer branches on templateId — it always loads the
+    // empty default — so all we need to gate is "did we already seed?".
+    if (!hasLoadedTemplateRef.current) {
+      hasLoadedTemplateRef.current = true;
+      loadTemplate(templateId ?? 'blank');
     }
-  }, [templateId, currentTemplateId, loadTemplate, hasSavedProject, loadSavedProject, urlProjectId, user, sampleProjectSlug, localProjectId]);
+  }, [templateId, loadTemplate, hasSavedProject, loadSavedProject, urlProjectId, user, sampleProjectSlug, localProjectId]);
 
   // Embedded: if URL has projectId, ask platform to load it.
   useEffect(() => {

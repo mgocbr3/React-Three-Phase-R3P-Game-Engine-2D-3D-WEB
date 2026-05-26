@@ -80,7 +80,6 @@ export function ProjectVersionHistory({
       useEditorStore.setState({
         objects: gameData.objects || [],
         gameScript: gameData.gameScript || '',
-        currentTemplateId: gameData.currentTemplateId || null,
       });
 
       toast({

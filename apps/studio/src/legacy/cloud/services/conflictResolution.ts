@@ -240,7 +240,6 @@ function mergeGameData(local: any, remote: any): any {
   return {
     objects: mergedObjects,
     gameScript: mergedGameScript,
-    currentTemplateId: remote.currentTemplateId || local.currentTemplateId,
     version: Math.max(local.version || 1, remote.version || 1) + 1,
     savedAt: Date.now(),
     mergedAt: Date.now(),

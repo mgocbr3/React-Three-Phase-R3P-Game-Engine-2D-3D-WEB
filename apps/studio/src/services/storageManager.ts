@@ -18,7 +18,6 @@ const COMPRESSION_THRESHOLD = 100000; // 100KB - compress anything larger
 
 export interface StorageMetadata {
   objectCount: number;
-  templateId?: string;
   lastSaved: number;
   sizeBytes: number;
   compressed: boolean;
@@ -74,7 +73,6 @@ export class StorageManager {
         // Save metadata
         const metadata: StorageMetadata = {
           objectCount: data.objects?.length || 0,
-          templateId: data.currentTemplateId,
           lastSaved: Date.now(),
           sizeBytes: serialized.length,
           compressed: serialized.length < originalSize,
@@ -148,7 +146,6 @@ export class StorageManager {
     // Strategy 2: Save metadata only
     const metadata: StorageMetadata = {
       objectCount: data.objects?.length || 0,
-      templateId: data.currentTemplateId,
       lastSaved: Date.now(),
       sizeBytes: JSON.stringify(data).length,
       compressed: false,

@@ -241,6 +241,12 @@ export interface PixlProjectDocument {
   assets: PixlAssetManifest;
   editor: PixlEditorState;
   game: {
+    /**
+     * @deprecated The Lovable starter templates (adventure, fps-horror, ...)
+     * were removed; the editor no longer branches on this value. Older
+     * project files may still carry it, so the field is kept on the schema
+     * for read-side retrocompat but new writes always emit null.
+     */
     templateId: string | null;
     script: string;
     source?: Record<string, unknown>;

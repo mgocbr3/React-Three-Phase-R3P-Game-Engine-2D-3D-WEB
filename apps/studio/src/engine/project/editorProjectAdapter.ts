@@ -34,9 +34,6 @@ const VALID_OBJECT_TYPES = new Set<ObjectType>([
 ]);
 
 export interface EditorProjectSnapshot {
-  // Free-form template label kept on disk for retrocompat. Editor no longer
-  // branches on this value (see editorStore Commit 2).
-  currentTemplateId: string | null;
   gameScript: string;
   transformSpace: string;
   snapEnabled: boolean;
@@ -305,7 +302,10 @@ export const createProjectDocumentFromEditorState = (
       layoutPreset: options.layoutPreset ?? 'default',
     },
     game: {
-      templateId: state.currentTemplateId,
+      // templateId is preserved as null on new writes — the field is
+      // deprecated and ignored by the editor. Older project files that
+      // had a templateId still load (normalizeProjectDocument drops it).
+      templateId: null,
       script: state.gameScript || '// Game Script\n',
     },
   };
@@ -319,7 +319,6 @@ export const normalizeProjectDocument = (document: AnyPixlProjectDocument): Pixl
   }
 
   return createProjectDocumentFromEditorState({
-    currentTemplateId: (document.currentTemplateId as string | null) ?? null,
     gameScript: document.gameScript || '// Game Script\n',
     transformSpace: document.transformSpace || 'world',
     snapEnabled: document.snapEnabled ?? false,
@@ -363,7 +362,6 @@ export const createEditorSnapshotFromProjectDocument = (
     }));
 
   return {
-    currentTemplateId: (project.game.templateId as string | null) ?? null,
     gameScript: project.game.script || '// Game Script\n',
     transformSpace: project.editor.transformSpace || 'world',
     snapEnabled: project.editor.snapEnabled ?? false,
@@ -384,7 +382,6 @@ export const createLegacyEditorSave = (
   return {
     version: 1,
     savedAt: project.savedAt,
-    currentTemplateId: snapshot.currentTemplateId,
     gameScript: snapshot.gameScript,
     transformSpace: snapshot.transformSpace,
     snapEnabled: snapshot.snapEnabled,

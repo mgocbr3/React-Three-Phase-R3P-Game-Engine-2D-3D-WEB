@@ -15,7 +15,7 @@ const CLOUD_SAVE_INTERVAL = 60000; // 60 segundos para nuvem (menos frequente)
 const LARGE_PROJECT_AUTOSAVE_OBJECT_LIMIT = 5000;
 
 export const useProjectAutoSave = () => {
-  const { objects, currentTemplateId, gameScript, saveProject } = useEditorStore();
+  const { objects, gameScript, saveProject } = useEditorStore();
   const { setSaveStatus, recordVersion } = useAutoSaveStore();
   const { user } = useAuthStore();
   const cloudEnabled = Boolean(!ENGINE_LOCAL_ONLY && isPixllandConfigured && user);
@@ -57,7 +57,6 @@ export const useProjectAutoSave = () => {
       const gameData = {
         version: 1,
         savedAt: now,
-        currentTemplateId,
         gameScript,
         objects: JSON.parse(JSON.stringify(finalObjects)),
       };
@@ -100,7 +99,6 @@ export const useProjectAutoSave = () => {
         // Cria novo projeto
         const newProject = await createProject({
           name: `Projeto ${new Date().toLocaleDateString('pt-BR')}`,
-          template_id: currentTemplateId || undefined,
           game_data: gameData,
         });
         cloudProjectIdRef.current = newProject.id;
@@ -130,7 +128,7 @@ export const useProjectAutoSave = () => {
       console.error('[AutoSave]  Erro ao salvar na nuvem:', error);
       return false;
     }
-  }, [cloudEnabled, objects, currentTemplateId, gameScript]);
+  }, [cloudEnabled, objects, gameScript]);
 
   // Auto-save local a cada 30 segundos
   useEffect(() => {
@@ -153,7 +151,6 @@ export const useProjectAutoSave = () => {
           `Auto-save - ${new Date().toLocaleTimeString('pt-BR')}`,
           {
             objects,
-            currentTemplateId,
             gameScript,
             timestamp: Date.now(),
           },
@@ -180,7 +177,7 @@ export const useProjectAutoSave = () => {
     }, AUTO_SAVE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [objects, currentTemplateId, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion]);
+  }, [objects, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion]);
 
   // Manual save com Ctrl+S / Cmd+S
   useEffect(() => {
@@ -199,7 +196,6 @@ export const useProjectAutoSave = () => {
             `Manual save - ${new Date().toLocaleTimeString('pt-BR')}`,
             {
               objects,
-              currentTemplateId,
               gameScript,
               timestamp: Date.now(),
             },
@@ -228,7 +224,7 @@ export const useProjectAutoSave = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [objects, currentTemplateId, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion]);
+  }, [objects, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion]);
 
   // Resolver conflito
   const handleConflictResolution = useCallback(async (strategy: ConflictResolutionStrategy) => {
@@ -244,7 +240,6 @@ export const useProjectAutoSave = () => {
       useEditorStore.setState({
         objects: resolvedData.objects || [],
         gameScript: resolvedData.gameScript || '',
-        currentTemplateId: resolvedData.currentTemplateId || null,
       });
 
       // Salvar dados resolvidos

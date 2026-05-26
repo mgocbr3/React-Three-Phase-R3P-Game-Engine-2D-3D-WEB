@@ -48,7 +48,6 @@ const compactVersionData = (data: any) => {
     truncated: true,
     reason: 'large-project-version',
     objectCount: Array.isArray(data?.objects) ? data.objects.length : 0,
-    currentTemplateId: data?.currentTemplateId ?? null,
     gameScript: data?.gameScript,
     timestamp: data?.timestamp ?? Date.now(),
     sizeBytes,

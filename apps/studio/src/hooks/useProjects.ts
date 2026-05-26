@@ -62,7 +62,7 @@ export function useCreateProject() {
     mutationFn: (input: CreateProjectInput) => {
       // SEMPRE garantir que tem game_data com objetos essenciais
       if (!input.game_data || !input.game_data.objects || input.game_data.objects.length === 0) {
-        input.game_data = createBlankGameData(input.template_id);
+        input.game_data = createBlankGameData();
         console.log('[useCreateProject]  Criando projeto com objetos padrão:', input.game_data.objects.length);
       }
       return createProject(input);
