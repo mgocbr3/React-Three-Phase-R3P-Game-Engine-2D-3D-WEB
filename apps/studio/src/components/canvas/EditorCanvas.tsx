@@ -13,7 +13,6 @@ import { useThreeMemoryMonitor } from '@/hooks/useThreeCleanup';
 import { EditableObject } from './EditableObject';
 import { GizmoInteractionLock, TransformGizmo } from './TransformGizmo';
 import { MinecraftPlayer } from './primitives/MinecraftPlayer';
-import { VehicleController } from './controllers/VehicleController';
 import { FPSController } from './controllers/FPSController';
 import { PlatformerController } from './controllers/PlatformerController';
 import { FlyCamera } from './FlyCamera';
@@ -362,7 +361,6 @@ const EditorScene = () => {
   const objects = useEditorStore((state) => state.objects);
   const isEditMode = useEditorStore((state) => state.isEditMode);
   const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
-  const currentTemplateId = useEditorStore((state) => state.currentTemplateId);
   const engineSettings = useEngineSettings();
   const isMobile = useIsMobile();
   const isTouchDevice = useIsTouchDevice();
@@ -570,17 +568,8 @@ const EditorScene = () => {
             />
           ))}
           
-          {/* Player/Vehicle - only in play mode, controller based on camera mode */}
-          {!isEditMode && currentTemplateId === 'racing' ? (
-            <VehicleController 
-              ref={playerRef}
-              position={playerPosition as [number, number, number]} 
-              color="#f97316"
-              maxSpeed={30}
-              acceleration={20}
-              turnSpeed={2.5}
-            />
-          ) : !isEditMode && cameraSettings?.mode === 'first-person' ? (
+          {/* Player - only in play mode, controller chosen by camera mode */}
+          {!isEditMode && cameraSettings?.mode === 'first-person' ? (
             <FPSController 
               ref={playerRef}
               position={playerPosition as [number, number, number]} 

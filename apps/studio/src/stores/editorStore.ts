@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { TemplateId } from './gameStore';
 import type { ScriptInstance } from '@/scripts/types';
 import type { TerrainSettings } from './terrainStore';
 import { storageManager } from '@/services/storageManager';
@@ -384,7 +383,11 @@ export interface EditorCameraPoseTarget {
 }
 
 interface EditorState {
-  currentTemplateId: TemplateId | null;
+  // Kept as a free-form string for retrocompatibility with saved projects
+  // that still carry a templateId on disk. New scenes start as null. The
+  // editor itself no longer branches on this value — the field is a label,
+  // not behavior. Persistence (Commit 4) will stop writing it.
+  currentTemplateId: string | null;
   isEditMode: boolean;
   activeSceneKind: SceneKind;
   transformMode: TransformMode;
@@ -407,7 +410,7 @@ interface EditorState {
   history: SceneObject[][];
   historyIndex: number;
   
-  loadTemplate: (templateId: TemplateId) => void;
+  loadTemplate: (templateId?: string | null) => void;
   setEditMode: (edit: boolean) => void;
   setCameraPoseTarget: (pose: Omit<EditorCameraPoseTarget, 'timestamp'>) => void;
   setActiveSceneKind: (kind: SceneKind) => void;
@@ -906,37 +909,11 @@ const getDefaultObject = (type: ObjectType, position: [number, number, number]):
   return base;
 };
 
-// Create camera object for template
-const createCameraObject = (mode: CameraMode, templateId: TemplateId): SceneObject => {
+// Create the default scene camera. Movement/lock flags follow the camera
+// mode itself (handled by getDefaultCameraSettings) — there is no longer a
+// per-template override.
+const createCameraObject = (mode: CameraMode = 'third-person'): SceneObject => {
   const settings = getDefaultCameraSettings(mode);
-  
-  // Adjust camera settings based on template
-  switch (templateId) {
-    case 'platformer-2d':
-      settings.mode = 'side-2d';
-      settings.distance = 25;
-      settings.height = 5;
-      settings.lockedZ = true;
-      break;
-    case 'rpg-topdown':
-      settings.mode = 'top-down';
-      settings.distance = 0;
-      settings.height = 20;
-      settings.lockedY = true;
-      break;
-    case 'fps-horror':
-      settings.mode = 'first-person';
-      settings.distance = 0;
-      settings.height = 1.6;
-      break;
-    case 'racing':
-      settings.mode = 'third-person';
-      settings.distance = 12;
-      settings.height = 5;
-      break;
-    default:
-      settings.mode = 'third-person';
-  }
 
   return {
     id: 'main-camera',
@@ -952,52 +929,23 @@ const createCameraObject = (mode: CameraMode, templateId: TemplateId): SceneObje
   };
 };
 
-// Create player object for template
-const createPlayerObject = (templateId: TemplateId): SceneObject => {
-  let movementMode: 'free' | '2d-sidescroll' | 'top-down' = 'free';
-  let position: [number, number, number] = [0, 1.5, 0];
-  let gamePreset: GamePreset = 'custom';
-  
-  // Map templates to game presets for optimal configuration
-  switch (templateId) {
-    case 'platformer-2d':
-      movementMode = '2d-sidescroll';
-      position = [0, 1.5, 0];
-      gamePreset = 'platformer-2d';
-      break;
-    case 'rpg-topdown':
-      movementMode = 'top-down';
-      position = [0, 1.5, 0];
-      gamePreset = 'top-down-rpg';
-      break;
-    case 'fps-horror':
-      movementMode = 'free';
-      position = [0, 1.5, 5];
-      gamePreset = 'fps-horror';
-      break;
-    case 'adventure':
-      movementMode = 'free';
-      position = [0, 1.5, 5];
-      gamePreset = 'third-person-action';
-      break;
-    case 'racing':
-      movementMode = 'free';
-      position = [0, 0.5, 5];
-      gamePreset = 'racing-arcade';
-      break;
-    default:
-      movementMode = 'free';
-      position = [0, 1.5, 5];
-      gamePreset = 'custom';
-  }
-
+// Create the default player. The Lovable starter mapped each template to a
+// specific (movementMode, preset) pair; the editor no longer ships those
+// presets baked into scene initialization. New scenes start with the
+// neutral free/custom defaults and the user dials presets in via the
+// Inspector. Pass overrides explicitly if creating a scene from a custom
+// flow (e.g. a future sample preset).
+const createPlayerObject = (
+  movementMode: 'free' | '2d-sidescroll' | 'top-down' = 'free',
+  gamePreset: GamePreset = 'custom',
+): SceneObject => {
   const settings = getDefaultPlayerSettings(movementMode, gamePreset);
 
   return {
     id: 'main-player',
     name: 'Player',
     type: 'player',
-    position,
+    position: [0, 1.5, 5],
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
     color: '#6366f1',
@@ -1038,131 +986,25 @@ const createSceneObject = (
   ...extraProps,
 });
 
-const getTemplateObjects = (templateId: TemplateId): SceneObject[] => {
-  // Get camera for template (default to third-person for blank)
-  const cameraMode: CameraMode = 
-    templateId === 'platformer-2d' ? 'side-2d' :
-    templateId === 'rpg-topdown' ? 'top-down' :
-    templateId === 'fps-horror' ? 'first-person' :
-    'third-person';
-  
-  const camera = createCameraObject(cameraMode, templateId);
-  const player = createPlayerObject(templateId);
+// Returns the default starting scene — sun light, camera, player, and a
+// generic ground plane. The Lovable starter had a large switch here that
+// seeded "Adventure", "FPS Horror", "Racing", etc. scenes with bespoke
+// trees / zombies / barriers / NPCs. That whole catalogue is gone: new
+// projects open empty, and samples (Harvest Rush 3D, Magic Battleground 2D,
+// etc.) are loaded as full .pixlproject documents from disk, not seeded
+// here. The templateId param is accepted only as a label for backward
+// compatibility with callers that still pass one.
+const getTemplateObjects = (_templateId?: string | null): SceneObject[] => {
+  const camera = createCameraObject('third-person');
+  const player = createPlayerObject();
   const sunLight = createSunLightObject();
 
-  // Blank template - essential objects for any game (sun, camera, player, ground)
-  if (templateId === 'blank') {
-    return [
-      sunLight,
-      camera,
-      player,
-      createSceneObject('ground-1', 'Chão', 'plane', [0, 0, 0], [100, 1, 100], '#3d3d3d')
-    ];
-  }
-
-  // Create scene objects based on template
-  // These will appear in the Scene Graph hierarchy
-  const sceneObjects: SceneObject[] = [sunLight, camera, player];
-
-  switch (templateId) {
-    case 'adventure':
-      // Ground
-      sceneObjects.push(createSceneObject('ground-1', 'Chão Principal', 'plane', [0, 0, 0], [100, 1, 100], '#4a7c59'));
-      // Trees
-      sceneObjects.push(createSceneObject('tree-1', 'Árvore 1', 'npc', [-8, 0, -5], [1.5, 1.5, 1.5], '#228B22', { logicSettings: { tags: ['tree', 'decoration'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-2', 'Árvore 2', 'npc', [12, 0, 8], [1.2, 1.2, 1.2], '#228B22', { logicSettings: { tags: ['tree', 'decoration'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-3', 'Árvore 3', 'npc', [-15, 0, 10], [1.8, 1.8, 1.8], '#228B22', { logicSettings: { tags: ['tree', 'decoration'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      // Houses
-      sceneObjects.push(createSceneObject('house-1', 'Casa Principal', 'npc', [15, 0, -10], [1, 1, 1], '#8B4513', { logicSettings: { tags: ['house', 'building'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      sceneObjects.push(createSceneObject('house-2', 'Casa Secundária', 'npc', [-20, 0, -15], [1.2, 1.2, 1.2], '#8B4513', { logicSettings: { tags: ['house', 'building'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      // NPCs
-      sceneObjects.push(createSceneObject('npc-villager-1', 'Aldeão 1', 'npc', [5, 0, 3], [1, 1, 1], '#DEB887', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'neutral', aiEnabled: true, aiType: 'patrol', aiSpeed: 2 }, logicSettings: { tags: ['npc', 'villager'], behavior: 'patrol', behaviorSpeed: 2, patrolDistance: 8, customData: { prefab: 'MinecraftVillager' } } }));
-      sceneObjects.push(createSceneObject('npc-villager-2', 'Aldeão 2', 'npc', [-10, 0, 5], [1, 1, 1], '#DEB887', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'neutral', aiEnabled: true, aiType: 'patrol', aiSpeed: 1.5 }, logicSettings: { tags: ['npc', 'villager'], behavior: 'patrol', behaviorSpeed: 1.5, patrolDistance: 6, customData: { prefab: 'MinecraftMerchant' } } }));
-      // Lamp Posts
-      sceneObjects.push(createSceneObject('lamp-1', 'Poste de Luz 1', 'npc', [0, 0, 8], [1, 1, 1], '#FFD700', { logicSettings: { tags: ['lamp', 'decoration'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftLampPost' } } }));
-      sceneObjects.push(createSceneObject('lamp-2', 'Poste de Luz 2', 'npc', [10, 0, -5], [1, 1, 1], '#FFD700', { logicSettings: { tags: ['lamp', 'decoration'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftLampPost' } } }));
-      break;
-
-    case 'social-hub':
-      sceneObjects.push(createSceneObject('ground-1', 'Praça Central', 'plane', [0, 0, 0], [80, 1, 80], '#7CFC00'));
-      // Multiple houses
-      sceneObjects.push(createSceneObject('house-1', 'Casa 1', 'npc', [-15, 0, -15], [1, 1, 1], '#8B4513', { logicSettings: { tags: ['house'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      sceneObjects.push(createSceneObject('house-2', 'Casa 2', 'npc', [15, 0, -15], [1.2, 1.2, 1.2], '#A0522D', { logicSettings: { tags: ['house'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      sceneObjects.push(createSceneObject('house-3', 'Loja', 'npc', [0, 0, -20], [1.5, 1.5, 1.5], '#D2691E', { logicSettings: { tags: ['shop', 'house'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      // Many NPCs
-      sceneObjects.push(createSceneObject('npc-1', 'Visitante 1', 'npc', [5, 0, 5], [1, 1, 1], '#FFB6C1', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'neutral', aiEnabled: true, aiType: 'patrol' }, logicSettings: { tags: ['npc'], behavior: 'patrol', behaviorSpeed: 2, patrolDistance: 10, customData: { prefab: 'MinecraftVillager' } } }));
-      sceneObjects.push(createSceneObject('npc-2', 'Visitante 2', 'npc', [-8, 0, 3], [1, 1, 1], '#87CEEB', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'neutral', aiEnabled: true, aiType: 'patrol' }, logicSettings: { tags: ['npc'], behavior: 'patrol', behaviorSpeed: 1.8, patrolDistance: 8, customData: { prefab: 'MinecraftMerchant' } } }));
-      sceneObjects.push(createSceneObject('npc-3', 'Visitante 3', 'npc', [10, 0, -5], [1, 1, 1], '#98FB98', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'neutral', aiEnabled: true, aiType: 'patrol' }, logicSettings: { tags: ['npc'], behavior: 'patrol', behaviorSpeed: 2.2, patrolDistance: 12, customData: { prefab: 'MinecraftVillager' } } }));
-      sceneObjects.push(createSceneObject('npc-4', 'Guarda', 'npc', [0, 0, 10], [1, 1, 1], '#4169E1', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'ally', aiEnabled: true, aiType: 'guard' }, logicSettings: { tags: ['npc', 'guard'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftGuard' } } }));
-      // Trees around plaza
-      sceneObjects.push(createSceneObject('tree-1', 'Árvore 1', 'npc', [-25, 0, 0], [1.5, 1.5, 1.5], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-2', 'Árvore 2', 'npc', [25, 0, 0], [1.5, 1.5, 1.5], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-3', 'Árvore 3', 'npc', [0, 0, 25], [1.5, 1.5, 1.5], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      // Lamps
-      sceneObjects.push(createSceneObject('lamp-1', 'Poste 1', 'npc', [-10, 0, 10], [1, 1, 1], '#FFD700', { logicSettings: { tags: ['lamp'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftLampPost' } } }));
-      sceneObjects.push(createSceneObject('lamp-2', 'Poste 2', 'npc', [10, 0, 10], [1, 1, 1], '#FFD700', { logicSettings: { tags: ['lamp'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftLampPost' } } }));
-      break;
-
-    case 'fps-horror':
-      sceneObjects.push(createSceneObject('ground-1', 'Piso Escuro', 'plane', [0, 0, 0], [60, 1, 60], '#1a1a2e'));
-      // Dark building
-      sceneObjects.push(createSceneObject('building-1', 'Casa Abandonada', 'npc', [0, 0, -15], [2, 2, 2], '#2d2d2d', { logicSettings: { tags: ['building', 'horror'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      // Creepy trees
-      sceneObjects.push(createSceneObject('tree-1', 'Árvore Morta 1', 'npc', [-12, 0, 5], [1.5, 1.5, 1.5], '#2d2d2d', { logicSettings: { tags: ['tree', 'dead'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-2', 'Árvore Morta 2', 'npc', [12, 0, 8], [1.8, 1.8, 1.8], '#2d2d2d', { logicSettings: { tags: ['tree', 'dead'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      // Zombie enemies
-      sceneObjects.push(createSceneObject('zombie-1', 'Zumbi 1', 'npc', [8, 0, -5], [1, 1, 1], '#4a5568', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'enemy', maxHealth: 50, contactDamage: 20, aiEnabled: true, aiType: 'chase', aiSpeed: 2, aiDetectionRange: 15 }, logicSettings: { tags: ['enemy', 'zombie'], behavior: 'patrol', behaviorSpeed: 1, patrolDistance: 5, customData: { prefab: 'MinecraftZombie' } } }));
-      sceneObjects.push(createSceneObject('zombie-2', 'Zumbi 2', 'npc', [-10, 0, -10], [1, 1, 1], '#4a5568', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'enemy', maxHealth: 50, contactDamage: 20, aiEnabled: true, aiType: 'chase', aiSpeed: 1.8 }, logicSettings: { tags: ['enemy', 'zombie'], behavior: 'patrol', behaviorSpeed: 1.2, patrolDistance: 6, customData: { prefab: 'MinecraftZombie' } } }));
-      sceneObjects.push(createSceneObject('skeleton-1', 'Esqueleto', 'npc', [15, 0, 10], [1, 1, 1], '#d4d4d4', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'enemy', maxHealth: 30, contactDamage: 15, aiEnabled: true, aiType: 'chase', aiSpeed: 2.5 }, logicSettings: { tags: ['enemy', 'skeleton'], behavior: 'patrol', behaviorSpeed: 1.5, patrolDistance: 8, customData: { prefab: 'MinecraftSkeleton' } } }));
-      // Flickering lamp
-      sceneObjects.push(createSceneObject('lamp-1', 'Lampião', 'npc', [0, 0, 5], [1, 1, 1], '#8B0000', { logicSettings: { tags: ['lamp', 'horror'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftLampPost' } } }));
-      break;
-
-    case 'racing':
-      sceneObjects.push(createSceneObject('ground-1', 'Pista', 'plane', [0, 0, 0], [150, 1, 150], '#3d3d3d'));
-      // Track barriers using boxes
-      sceneObjects.push(createSceneObject('barrier-1', 'Barreira Interna', 'box', [0, 0.5, 0], [20, 1, 20], '#ff4444'));
-      sceneObjects.push(createSceneObject('barrier-2', 'Cerca Esquerda', 'npc', [-35, 0, 0], [1, 1, 1], '#8B4513', { logicSettings: { tags: ['fence'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftFence' } } }));
-      sceneObjects.push(createSceneObject('barrier-3', 'Cerca Direita', 'npc', [35, 0, 0], [1, 1, 1], '#8B4513', { logicSettings: { tags: ['fence'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftFence' } } }));
-      // Trees around track
-      sceneObjects.push(createSceneObject('tree-1', 'Árvore 1', 'npc', [-45, 0, -20], [2, 2, 2], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-2', 'Árvore 2', 'npc', [45, 0, 20], [2, 2, 2], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      break;
-
-    case 'rpg-topdown':
-      sceneObjects.push(createSceneObject('ground-1', 'Mapa Principal', 'plane', [0, 0, 0], [100, 1, 100], '#5d8c51'));
-      // Village houses
-      sceneObjects.push(createSceneObject('house-1', 'Taverna', 'npc', [-12, 0, -12], [1.5, 1.5, 1.5], '#8B4513', { logicSettings: { tags: ['building', 'tavern'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      sceneObjects.push(createSceneObject('house-2', 'Ferreiro', 'npc', [12, 0, -12], [1.3, 1.3, 1.3], '#696969', { logicSettings: { tags: ['building', 'blacksmith'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      sceneObjects.push(createSceneObject('house-3', 'Casa do Mago', 'npc', [0, 0, 15], [1.2, 1.2, 1.2], '#4B0082', { logicSettings: { tags: ['building', 'magic'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftHouse' } } }));
-      // Trees/forest
-      sceneObjects.push(createSceneObject('tree-1', 'Árvore 1', 'npc', [-25, 0, 10], [1.5, 1.5, 1.5], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-2', 'Árvore 2', 'npc', [-30, 0, 5], [1.8, 1.8, 1.8], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      sceneObjects.push(createSceneObject('tree-3', 'Árvore 3', 'npc', [25, 0, 8], [1.6, 1.6, 1.6], '#228B22', { logicSettings: { tags: ['tree'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftTree' } } }));
-      // NPCs
-      sceneObjects.push(createSceneObject('npc-merchant', 'Mercador', 'npc', [-5, 0, -8], [1, 1, 1], '#FFD700', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'neutral', isInteractable: true, interactionPrompt: 'Falar' }, logicSettings: { tags: ['npc', 'merchant'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftMerchant' } } }));
-      sceneObjects.push(createSceneObject('npc-mage', 'Mago', 'npc', [0, 0, 12], [1, 1, 1], '#9400D3', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'neutral', isInteractable: true, interactionPrompt: 'Aprender Magia' }, logicSettings: { tags: ['npc', 'mage'], behavior: 'none', behaviorSpeed: 0, patrolDistance: 0, customData: { prefab: 'MinecraftVillager' } } }));
-      // Enemies in forest
-      sceneObjects.push(createSceneObject('enemy-1', 'Goblin', 'npc', [30, 0, 15], [0.8, 0.8, 0.8], '#2d5016', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'enemy', maxHealth: 30, contactDamage: 10, aiEnabled: true, aiType: 'chase', aiSpeed: 3 }, logicSettings: { tags: ['enemy', 'goblin'], behavior: 'patrol', behaviorSpeed: 2, patrolDistance: 10, customData: { prefab: 'MinecraftZombie' } } }));
-      break;
-
-    case 'platformer-2d':
-      sceneObjects.push(createSceneObject('ground-1', 'Chão', 'plane', [0, -1, 0], [100, 1, 20], '#5d4037'));
-      // Platforms
-      sceneObjects.push(createSceneObject('platform-1', 'Plataforma 1', 'box', [5, 2, 0], [6, 0.5, 4], '#8B4513'));
-      sceneObjects.push(createSceneObject('platform-2', 'Plataforma 2', 'box', [12, 5, 0], [5, 0.5, 4], '#8B4513'));
-      sceneObjects.push(createSceneObject('platform-3', 'Plataforma 3', 'box', [20, 3, 0], [8, 0.5, 4], '#8B4513'));
-      sceneObjects.push(createSceneObject('platform-4', 'Plataforma Alta', 'box', [28, 8, 0], [6, 0.5, 4], '#8B4513'));
-      // Enemies
-      sceneObjects.push(createSceneObject('enemy-1', 'Inimigo 1', 'npc', [8, 3, 0], [0.8, 0.8, 0.8], '#ff4444', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'enemy', maxHealth: 1, contactDamage: 1 }, logicSettings: { tags: ['enemy'], behavior: 'patrol', behaviorSpeed: 2, patrolDistance: 4, customData: { prefab: 'MinecraftZombie' } } }));
-      sceneObjects.push(createSceneObject('enemy-2', 'Inimigo 2', 'npc', [22, 4, 0], [0.8, 0.8, 0.8], '#ff4444', { entitySettings: { ...DEFAULT_ENTITY_SETTINGS, entityType: 'character', team: 'enemy', maxHealth: 1, contactDamage: 1 }, logicSettings: { tags: ['enemy'], behavior: 'patrol', behaviorSpeed: 1.5, patrolDistance: 6, customData: { prefab: 'MinecraftSkeleton' } } }));
-      break;
-
-    default:
-      sceneObjects.push(createSceneObject('ground-1', 'Chão', 'plane', [0, 0, 0], [50, 1, 50], '#4a7c59'));
-  }
-
-  return sceneObjects;
+  return [
+    sunLight,
+    camera,
+    player,
+    createSceneObject('ground-1', 'Chão', 'plane', [0, 0, 0], [100, 1, 100], '#3d3d3d'),
+  ];
 };
 
 export const useEditorStore = create<EditorState>((set, get) => ({

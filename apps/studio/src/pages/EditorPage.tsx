@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { EditorCanvas } from '@/components/canvas/EditorCanvas';
 import { Viewport } from '@/components/canvas/Viewport';
@@ -20,7 +20,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useProjectAutoSave } from '@/legacy/cloud/hooks/useProjectAutoSave';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
 import { useEditorArrowNudge } from '@/hooks/useEditorArrowNudge';
-import { TemplateId, GAME_TEMPLATES } from '@/stores/gameStore';
 import { usePixllandBridge } from '@/hooks/usePixllandBridge';
 import { usePixllandProjectStore } from '@/stores/pixllandProjectStore';
 import { useAuthStore } from '@/legacy/cloud/stores/authStore';
@@ -89,10 +88,8 @@ const EditorPage = () => {
   const hasLoadedSampleProjectRef = useRef<boolean>(false);
   const hasLoadedLocalProjectRef = useRef<boolean>(false);
   const [isOpeningDiskProject, setIsOpeningDiskProject] = useState(Boolean(sampleProjectSlug || localProjectId));
-  
-  // Validate and load template
-  const isValidTemplate = !templateId || GAME_TEMPLATES.some(t => t.id === templateId);
-  
+
+
   // Manual save function with toast notification
   const handleSave = useCallback(() => {
     if (isEmbedded) {
@@ -237,14 +234,15 @@ const EditorPage = () => {
       }
     }
 
-    // If nothing restored, load template flow
-    if (templateId && isValidTemplate && templateId !== currentTemplateId) {
-      loadTemplate(templateId as TemplateId);
+    // If nothing restored, seed the default scene. `loadTemplate` no longer
+    // branches on templateId — it always loads the empty default. The URL
+    // templateId is preserved only as a label (see editorStore).
+    if (templateId && templateId !== currentTemplateId) {
+      loadTemplate(templateId);
     } else if (!templateId && !currentTemplateId) {
-      // Projeto em branco - carrega template 'blank' que só tem o chão
-      loadTemplate('blank' as TemplateId);
+      loadTemplate('blank');
     }
-  }, [templateId, isValidTemplate, currentTemplateId, loadTemplate, hasSavedProject, loadSavedProject, urlProjectId, user, sampleProjectSlug, localProjectId]);
+  }, [templateId, currentTemplateId, loadTemplate, hasSavedProject, loadSavedProject, urlProjectId, user, sampleProjectSlug, localProjectId]);
 
   // Embedded: if URL has projectId, ask platform to load it.
   useEffect(() => {
@@ -294,10 +292,6 @@ const EditorPage = () => {
     return () => clearTimeout(timer);
   }, [isEmbedded, autoCreate, urlProjectId, saveToPixlland, autoCreateTitle, requestProjects, setCurrentProjectId]);
   
-  if (!isValidTemplate) {
-    return <Navigate to="/" replace />;
-  }
-
   if (isOpeningDiskProject) {
     return (
       <div className="editor-shell fixed inset-0 flex items-center justify-center bg-[var(--editor-bg)] text-[var(--editor-text)]">

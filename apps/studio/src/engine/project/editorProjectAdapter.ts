@@ -1,4 +1,3 @@
-import type { TemplateId } from '@/stores/gameStore';
 import type { ObjectType, SceneObject } from '@/stores/editorStore';
 import {
   AnyPixlProjectDocument,
@@ -35,7 +34,9 @@ const VALID_OBJECT_TYPES = new Set<ObjectType>([
 ]);
 
 export interface EditorProjectSnapshot {
-  currentTemplateId: TemplateId | null;
+  // Free-form template label kept on disk for retrocompat. Editor no longer
+  // branches on this value (see editorStore Commit 2).
+  currentTemplateId: string | null;
   gameScript: string;
   transformSpace: string;
   snapEnabled: boolean;
@@ -318,7 +319,7 @@ export const normalizeProjectDocument = (document: AnyPixlProjectDocument): Pixl
   }
 
   return createProjectDocumentFromEditorState({
-    currentTemplateId: document.currentTemplateId as TemplateId | null,
+    currentTemplateId: (document.currentTemplateId as string | null) ?? null,
     gameScript: document.gameScript || '// Game Script\n',
     transformSpace: document.transformSpace || 'world',
     snapEnabled: document.snapEnabled ?? false,
@@ -362,7 +363,7 @@ export const createEditorSnapshotFromProjectDocument = (
     }));
 
   return {
-    currentTemplateId: project.game.templateId as TemplateId | null,
+    currentTemplateId: (project.game.templateId as string | null) ?? null,
     gameScript: project.game.script || '// Game Script\n',
     transformSpace: project.editor.transformSpace || 'world',
     snapEnabled: project.editor.snapEnabled ?? false,
