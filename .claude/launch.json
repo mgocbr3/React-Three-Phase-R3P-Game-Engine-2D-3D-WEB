@@ -7,12 +7,6 @@
       "runtimeArgs": ["--filter", "pixlplaygroundstudio", "dev"],
       "port": 8080,
       "autoPort": false
-    },
-    {
-      "name": "engine-api",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@pixlland/engine-api", "start"],
-      "port": 8765
     }
   ]
 }
