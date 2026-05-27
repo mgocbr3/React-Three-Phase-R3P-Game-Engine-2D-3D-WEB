@@ -46,16 +46,27 @@ export const Skybox = ({
 
     if (!texture) return;
 
-    // Tex was authored as a flat 2D UV-mapped sphere wrap, which is
-    // equirectangular projection from the renderer's point of view.
-    // Tell three.js to interpret it that way so scene.background can
-    // sample it across the whole viewport.
-    (texture as THREE.Texture).mapping = THREE.EquirectangularReflectionMapping;
-    (texture as THREE.Texture).colorSpace = THREE.SRGBColorSpace;
-    (texture as THREE.Texture).needsUpdate = true;
+    // The texture was authored as a UV wrap for an inverted skydome:
+    // it expects the renderer to be INSIDE the sphere looking outward.
+    // Three.js scene.background with EquirectangularReflectionMapping
+    // assumes the camera is at the center of an outward-facing sphere
+    // — same geometry, so we can reuse the path BUT the UV convention
+    // is different for skydome textures: the "top of the image" winds
+    // up at the bottom of the viewport unless we flip Y.
+    //
+    // - `flipY = false` lifts the default GLTF flip so the source
+    //   image's row 0 maps to the top of the sky (white clouds) and
+    //   the bottom of the image maps to the horizon/ground.
+    // - `colorSpace = SRGBColorSpace` keeps the authored colors looking
+    //   correct against our renderer's outputColorSpace = "srgb".
+    const tex = texture as THREE.Texture;
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.flipY = false;
+    tex.needsUpdate = true;
 
     const previousBackground = r3fScene.background;
-    r3fScene.background = texture;
+    r3fScene.background = tex;
 
     return () => {
       // Restore whatever the scene had before (typically null or a
