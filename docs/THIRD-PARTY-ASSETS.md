@@ -17,20 +17,22 @@ Arquivos de terceiros embutidos no studio (`apps/studio/public/`) com suas licen
 
 A licença original também vive em `apps/studio/public/models/manequin/license.txt` e é embarcada nos builds — quem servir o studio ou um export do projeto também serve essa atribuição automaticamente.
 
-## Unreal Engine 4 Sky
+## Kloofendal 43d Clear (Pure Sky) — HDRI Haven / Polyhaven
 
-- **Caminho no repo**: `apps/studio/public/models/skybox/ue4-sky.glb`
-- **Uso**: skybox padrão dos projetos 3D, renderizado por `<Skybox>` (em `apps/studio/src/components/canvas/primitives/Skybox.tsx`) — montado pelo `AtmosphericLighting` quando o projeto está em 3D mode.
-- **Fonte**: https://sketchfab.com/3d-models/unreal-engine-4-sky-be1fae4d5c6e43bbb4970bde465304d0
-- **Autor**: irons3th (https://sketchfab.com/irons3th)
-- **Licença**: CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
-- **Requisito**: crédito obrigatório ao autor; uso comercial permitido.
+- **Caminho no repo**: `apps/studio/public/models/skybox/clear-sky.hdr`
+- **Uso**: skybox padrão dos projetos 3D, renderizado por `<Skybox>` (em `apps/studio/src/components/canvas/primitives/Skybox.tsx`) — montado pelo `AtmosphericLighting` quando o projeto está em 3D mode (durante o dia / nascer do sol / pôr do sol; à noite o componente é desmontado e as `Stars` da drei assumem o céu).
+- **Fonte**: https://polyhaven.com/a/kloofendal_43d_clear_puresky
+- **Autor**: Greg Zaal (Poly Haven / HDRI Haven)
+- **Licença**: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+- **Requisito**: nenhum — domínio público equivalente. Atribuição é opcional mas educada (mantida aqui pra dar suporte ao Polyhaven).
 
-### Atribuição
+### Sobre CC0
 
-> This work is based on "Unreal Engine 4 Sky" (https://sketchfab.com/3d-models/unreal-engine-4-sky-be1fae4d5c6e43bbb4970bde465304d0) by irons3th (https://sketchfab.com/irons3th) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+CC0 dispensa qualquer atribuição obrigatória; o crédito acima existe apenas como cortesia ao Polyhaven, que mantém o repositório de HDRIs livres usado por studios pelo mundo todo. Se você quiser dar uma contribuição, https://www.patreon.com/polyhaven.
 
-A atribuição também vive como `gltf.asset.extras.author/license/source` dentro do próprio `ue4-sky.glb` — qualquer viewer GLTF a exibe.
+### Por que HDR e não GLB?
+
+A versão anterior (Unreal Engine 4 Sky em GLB, CC-BY-4.0) tinha textura 1:1 (1024×1024) ao invés do equirect 2:1 canônico que o Three.js espera, e o GLTF perdia metadados de orientação no caminho do PMREM — o resultado eram nuvens projetadas no chão. Standard HDR/EXR equirect 2:1 do Polyhaven evita o problema por completo.
 
 ## realism-effects (0beqz) — **NÃO integrado** (incompatibilidade técnica)
 
