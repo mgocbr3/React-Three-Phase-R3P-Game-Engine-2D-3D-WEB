@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { 
   Settings, Palette, Box, Camera, Video, Eye, Lock, Copy, Trash2, User, Move, 
   Zap, Brain, Atom, Tag, Gamepad2, ChevronDown, ChevronRight, Sun, Lightbulb, 
-  Search, Code, Target, Sparkles, Send, Volume2, Layers, Mountain
+  Search, Code, Target, Sparkles, Send, Volume2, Layers, Mountain, Image as ImageIcon, Type as TypeIcon,
+  Plus, X
 } from 'lucide-react';
 import { 
   useEditorStore, 
@@ -36,6 +37,15 @@ import { TerrainSection } from './TerrainSection';
 import { getDefaultParticleSettings } from '@/components/canvas/ParticleEmitter';
 import { useTerrainStore, defaultTerrainSettings } from '@/stores/terrainStore';
 import { TexturePicker } from './TexturePicker';
+import type { PixlComponentInstance } from '@/engine/project/schema';
+import {
+  createComponentInstance,
+  getComponentDefinition,
+  getComponentDefinitionsForScene,
+  isEditableComponentDataValue,
+  updateComponentDataField,
+  type ComponentDataScalar,
+} from '@/services/componentCatalog';
 
 // Tabs as icon-based navigation
 const mainTabs = [
@@ -47,7 +57,18 @@ const mainTabs = [
 type MainTabId = typeof mainTabs[number]['id'];
 
 export const InspectorPanel = () => {
-  const { objects, selectedObjectId, updateObject, deleteObject, duplicateObject } = useEditorStore();
+  const {
+    objects,
+    selectedObjectId,
+    activeSceneKind,
+    updateObject,
+    addComponentToObject,
+    updateObjectComponent,
+    updateObjectComponentData,
+    removeComponentFromObject,
+    deleteObject,
+    duplicateObject,
+  } = useEditorStore();
   const [mainTab, setMainTab] = useState<MainTabId>('inspector');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -89,8 +110,13 @@ export const InspectorPanel = () => {
             object={selectedObject}
             objects={objects}
             updateObject={updateObject} 
+            addComponentToObject={addComponentToObject}
+            updateObjectComponent={updateObjectComponent}
+            updateObjectComponentData={updateObjectComponentData}
+            removeComponentFromObject={removeComponentFromObject}
             deleteObject={deleteObject} 
             duplicateObject={duplicateObject}
+            activeSceneKind={activeSceneKind}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
           />
@@ -119,17 +145,39 @@ interface PropertiesPanelProps {
   object: SceneObject;
   objects: SceneObject[];
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
+  addComponentToObject: (objectId: string, component: PixlComponentInstance) => void;
+  updateObjectComponent: (objectId: string, componentId: string, updates: Partial<PixlComponentInstance>) => void;
+  updateObjectComponentData: (objectId: string, componentId: string, data: Record<string, unknown>) => void;
+  removeComponentFromObject: (objectId: string, componentId: string) => void;
   deleteObject: (id: string) => void;
   duplicateObject: (id: string) => void;
+  activeSceneKind: '2d' | '3d';
   searchQuery: string;
   setSearchQuery: (q: string) => void;
 }
 
-const PropertiesPanel = ({ object, objects, updateObject, deleteObject, duplicateObject, searchQuery, setSearchQuery }: PropertiesPanelProps) => {
+const PropertiesPanel = ({
+  object,
+  objects,
+  updateObject,
+  addComponentToObject,
+  updateObjectComponent,
+  updateObjectComponentData,
+  removeComponentFromObject,
+  deleteObject,
+  duplicateObject,
+  activeSceneKind,
+  searchQuery,
+  setSearchQuery,
+}: PropertiesPanelProps) => {
   const isCamera = object.type === 'camera';
   const isPlayer = object.type === 'player';
   const isLight = object.type === 'light' || object.type === 'sunlight' || object.type === 'spotlight';
   const isTerrain = object.type === 'terrain';
+  const is2DScene = activeSceneKind === '2d';
+  const is2DVisual = object.type === 'image' || object.type === 'sprite';
+  const is2DShape = object.type === 'rectangle' || object.type === 'circle';
+  const is2DText = object.type === 'text';
   
   const getObjectIcon = () => {
     if (isCamera) return <Camera className="w-4 h-4 text-muted-foreground" />;
@@ -253,48 +301,77 @@ const PropertiesPanel = ({ object, objects, updateObject, deleteObject, duplicat
           </CollapsibleSection>
         )}
 
+        <CollapsibleSection title="Components" icon={Settings} defaultOpen>
+          <ComponentStackSection
+            object={object}
+            activeSceneKind={activeSceneKind}
+            addComponentToObject={addComponentToObject}
+            updateObjectComponent={updateObjectComponent}
+            updateObjectComponentData={updateObjectComponentData}
+            removeComponentFromObject={removeComponentFromObject}
+          />
+        </CollapsibleSection>
+
         {/* Transform - Always visible */}
         <CollapsibleSection title="Transform" icon={Move} defaultOpen>
           <TransformSection object={object} updateObject={updateObject} isSimple={isCamera || isPlayer} />
         </CollapsibleSection>
 
+        {is2DScene && is2DVisual && (
+          <CollapsibleSection title="Sprite 2D" icon={ImageIcon} defaultOpen>
+            <Sprite2DSection object={object} updateObject={updateObject} />
+          </CollapsibleSection>
+        )}
+
+        {is2DScene && is2DShape && (
+          <CollapsibleSection title="Forma 2D" icon={Layers} defaultOpen>
+            <Shape2DSection object={object} updateObject={updateObject} />
+          </CollapsibleSection>
+        )}
+
+        {is2DScene && is2DText && (
+          <CollapsibleSection title="Texto 2D" icon={TypeIcon} defaultOpen>
+            <Text2DSection object={object} updateObject={updateObject} />
+          </CollapsibleSection>
+        )}
+
         {/* Visual - For non-special objects and non-terrain */}
-        {!isCamera && !isPlayer && !isTerrain && (
+        {!is2DScene && !isCamera && !isPlayer && !isTerrain && (
           <CollapsibleSection title="Visual" icon={Palette}>
             <VisualSection object={object} updateObject={updateObject} />
           </CollapsibleSection>
         )}
 
         {/* Physics - For non-special objects and non-terrain */}
-        {!isCamera && !isPlayer && !isLight && !isTerrain && (
+        {!is2DScene && !isCamera && !isPlayer && !isLight && !isTerrain && (
           <CollapsibleSection title="Física" icon={Atom}>
             <PhysicsSection object={object} updateObject={updateObject} />
           </CollapsibleSection>
         )}
 
         {/* Logic/Tags - For non-special objects and non-terrain */}
-        {!isCamera && !isPlayer && !isLight && !isTerrain && (
+        {!is2DScene && !isCamera && !isPlayer && !isLight && !isTerrain && (
           <CollapsibleSection title="Tags" icon={Tag}>
             <TagsSection object={object} updateObject={updateObject} />
           </CollapsibleSection>
         )}
 
         {/* Entity System - For game entities (enemies, pickups, destructibles) */}
-        {!isCamera && !isPlayer && !isLight && !isTerrain && (
+        {!is2DScene && !isCamera && !isPlayer && !isLight && !isTerrain && (
           <CollapsibleSection title="Sistema de Entidade" icon={Target}>
             <EntitySection object={object} updateObject={updateObject} />
           </CollapsibleSection>
         )}
 
         {/* Audio - For non-special objects and non-terrain */}
-        {!isCamera && !isPlayer && !isLight && !isTerrain && (
+        {!is2DScene && !isCamera && !isPlayer && !isLight && !isTerrain && (
           <CollapsibleSection title="Áudio" icon={Volume2}>
             <AudioSection object={object} updateObject={updateObject} />
           </CollapsibleSection>
         )}
 
         {/* Animation - For objects with models and non-terrain */}
-        {!isCamera && !isPlayer && !isLight && !isTerrain && (
+        {!is2DScene && !isCamera && !isPlayer && !isLight && !isTerrain && (
           <AnimationSection
             animationSettings={object.animationSettings}
             onUpdate={(settings) => updateObject(object.id, { 
@@ -307,7 +384,7 @@ const PropertiesPanel = ({ object, objects, updateObject, deleteObject, duplicat
         )}
 
         {/* Particles - For non-special objects and non-terrain */}
-        {!isCamera && !isPlayer && !isLight && !isTerrain && (
+        {!is2DScene && !isCamera && !isPlayer && !isLight && !isTerrain && (
           <ParticleSection
             particleSettings={object.particleSettings}
             onUpdate={(settings) => updateObject(object.id, { 
@@ -396,6 +473,260 @@ const ActionButton = ({ icon: Icon, active, destructive, onClick, tooltip }: Act
     <Icon className="w-3.5 h-3.5" />
   </button>
 );
+
+// ============================================
+// COMPONENT STACK
+// ============================================
+interface ComponentStackSectionProps {
+  object: SceneObject;
+  activeSceneKind: '2d' | '3d';
+  addComponentToObject: (objectId: string, component: PixlComponentInstance) => void;
+  updateObjectComponent: (objectId: string, componentId: string, updates: Partial<PixlComponentInstance>) => void;
+  updateObjectComponentData: (objectId: string, componentId: string, data: Record<string, unknown>) => void;
+  removeComponentFromObject: (objectId: string, componentId: string) => void;
+}
+
+const summarizeComponentData = (component: PixlComponentInstance): string => {
+  const keys = Object.keys(component.data ?? {});
+  if (!keys.length) return 'Sem dados';
+  const preview = keys.slice(0, 4).join(', ');
+  return keys.length > 4 ? `${preview}, ...` : preview;
+};
+
+const formatComponentDataValue = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.length}]`;
+  if (value && typeof value === 'object') return '{...}';
+  if (value === null) return 'null';
+  return String(value);
+};
+
+const ComponentStackSection = ({
+  object,
+  activeSceneKind,
+  addComponentToObject,
+  updateObjectComponent,
+  updateObjectComponentData,
+  removeComponentFromObject,
+}: ComponentStackSectionProps) => {
+  const components = object.components ?? [];
+  const existingTypes = new Set(components.map((component) => component.type));
+  const availableDefinitions = getComponentDefinitionsForScene(activeSceneKind);
+  const addableDefinitions = availableDefinitions.filter((definition) => !existingTypes.has(definition.type));
+  const [selectedType, setSelectedType] = useState(addableDefinitions[0]?.type ?? '');
+  const selectedAddableType = addableDefinitions.some((definition) => definition.type === selectedType)
+    ? selectedType
+    : addableDefinitions[0]?.type ?? '';
+
+  const addComponent = () => {
+    const nextType = selectedAddableType;
+    if (!nextType) return;
+
+    addComponentToObject(object.id, createComponentInstance(object.id, nextType));
+
+    const nextAddableType = addableDefinitions.find((definition) => definition.type !== nextType)?.type ?? '';
+    setSelectedType(nextAddableType);
+  };
+
+  const updateComponentData = (
+    component: PixlComponentInstance,
+    key: string,
+    value: ComponentDataScalar,
+  ) => {
+    updateObjectComponentData(object.id, component.id, updateComponentDataField(component, key, value).data);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="space-y-1.5">
+        {components.length ? components.map((component) => {
+          const definition = getComponentDefinition(component.type);
+          return (
+            <div
+              key={component.id}
+              className="rounded-sm border border-border bg-[var(--editor-panel-sunken)] p-2"
+            >
+              <div className="flex items-start gap-2">
+                <ToggleSwitch
+                  checked={component.enabled !== false}
+                  onChange={(enabled) => updateObjectComponent(object.id, component.id, { enabled })}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-xs font-semibold text-foreground">
+                      {definition?.label ?? component.type}
+                    </span>
+                    <span className="rounded-sm border border-border px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
+                      {component.type}
+                    </span>
+                  </div>
+                  <div className="mt-1 truncate text-[10px] text-muted-foreground">
+                    {definition?.description ?? summarizeComponentData(component)}
+                  </div>
+                  <div className="mt-1 truncate font-mono text-[10px] text-muted-foreground/80">
+                    {summarizeComponentData(component)}
+                  </div>
+                  <ComponentDataFields
+                    component={component}
+                    onUpdate={updateComponentData}
+                  />
+                </div>
+                <button
+                  onClick={() => removeComponentFromObject(object.id, component.id)}
+                  className="rounded-sm p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  title="Remover componente"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          );
+        }) : (
+          <div className="rounded-sm border border-dashed border-border bg-[var(--editor-panel-sunken)] p-3 text-[11px] text-muted-foreground">
+            Nenhum componente estruturado neste objeto.
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1.5 border-t border-border/50 pt-2">
+        <select
+          value={selectedAddableType}
+          onChange={(event) => setSelectedType(event.target.value)}
+          disabled={!addableDefinitions.length}
+          className="min-w-0 flex-1 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          {addableDefinitions.length ? addableDefinitions.map((definition) => (
+            <option key={definition.type} value={definition.type}>{definition.label}</option>
+          )) : (
+            <option value="">Todos adicionados</option>
+          )}
+        </select>
+        <button
+          onClick={addComponent}
+          disabled={!addableDefinitions.length}
+          className={cn(
+            'editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold',
+            addableDefinitions.length
+              ? 'text-foreground hover:text-primary'
+              : 'cursor-not-allowed text-muted-foreground/45',
+          )}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add
+        </button>
+      </div>
+    </div>
+  );
+};
+
+interface ComponentDataFieldsProps {
+  component: PixlComponentInstance;
+  onUpdate: (component: PixlComponentInstance, key: string, value: ComponentDataScalar) => void;
+}
+
+const ComponentDataFields = ({ component, onUpdate }: ComponentDataFieldsProps) => {
+  const entries = Object.entries(component.data ?? {});
+  if (!entries.length) return null;
+
+  return (
+    <div className="mt-2 grid gap-1.5">
+      {entries.map(([key, value]) => (
+        <ComponentDataField
+          key={`${component.id}:${key}`}
+          component={component}
+          fieldKey={key}
+          value={value}
+          onUpdate={onUpdate}
+        />
+      ))}
+    </div>
+  );
+};
+
+interface ComponentDataFieldProps {
+  component: PixlComponentInstance;
+  fieldKey: string;
+  value: unknown;
+  onUpdate: (component: PixlComponentInstance, key: string, value: ComponentDataScalar) => void;
+}
+
+const isColorField = (key: string, value: string): boolean => (
+  key.toLowerCase().includes('color') ||
+  key.toLowerCase().includes('tint') ||
+  /^#[0-9a-f]{6}$/i.test(value)
+);
+
+const ComponentDataField = ({ component, fieldKey, value, onUpdate }: ComponentDataFieldProps) => {
+  const label = fieldKey.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase());
+
+  if (!isEditableComponentDataValue(value)) {
+    return (
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+        <span className="truncate text-[10px] font-medium text-muted-foreground">{label}</span>
+        <code className="truncate rounded-sm border border-border bg-background px-1.5 py-1 text-[10px] text-muted-foreground">
+          {formatComponentDataValue(value)}
+        </code>
+      </div>
+    );
+  }
+
+  if (typeof value === 'boolean') {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-[10px] font-medium text-muted-foreground">{label}</span>
+        <ToggleSwitch checked={value} onChange={(next) => onUpdate(component, fieldKey, next)} />
+      </div>
+    );
+  }
+
+  if (typeof value === 'number') {
+    return (
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+        <span className="truncate text-[10px] font-medium text-muted-foreground">{label}</span>
+        <input
+          type="number"
+          value={Number.isFinite(value) ? value : 0}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            if (Number.isFinite(next)) onUpdate(component, fieldKey, next);
+          }}
+          className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+    );
+  }
+
+  if (typeof value === 'string' && isColorField(fieldKey, value)) {
+    return (
+      <div className="grid grid-cols-[96px_auto_minmax(0,1fr)] items-center gap-2">
+        <span className="truncate text-[10px] font-medium text-muted-foreground">{label}</span>
+        <input
+          type="color"
+          value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#ffffff'}
+          onChange={(event) => onUpdate(component, fieldKey, event.target.value)}
+          className="h-7 w-8 rounded-sm border border-border bg-background p-0.5"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => onUpdate(component, fieldKey, event.target.value)}
+          className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+      <span className="truncate text-[10px] font-medium text-muted-foreground">{label}</span>
+      <input
+        type="text"
+        value={value ?? ''}
+        onChange={(event) => onUpdate(component, fieldKey, event.target.value)}
+        className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+    </div>
+  );
+};
 
 // ============================================
 // LIGHT SECTION - Ultra-Realistic Lighting
@@ -933,6 +1264,299 @@ const TransformSection = ({ object, updateObject, isSimple }: TransformSectionPr
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// ============================================
+// 2D PIXL SCHEMA SECTIONS
+// ============================================
+interface Pixl2DSectionProps {
+  object: SceneObject;
+  updateObject: (id: string, updates: Partial<SceneObject>) => void;
+}
+
+const get2DDataString = (data: Record<string, unknown> | undefined, key: string, fallback = ''): string => {
+  const value = data?.[key];
+  return typeof value === 'string' ? value : fallback;
+};
+
+const get2DDataNumber = (data: Record<string, unknown> | undefined, key: string, fallback = 0): number => {
+  const value = data?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+};
+
+const get2DDataBoolean = (data: Record<string, unknown> | undefined, key: string, fallback = false): boolean => {
+  const value = data?.[key];
+  return typeof value === 'boolean' ? value : fallback;
+};
+
+const update2DData = (
+  object: SceneObject,
+  updateObject: (id: string, updates: Partial<SceneObject>) => void,
+  updates: Record<string, unknown>,
+) => {
+  updateObject(object.id, {
+    data: {
+      ...(object.data ?? {}),
+      ...updates,
+    },
+  });
+};
+
+const Sprite2DSection = ({ object, updateObject }: Pixl2DSectionProps) => {
+  const data = object.data ?? {};
+  const imageUrl = get2DDataString(data, 'imageUrl', get2DDataString(data, 'url'));
+  const frameWidth = get2DDataNumber(data, 'frameWidth');
+  const frameHeight = get2DDataNumber(data, 'frameHeight');
+  const frame = get2DDataNumber(data, 'frame');
+  const spriteScale = get2DDataNumber(data, 'scale', 1);
+  const depth = get2DDataNumber(data, 'depth');
+
+  return (
+    <div className="space-y-3">
+      <TexturePicker
+        value={imageUrl}
+        onChange={(url) => update2DData(object, updateObject, { imageUrl: url, url })}
+        label="Imagem"
+        placeholder="Selecione sprite ou imagem"
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="inspector-label">FRAME W</label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={frameWidth || ''}
+            onChange={(event) => update2DData(object, updateObject, { frameWidth: parseFloat(event.target.value) || undefined })}
+            className="w-full inspector-input text-right"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="inspector-label">FRAME H</label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={frameHeight || ''}
+            onChange={(event) => update2DData(object, updateObject, { frameHeight: parseFloat(event.target.value) || undefined })}
+            className="w-full inspector-input text-right"
+          />
+        </div>
+      </div>
+
+      <PropertyRow label="Frame" value={frame.toFixed(0)}>
+        <input
+          type="range"
+          min="0"
+          max="64"
+          step="1"
+          value={frame}
+          onChange={(event) => update2DData(object, updateObject, { frame: parseFloat(event.target.value) || 0 })}
+          className="w-full"
+        />
+      </PropertyRow>
+
+      <PropertyRow label="Escala" value={spriteScale.toFixed(2)}>
+        <input
+          type="range"
+          min="0.1"
+          max="5"
+          step="0.05"
+          value={spriteScale}
+          onChange={(event) => update2DData(object, updateObject, { scale: parseFloat(event.target.value) || 1 })}
+          className="w-full"
+        />
+      </PropertyRow>
+
+      <PropertyRow label="Depth" value={depth.toFixed(0)}>
+        <input
+          type="range"
+          min="-100"
+          max="200"
+          step="1"
+          value={depth}
+          onChange={(event) => update2DData(object, updateObject, { depth: parseFloat(event.target.value) || 0 })}
+          className="w-full"
+        />
+      </PropertyRow>
+
+      <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Flip X</span>
+          <ToggleSwitch
+            checked={get2DDataBoolean(data, 'flipX')}
+            onChange={(value) => update2DData(object, updateObject, { flipX: value })}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Flip Y</span>
+          <ToggleSwitch
+            checked={get2DDataBoolean(data, 'flipY')}
+            onChange={(value) => update2DData(object, updateObject, { flipY: value })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Shape2DSection = ({ object, updateObject }: Pixl2DSectionProps) => {
+  const data = object.data ?? {};
+  const width = get2DDataNumber(data, 'width', 40);
+  const height = get2DDataNumber(data, 'height', 40);
+  const radius = get2DDataNumber(data, 'radius', 20);
+  const depth = get2DDataNumber(data, 'depth');
+  const color = get2DDataString(data, 'color', object.color || '#ffffff');
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <label className="inspector-label">COR</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={color}
+            onChange={(event) => {
+              update2DData(object, updateObject, { color: event.target.value });
+              updateObject(object.id, { color: event.target.value });
+            }}
+          />
+          <input
+            type="text"
+            value={color}
+            onChange={(event) => update2DData(object, updateObject, { color: event.target.value })}
+            className="flex-1 inspector-input font-mono"
+          />
+        </div>
+      </div>
+
+      {object.type === 'circle' ? (
+        <PropertyRow label="Raio" value={radius.toFixed(0)}>
+          <input
+            type="range"
+            min="1"
+            max="300"
+            step="1"
+            value={radius}
+            onChange={(event) => update2DData(object, updateObject, { radius: parseFloat(event.target.value) || 20 })}
+            className="w-full"
+          />
+        </PropertyRow>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="inspector-label">WIDTH</label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={width}
+              onChange={(event) => update2DData(object, updateObject, { width: parseFloat(event.target.value) || 1 })}
+              className="w-full inspector-input text-right"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="inspector-label">HEIGHT</label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={height}
+              onChange={(event) => update2DData(object, updateObject, { height: parseFloat(event.target.value) || 1 })}
+              className="w-full inspector-input text-right"
+            />
+          </div>
+        </div>
+      )}
+
+      <PropertyRow label="Depth" value={depth.toFixed(0)}>
+        <input
+          type="range"
+          min="-100"
+          max="200"
+          step="1"
+          value={depth}
+          onChange={(event) => update2DData(object, updateObject, { depth: parseFloat(event.target.value) || 0 })}
+          className="w-full"
+        />
+      </PropertyRow>
+    </div>
+  );
+};
+
+const Text2DSection = ({ object, updateObject }: Pixl2DSectionProps) => {
+  const data = object.data ?? {};
+  const text = get2DDataString(data, 'text');
+  const fontSize = get2DDataNumber(data, 'fontSize', 16);
+  const fontFamily = get2DDataString(data, 'fontFamily', 'monospace');
+  const depth = get2DDataNumber(data, 'depth');
+  const color = get2DDataString(data, 'color', object.color || '#ffffff');
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <label className="inspector-label">TEXTO</label>
+        <textarea
+          value={text}
+          onChange={(event) => update2DData(object, updateObject, { text: event.target.value })}
+          className="min-h-[68px] w-full resize-none inspector-input"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="inspector-label">FONTE</label>
+          <input
+            type="text"
+            value={fontFamily}
+            onChange={(event) => update2DData(object, updateObject, { fontFamily: event.target.value })}
+            className="w-full inspector-input"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="inspector-label">TAMANHO</label>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={fontSize}
+            onChange={(event) => update2DData(object, updateObject, { fontSize: parseFloat(event.target.value) || 16 })}
+            className="w-full inspector-input text-right"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="inspector-label">COR</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={color}
+            onChange={(event) => update2DData(object, updateObject, { color: event.target.value })}
+          />
+          <input
+            type="text"
+            value={color}
+            onChange={(event) => update2DData(object, updateObject, { color: event.target.value })}
+            className="flex-1 inspector-input font-mono"
+          />
+        </div>
+      </div>
+
+      <PropertyRow label="Depth" value={depth.toFixed(0)}>
+        <input
+          type="range"
+          min="-100"
+          max="200"
+          step="1"
+          value={depth}
+          onChange={(event) => update2DData(object, updateObject, { depth: parseFloat(event.target.value) || 0 })}
+          className="w-full"
+        />
+      </PropertyRow>
     </div>
   );
 };

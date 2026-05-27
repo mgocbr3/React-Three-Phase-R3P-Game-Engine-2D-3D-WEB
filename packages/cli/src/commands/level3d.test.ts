@@ -150,6 +150,17 @@ describe('exportProjectToLevel3D', () => {
     expect(tractor?.source?.assetUrl).toBe('public/assets/tractor.glb');
   });
 
+  it('exporta objetos level3d que vivem em children aninhados', () => {
+    const project = importLevel3DToProject(sampleLevel);
+    const child = project.scenes[0].rootObjects.pop()!;
+    child.parentId = project.scenes[0].rootObjects[0].id;
+    project.scenes[0].rootObjects[0].children = [child];
+
+    const exported = exportProjectToLevel3D(project);
+
+    expect(exported.objects.map((object) => object.id)).toEqual(['tree-1', 'rock-1']);
+  });
+
   it('falha se a cena ativa nao for 3D', () => {
     const project = importLevel3DToProject(sampleLevel);
     project.scenes[0].kind = '2d';

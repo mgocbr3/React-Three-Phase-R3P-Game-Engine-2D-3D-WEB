@@ -4,6 +4,7 @@ import glsl from "vite-plugin-glsl";
 import path from "path";
 
 const repoRoot = path.resolve(__dirname, "../../..").replace(/\\/g, "/");
+const studioNodeModules = path.resolve(__dirname, "node_modules");
 
 export default defineConfig(() => ({
   server: {
@@ -35,16 +36,25 @@ export default defineConfig(() => ({
     }),
   ],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
       // realism-effects: o pacote upstream 1.1.2 importa
       // `WebGLMultipleRenderTargets` que foi removida do Three.js em
       // ~0.162 — nossa versao 0.184 quebra o build. Substituimos o
       // resolve pela copia em `tools/vendor/realism-effects/src` que
       // tem o patch aplicado (WebGLRenderTarget + count). Veja
       // tools/vendor/realism-effects/PATCH-NOTES.md.
-      "realism-effects": path.resolve(__dirname, "../../tools/vendor/realism-effects/src/index.js"),
-    },
+      {
+        find: "realism-effects",
+        replacement: path.resolve(__dirname, "../../tools/vendor/realism-effects/src/index.js"),
+      },
+      // The vendored source lives outside apps/studio, so Rollup resolves
+      // bare peer imports from the vendor folder unless we anchor them
+      // back to the Studio package graph. Keep these exact so `three/addons`
+      // still flows through Three's package exports.
+      { find: /^postprocessing$/, replacement: path.resolve(studioNodeModules, "postprocessing") },
+      { find: /^three$/, replacement: path.resolve(studioNodeModules, "three") },
+    ],
     dedupe: [
       'react', 
       'react-dom', 

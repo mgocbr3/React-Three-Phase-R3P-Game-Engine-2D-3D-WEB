@@ -1,7 +1,7 @@
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import {
-  createProjectDocumentFromEditor,
+  createActiveProjectDocumentSnapshot,
   prepareProjectDocumentForRuntimePreview,
 } from '@/services/localProjectFiles';
 import { RuntimePreviewSession } from './runtimePreview';
@@ -12,7 +12,7 @@ export type RuntimePreviewToggleResult =
   | { action: 'stopped' };
 
 export const startRuntimePreviewFromEditor = (projectName?: string): RuntimePreviewSession => {
-  const document = prepareProjectDocumentForRuntimePreview(createProjectDocumentFromEditor(projectName));
+  const document = prepareProjectDocumentForRuntimePreview(createActiveProjectDocumentSnapshot(projectName).document);
   const session = useRuntimeGameStore.getState().startPreview(document, { source: 'editor' });
   useEditorStore.getState().setEditMode(false);
   return session;

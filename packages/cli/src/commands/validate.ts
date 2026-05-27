@@ -9,6 +9,7 @@ import {
   PixlProjectShape,
   PixlSceneObjectShape,
 } from '../schema.js';
+import { findLegacyEditorObjectData } from '../projectInvariants.js';
 
 const COMPONENTS_2D = new Set<string>(PIXL_2D_COMPONENT_TYPES);
 const COMPONENTS_3D = new Set<string>(PIXL_3D_COMPONENT_TYPES);
@@ -132,16 +133,6 @@ export const validateProjectDocument = (document: unknown, projectPath: string):
             }
           }
         }
-        // Track the leaky-truth smell: the editor still dumps its legacy SceneObject
-        // into `data.editorObject`. Once the refactor removes it, this warning goes
-        // away by itself.
-        if (object.data && 'editorObject' in object.data) {
-          warnings.push({
-            level: 'warning',
-            path: `$.scenes[${sceneIndex}].rootObjects[${object.id}].data.editorObject`,
-            message: 'Objeto carrega blob legacy editorObject (fonte-de-verdade duplicada).',
-          });
-        }
       });
     });
 
@@ -157,6 +148,14 @@ export const validateProjectDocument = (document: unknown, projectPath: string):
   if (doc.assets?.entries) {
     assetCount = doc.assets.entries.length;
   }
+
+  findLegacyEditorObjectData(doc).forEach((issue) => {
+    warnings.push({
+      level: 'warning',
+      path: issue.path,
+      message: issue.message,
+    });
+  });
 
   return {
     projectPath,

@@ -11,11 +11,12 @@ Disponíveis:
 - `new <dir> --kind 2d|3d [--name X]` — scaffold de projeto novo com deps pinned a partir do manifest.
 - `import-level3d <src> <out>` — converte `*.level3d.json` em `project.pixlproject.json` (sem leak `data.editorObject`).
 - `export-level3d <src> <out>` — caminho reverso. Round-trip identity comprovado contra o `harvest-rush.level3d.json` real.
+- `export-three <project> <out>` — bundle HTML+JS Three+Rapier+DOM standalone.
+- `export-phaser <project> <out>` — bundle HTML+JS Phaser 4 standalone para projetos 2D.
+- `export-pixlland <project> <out.pixlbuild>` — builda com o runtime correto (Three ou Phaser) e empacota em um arquivo único verificável.
 
 Planejados:
-- `export-three <project> <out>` — bundle HTML+JS Three+Rapier+DOM standalone.
-- `export-phaser <project> <out>` — bundle HTML+JS Phaser 4+DOM standalone.
-- `export-pixlland <project> <out>` — bundle pronto pra upload no Pixlland.
+- Build Settings visual no Studio para chamar `export-three`, `export-phaser` e `export-pixlland` sem terminal.
 
 ## Usage
 
@@ -42,6 +43,16 @@ node engine/packages/cli/dist/index.js import-level3d \
   /tmp/harvest.pixlproject.json
 node engine/packages/cli/dist/index.js export-level3d \
   /tmp/harvest.pixlproject.json /tmp/harvest.level3d.json
+
+# Export standalone Phaser 2D
+node engine/packages/cli/dist/index.js export-phaser \
+  apps/studio/public/sample-projects/magic-battleground-2d/project.pixlproject.json \
+  /tmp/magic-phaser
+
+# Build target Pixlland (arquivo unico)
+node engine/packages/cli/dist/index.js export-pixlland \
+  apps/studio/public/sample-projects/magic-battleground-2d/project.pixlproject.json \
+  /tmp/magic.pixlbuild
 ```
 
 Exit code `0` em sucesso, `1` em erro de validação ou drift detectado. Warnings não falham; servem pra agents identificarem smells (como `data.editorObject` blobs).

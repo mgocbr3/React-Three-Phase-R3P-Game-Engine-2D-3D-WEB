@@ -24,6 +24,23 @@ Acceptance:
 - `pixl-engine validate apps/portal/games-src/harvest-rush-3d/pixlplayground/project.pixlproject.json` reporta **0 warnings** (hoje reporta 34, um por objeto).
 - Componentes faltantes (`pixl.camera`, `pixl.light`, `pixl.player`, etc.) ganham tipos no schema em vez de viajar como campos de `SceneObject`.
 
+Progress (2026-05-27):
+- ✅ `editorProjectAdapter.ts` já não escreve `data.editorObject`; os round-trips do Studio preservam dados/componentes estruturados e removem blobs legacy.
+- ✅ Auditoria de invariantes de documento adicionada no Studio e no CLI: `data.editorObject` agora é detectado em objetos raiz e filhos por um contrato dedicado, usado por Build Settings e `pixl-engine validate`.
+- ✅ `pixl-engine validate` nos samples locais `magic-battleground-2d`, `harvest-rush-3d` e `sample-2d` reporta OK / 0 warnings com a nova auditoria.
+- ✅ `createActiveProjectDocumentSnapshot` virou a API comum para Runtime Preview, Build Settings e `.pixl` package exportarem o documento ativo com assinatura de conteúdo estável; autosave agora escuta assets do projeto e `scene.kind`, então imports/moves 2D entram no `PixlProjectDocument` sem depender de outra edição na cena.
+
+- Project diagnostics virou uma superficie reutilizavel do Studio (`createProjectDiagnostics` / `createActiveProjectDiagnosticsSnapshot`): o Header mostra status compacto da engine e Build Settings consome o mesmo contrato agrupado por runtime, cena, assets e schema.
+- Engine Console no Bottom Panel agora consome os mesmos diagnosticos da engine como mensagens filtraveis, com origem (`Runtime`, `Scene`, `Assets`, `Schema`) e path do documento para depurar projetos como uma surface de editor.
+- Diagnosticos que apontam para `rootObjects` agora carregam alvo de cena/objeto; clicar numa linha do Engine Console seleciona o objeto afetado no editor/Inspector, aproximando o fluxo de debug de um console de engine.
+- Inspector ganhou uma stack de `Components` com catalogo 2D/3D/shared e fluxo `Add Component`/enable/remove baseado em `SceneObject.components`, aproximando o objeto do contrato `PixlSceneDocument` em vez de depender so de campos legacy.
+- A stack de `Components` agora edita campos escalares (`string`, `number`, `boolean`, cor) diretamente no Inspector, mantendo arrays/objetos complexos como resumo somente-leitura para preservar dados estruturados sem forcar JSON bruto no fluxo comum.
+- Operacoes de componente (`add/update data/update enabled/remove`) viraram acoes do `editorStore`, com historico em add/remove e guards contra duplicata/no-op/scene-kind, para que Inspector e futuros atalhos/menus usem uma API de editor em vez de manipular arrays localmente.
+- Hierarquia do editor agora sai como arvore real em `PixlSceneDocument.rootObjects[].children` e volta como lista plana com `parentId`; Three runtime e exporters 3D aceitam tanto o formato antigo plano quanto o formato novo aninhado.
+- `editorStore` ganhou `reparentObject` com guards contra parent inexistente, self-parent e ciclos; deletes agora removem subarvores em vez de deixar filhos orfaos escondidos, e a Hierarchy expõe `Desanexar` no menu de contexto.
+- Hierarchy ganhou drag-and-drop pointer-based para reparenting visual: arrastar um objeto sobre outro cria parent-child via `reparentObject`, e soltar na raiz da cena desanexa o objeto sem furar os guards do store nem depender do HTML5 drag nativo.
+- Hierarchy também ganhou reorder visual por zonas de drop: topo/base da linha move objetos antes/depois do alvo via `reorderObject`, carregando subarvores como pacote e adotando o parent do alvo sem permitir ciclos.
+
 Risco: alto. Mexe em `editorStore.ts` (1.5k linhas), `EditableObject`, gizmos, undo/redo. Precisa de Mac com browser pra QA visual.
 
 ## 2. Fechar um round-trip end-to-end com Harvest Rush 3D
@@ -39,11 +56,18 @@ Risco: médio. Aditivo, mas precisa rodar o runtime pra validar.
 
 ## 3. Carve-out do legacy cloud
 
-O `engine/apps/studio/supabase/` continua dentro do engine, e `EditorPage.tsx` ainda importa `fetchProject`, `useProjectAutoSave`, `ConflictResolutionDialog`, `useAuthStore`.
+O legado cloud já foi movido para `apps/studio/src/legacy/cloud`; o trabalho agora é manter o editor standalone sem montar/importar surfaces Pixlland quando `VITE_ENGINE_CLOUD` estiver desligado.
 
 Acceptance:
 - Mover `supabase/`, `integrations/supabase/`, `stores/authStore.ts`, `services/conflictResolution.ts`, `services/projectService.ts`, `services/projectVersioning.ts` e `hooks/useProjectAutoSave.ts` para `engine/apps/studio/src/legacy/` (ou um package separado).
 - Engine sobe sem `VITE_SUPABASE_*` setados; toda a UI cloud some por trás de um feature flag `VITE_ENGINE_CLOUD=true`.
+
+Progress (2026-05-27):
+- ✅ Legacy cloud já vive em `apps/studio/src/legacy/cloud`; o modo local (`VITE_ENGINE_CLOUD` desligado) esconde a aba `Store`/Pixlland do Bottom Panel, normaliza a ordem salva das abas sem ressuscitar surfaces cloud, e mantém `Content Browser`, `UI Editor`, `Timeline` e `Console` operando no editor standalone.
+- ✅ `useProjectAutoSave` virou no-op em modo local-only: o autosave/atalho legado da nuvem não instala intervalos nem listener de `Ctrl+S` quando `VITE_ENGINE_CLOUD` está desligado, deixando `useEditorAutosave` + File/Save como donos do standalone.
+- ✅ A superfície Store do Bottom Panel agora vive em `apps/studio/src/legacy/cloud/components/CloudStorePane.tsx` e monta por `lazy()` apenas quando cloud está habilitado; `BottomPanel.tsx` não importa mais hooks/stores Pixlland no standalone.
+- ✅ `EditorPage.tsx` deixou de importar hooks/serviços cloud diretos (`useProjectAutoSave`, `usePixllandBridge`, `useAuthStore`, `fetchProject`, `ConflictResolutionDialog`): a página usa uma ponte local no-op e carrega `LegacyCloudEditorIntegration` via `lazy()` só quando `VITE_ENGINE_CLOUD=true`.
+- ✅ Smoke no Browser contra `magic-battleground-2d`: tabs locais (`Content Browser`, `UI Editor`, `Timeline`, `Console`) renderizam, `Store`/`Pixlland` não aparecem, clique em `Console` ativa o painel e não há overlay de erro.
 
 Risco: médio. Precisa boot do editor pra confirmar.
 
@@ -80,8 +104,9 @@ Aberto / follow-ups:
 **Smoke do export-runtime contra Harvest Rush (session 7)**: o comando produz bundle válido, o `main.js` do game executa, three.js inicializa, scene faz clearColor azul, o game **constrói sua HUD inteira programaticamente** (24KB de HTML gerado em `#app`). MAS **este clone não tem o subset completo de assets que o game consome em runtime**: faltam ~30+ GLBs (cars, livestock, trees: `car_001.glb`, `cow_001.glb`, `tree_001.glb`, etc.), `levels/harvest-rush.level3d.json`, e a `styles.css` canônica (stub criada em `runtime/src/styles.css` permite o build, mas a UI fica sem polish). Esses arquivos vivem no parent monorepo (`apps/portal/games-src/harvest-rush-3d/`) e não foram copiados pro standalone clone. **Engine funciona; sample é incompleto pra jogar end-to-end neste clone**. Pra jogar real: clonar o parent monorepo OU restaurar os arquivos faltantes.
 
 Próximos comandos (precisam de design ao vivo):
-- `pixl-engine export-phaser <project> <out>` — bundle 2D Phaser standalone. **BLOQUEADO**: `packages/phaser-runtime/src/Game.ts` é só um shell de dados (sem `loadFromPixlProject`, sem `play()`, sem instanciação de `Phaser.Game`). O comentário do arquivo diz literalmente "The Phaser.Game instance is owned by the consumer". Antes do export-phaser virar viável, o phaser-runtime precisa ganhar bootstrap próprio — espelhando `three-runtime/Game.ts`. Trabalho de runtime, não de CLI.
-- `pixl-engine export-pixlland <project> <out>` — bundle pronto pra upload no Pixlland. V0.1 pode ser thin wrapper que chama `export-three`/`export-runtime` + ZIPa o output. Útil mas não bloqueia "usar a engine" — o `<outDir>` dos exports já é portátil pra qualquer host (file://, GitHub Pages, itch.io, Pixlland).
+- ✅ `pixl-engine export-phaser <project> <out>` — bundle 2D Phaser standalone (2026-05-27). `packages/phaser-runtime/src/Game.ts` agora tem `Game.fromPixlProject`, `loadFromPixlProject`, `play`, `pause`, `destroy` e instancia `Phaser.Game` para exports standalone. O exporter copia assets, copia `runtime/`, reescreve URLs 2D para `entry.path`, passa por Vite e usa `@pixlland/phaser-runtime`. Smoke real contra `magic-battleground-2d`: 11 assets copiados, bundle JS ~1,67 MB, canvas 960x640, 12 objetos Phaser, 14 texturas, overlay de erro desligado.
+- ✅ `pixl-engine export-pixlland <project> <out.pixlbuild>` — build target unificado (2026-05-27). Detecta `scene.kind`, chama `export-three` para 3D ou `export-phaser` para 2D/hybrid, normaliza `slug`/`createdAt` do project doc de build quando faltam, e empacota o output estático com o packer `.pixl` hash-verificado. Testes cobrem rota 2D e 3D com `unpackPackage`.
+- ✅ Studio Build Settings (2026-05-27). Menu `Build → Build Settings` mostra runtime ativo, targets `Three Web`, `Phaser Web` e `Pixlland`, output esperado e comandos CLI copiáveis. Smoke visual no Chrome contra `magic-battleground-2d`: modal abriu sem overlay/erro, Phaser Web e Pixlland prontos, comandos `export-phaser`/`export-pixlland` presentes.
 
 Follow-ups do export-three:
 - ✅ **Asset URL mismatch** (sessions 5+6): runtime side fechado na session 5 via `rewriteAssetUrlsInProject` (reescreve `data.modelUrl` / `data.assetPath` / `data.url` / `data.customData.sourceAsset` no project doc copiado pra apontar pra `entry.path`); file-finder side fechado na session 6 via `pushVariants(base, ref)` em `copyAssetEntry` (tenta tanto `entry.url` cru quanto `normalizeAssetPath(entry.url)`, espelhando o que o runtime faz no fetch). Sample real Harvest Rush: 22.379 rewrites + 15/16 assets copiados.
@@ -96,10 +121,18 @@ Risco: baixo. Aditivo, sem UI.
 
 Schema já tem os tipos (`PIXL_2D_COMPONENT_TYPES`, `PixlTransform2D`, `PixlSpriteComponentData`, `PixlPhysics2DComponentData`, `PixlTileMapComponentData`, `PixlAnimation2DComponentData`, `PixlCamera2DComponentData`). Falta:
 
-- Inspector mostrar esses componentes quando `scene.kind === '2d'`.
-- Content browser filtrar `.png/.atlas/.tilemap.json` em cenas 2D.
-- Substituir `PhaserViewport2D.tsx` (minimapa do 3D) por um editor 2D real — Phaser 4 scene editável, gizmo 2D, drag-and-drop de sprites.
-- Asset folders 2D (`Assets/Sprites/`, `Assets/Tilemaps/`) operando no content browser.
+Progress (2026-05-27):
+- ✅ Editor adapter preserva objetos 2D (`image`, `sprite`, `rectangle`, `circle`, `text`), `data` bruto de render (ex.: `imageUrl`, frames, depth) e componentes schema como `pixl.physics2d` ao abrir/salvar.
+- ✅ Projetos 2D agora setam `activeSceneKind` + viewport store para `2d` ao abrir, e novos projetos 2D usam runtime `phaser-2d` + física `arcade`.
+- ✅ Content Browser / TexturePicker reconhecem assets `image`, `sprite`, `spritesheet` e `tilemap`; Inspector desktop mostra seções `Sprite 2D`, `Forma 2D` e `Texto 2D`.
+- ✅ Smoke visual no Chrome contra `magic-battleground-2d`: canvas 2D visível, Inspector `Sprite 2D` com asset `Mage Ember`, sem console errors/requests 400+.
+- ✅ `PhaserViewport2D` deixou de ser minimapa 3D: abre em coordenadas pixel/top-left, renderiza sprites/imagens reais, permite drag de objetos e aceita drop de assets 2D do Content Browser criando objetos `image/sprite` com componente `pixl.sprite`.
+- ✅ Resolução de assets 2D em samples agora preenche `asset.url` a partir de `asset.path` sem perder `path` portátil; `makeProjectDocumentPortable` volta `/sample-projects/<slug>/...` para paths relativos.
+
+- ✅ Inspector desktop mostra controles 2D quando `scene.kind === '2d'`.
+- ✅ Content browser reconhece `.png/.atlas/.tilemap.json` como assets 2D.
+- ✅ `PhaserViewport2D.tsx` agora é um editor 2D real básico — cena Phaser editável, drag de objetos e drag-and-drop de sprites.
+- ✅ Asset folders 2D (`Assets/Sprites/`, `Assets/Tilemaps/`) operam no Content Browser com import/copy real para o workspace local, criação de subpastas e movimentação de assets em disco mantendo `asset.path` portátil no manifest.
 
 Risco: médio-alto. Precisa Mac + browser; é o segundo maior bloco depois do item 1.
 

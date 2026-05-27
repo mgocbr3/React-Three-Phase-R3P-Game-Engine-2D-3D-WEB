@@ -1,5 +1,30 @@
 # PixlPlayground Engine Handoff - Mac
 
+## Prompt de retomada no MacBook - 2026-05-27
+
+Copie e cole este prompt na nova sessao do Codex no MacBook depois de rodar `git pull origin main`:
+
+```text
+Estamos no repo `React-Three-Phaser`, branch `main`, trabalhando no objetivo: deixar essa engine a "Unity das Three.js + Phaser".
+
+Antes de editar, leia `ARCHITECTURE.md`, `PLAN.md` e `HANDOFF-MAC.md`. Use o estado atual do worktree como fonte de verdade. Nao reverta mudancas existentes.
+
+Resumo do que ja foi feito em 2026-05-27:
+- `PixlSceneDocument` esta mais perto de ser fonte de verdade: adapter sem `data.editorObject`, invariantes de documento, diagnosticos de projeto, console de engine clicavel e componentes editaveis no Inspector.
+- Editor 2D/Phaser avancou: `PhaserViewport2D` renderiza/edita sprites e imagens reais, assets 2D entram no Content Browser/TexturePicker, samples 2D preservam paths portateis.
+- Runtime/export avancou: `export-phaser`, `export-pixlland`, Build Settings do Studio, empacotamento `.pixl` e rotas 2D/3D testadas.
+- Carve-out cloud avancou: `EditorPage` usa `LegacyCloudEditorIntegration` lazy; `useProjectAutoSave` vira no-op local; `BottomPanel` nao importa mais hooks/stores Pixlland e carrega `CloudStorePane` via lazy apenas quando `VITE_ENGINE_CLOUD=true`.
+- Validacoes recentes no Windows: `pnpm --filter pixlplaygroundstudio typecheck`; `pnpm --filter pixlplaygroundstudio test -- BottomPanel.tabs EditorPage.runtimePreview editorCloudBridgeStore useProjectAutoSave`; smoke Browser em `http://127.0.0.1:8080/editor?sampleProject=magic-battleground-2d&kind=2d`.
+
+Proximas acoes sugeridas:
+1. Terminar o carve-out cloud no Header/mobile: remover imports estaticos de `usePixllandBridge`, `usePixllandStore`, `EmbeddedActions`, `ProjectVersionHistory`, `LocalModeWarning`, `SaveStatusIndicator` e `MobileHeader` do caminho standalone. Use componentes lazy em `apps/studio/src/legacy/cloud/components/`.
+2. Rodar `rg -n "usePixllandBridge|useAuthStore|ProjectVersionHistory|EmbeddedActions|Pixlland" apps/studio/src/components apps/studio/src/pages` e garantir que o modo local so referencia cloud atras de `ENGINE_CLOUD_ENABLED` + lazy import.
+3. Revalidar: `pnpm --filter pixlplaygroundstudio typecheck`, testes focados de cloud/local, e smoke visual no Browser/Chrome do Mac contra `magic-battleground-2d`.
+4. Depois, voltar ao `PLAN.md` item 1 e item 2: consolidar `PixlSceneDocument` como fonte total de verdade e fechar o round-trip Harvest Rush 3D end-to-end.
+
+Mantenha o criterio arquitetural: simulacao/dados fora do renderer, `scene.kind` dirigindo 2D vs 3D, runtime Phaser e runtime Three separados no bundle, UI/HUD em DOM, e cloud Pixlland sempre opcional para o editor standalone.
+```
+
 Date: 2026-05-20
 Branch used on Windows: `fix/admin-auth-and-metrics`
 Active review branch: `claude/review-codex-engine-I1E8y`

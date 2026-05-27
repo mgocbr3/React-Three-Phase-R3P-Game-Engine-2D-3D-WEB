@@ -118,6 +118,49 @@ describe('Game', () => {
     );
     expect(() => game.setActiveScene('inexistente')).toThrow();
   });
+
+  it('cria runtime a partir de PixlProjectDocument 2D', () => {
+    const game = Game.fromPixlProject({
+      id: 'p',
+      name: 'P',
+      activeSceneId: 'arena',
+      scenes: [
+        {
+          id: 'arena',
+          name: 'Arena',
+          kind: '2d',
+          runtimeScript: 'runtime/src/main.js',
+          rootObjects: [
+            {
+              id: 'hero',
+              name: 'Hero',
+              type: 'sprite',
+              transform: {
+                position: [10, 20, 0],
+                rotation: [0, 0, 0],
+                scale: [1, 1, 1],
+              },
+              data: { imageUrl: 'assets/hero.png' },
+            },
+          ],
+        },
+      ],
+    });
+    expect(game.activeScene?.id).toBe('arena');
+    expect(game.activeScene?.toJSON().runtimeScript).toBe('runtime/src/main.js');
+    expect(game.activeScene?.totalObjectCount()).toBe(1);
+  });
+
+  it('rejeita PixlProjectDocument sem cena 2D ativa', () => {
+    expect(() =>
+      Game.fromPixlProject({
+        id: 'p',
+        name: 'P',
+        activeSceneId: 'main',
+        scenes: [{ id: 'main', name: 'Main', kind: '3d', rootObjects: [] }],
+      }),
+    ).toThrow(/not a 2D scene/);
+  });
 });
 
 describe('2D-specific components', () => {

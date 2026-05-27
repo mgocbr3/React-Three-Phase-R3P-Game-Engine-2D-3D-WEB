@@ -56,6 +56,7 @@ export interface PixlSceneObjectShape {
   tags?: string[];
   components?: Array<{ id: string; type: string; enabled: boolean; data: Record<string, unknown> }>;
   data?: Record<string, unknown>;
+  children?: PixlSceneObjectShape[];
 }
 
 export interface PixlSceneShape {

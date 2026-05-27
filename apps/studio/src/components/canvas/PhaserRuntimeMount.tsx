@@ -5,9 +5,8 @@
 // / image) inside a custom Phaser.Scene. The Phaser.Game is built lazily so the
 // 3D code path doesn't pay for the phaser import.
 //
-// Not yet wired (Phase 6B step 5b): persistence via engine-ops.object.setTransform
-// when the user drags an object in the 2D viewport. Currently the scene is
-// read-only.
+// Interactive editor path: click selects, drag translates, toolbar modes expose
+// rotate/scale handles, and changes persist back through useEditorStore.
 
 import React, { useEffect, useRef, useState } from 'react';
 

@@ -1,12 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { useEditorStore, SceneObject } from '@/stores/editorStore';
+import { useAssetDragStore } from '@/stores/assetDragStore';
+import { toast } from 'sonner';
 
 type SceneSnapshot = {
   objects: SceneObject[];
   selectedObjectId: string | null;
   showGrid: boolean;
   onSelect: (id: string | null) => void;
+  onMoveObject: (id: string, position: [number, number, number]) => void;
 };
 
 const WORLD_SCALE = 32;
@@ -17,10 +20,74 @@ const GRID_STEP = 64;
 // project.runtime.viewport once that field lands in the schema.
 const DEFAULT_CAMERA_VIEWPORT = { width: 960, height: 540 };
 
+const getDataNumber = (object: SceneObject, key: string, fallback = 0) => {
+  const value = object.data?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+};
+
+const getDataString = (object: SceneObject, key: string) => {
+  const value = object.data?.[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const isImageLike2DObject = (object: SceneObject) => (
+  object.type === 'image' || object.type === 'sprite'
+);
+
+const getObjectWorldPosition = (object: SceneObject) => ({
+  x: object.position[0] ?? 0,
+  y: object.position[1] ?? object.position[2] ?? 0,
+});
+
+const getObjectRotation = (object: SceneObject) => object.rotation[2] ?? object.rotation[1] ?? 0;
+
 const getObjectFootprint = (object: SceneObject) => {
-  const [scaleX, , scaleZ] = object.scale;
+  const [scaleX, scaleY, scaleZ] = object.scale;
+  const scaleMultiplier = getDataNumber(object, 'scale', 1);
+
+  if (object.type === 'rectangle') {
+    return {
+      width: Math.max(2, getDataNumber(object, 'width', 40) * Math.abs(scaleX || 1)),
+      height: Math.max(2, getDataNumber(object, 'height', 40) * Math.abs(scaleY || 1)),
+    };
+  }
+
+  if (object.type === 'circle') {
+    const radius = Math.max(2, getDataNumber(object, 'radius', 20));
+    return {
+      width: radius * 2 * Math.abs(scaleX || 1),
+      height: radius * 2 * Math.abs(scaleY || 1),
+    };
+  }
+
+  if (object.type === 'text') {
+    const text = getDataString(object, 'text') ?? object.name;
+    const fontSize = getDataNumber(object, 'fontSize', 16);
+    return {
+      width: Math.max(24, text.length * fontSize * 0.62 * Math.abs(scaleX || 1)),
+      height: Math.max(16, fontSize * 1.3 * Math.abs(scaleY || 1)),
+    };
+  }
+
+  if (isImageLike2DObject(object)) {
+    const width = getDataNumber(
+      object,
+      'displayWidth',
+      getDataNumber(object, 'frameWidth', 64),
+    );
+    const height = getDataNumber(
+      object,
+      'displayHeight',
+      getDataNumber(object, 'frameHeight', 64),
+    );
+    return {
+      width: Math.max(8, width * Math.abs(scaleX || 1) * scaleMultiplier),
+      height: Math.max(8, height * Math.abs(scaleY || 1) * scaleMultiplier),
+    };
+  }
+
   const width = Math.max(24, Math.abs(scaleX) * WORLD_SCALE);
-  const height = Math.max(24, Math.abs(scaleZ || scaleX) * WORLD_SCALE);
+  const height = Math.max(24, Math.abs(scaleY || scaleZ || scaleX) * WORLD_SCALE);
 
   if (object.type === 'player' || object.type === 'camera') {
     return { width: 28, height: 28 };
@@ -82,7 +149,11 @@ class PixlPhaserEditorScene extends Phaser.Scene {
   private gridLayer?: Phaser.GameObjects.Graphics;
   private objectLayer?: Phaser.GameObjects.Graphics;
   private labelLayer: Phaser.GameObjects.Text[] = [];
+  private renderLayer: Phaser.GameObjects.GameObject[] = [];
+  private loadingTextures = new Set<string>();
   private isPanning = false;
+  private draggingObjectId: string | null = null;
+  private dragOffset = { x: 0, y: 0 };
   private lastPointer = { x: 0, y: 0 };
 
   constructor(snapshot: SceneSnapshot) {
@@ -93,7 +164,7 @@ class PixlPhaserEditorScene extends Phaser.Scene {
   create() {
     // Godot/Unity-style neutral dark scene background.
     this.cameras.main.setBackgroundColor('#3c3c3c');
-    this.cameras.main.centerOn(0, 0);
+    this.cameras.main.setScroll(0, 0);
     this.cameras.main.setZoom(1);
     this.input.mouse?.disableContextMenu();
 
@@ -114,6 +185,8 @@ class PixlPhaserEditorScene extends Phaser.Scene {
 
     this.gridLayer.clear();
     this.objectLayer.clear();
+    this.renderLayer.forEach((object) => object.destroy());
+    this.renderLayer = [];
     this.labelLayer.forEach((label) => label.destroy());
     this.labelLayer = [];
 
@@ -124,6 +197,24 @@ class PixlPhaserEditorScene extends Phaser.Scene {
     snapshot.objects
       .filter((object) => object.visible !== false)
       .forEach((object) => this.drawObject(object));
+  }
+
+  screenToWorld(clientX: number, clientY: number, rect: DOMRect) {
+    return this.cameras.main.getWorldPoint(clientX - rect.left, clientY - rect.top);
+  }
+
+  private ensureTexture(url: string) {
+    if (this.textures.exists(url) || this.loadingTextures.has(url)) return;
+
+    this.loadingTextures.add(url);
+    this.load.image(url, url);
+    this.load.once('complete', () => {
+      this.loadingTextures.delete(url);
+      this.refresh(this.snapshot);
+    });
+    if (!this.load.isLoading()) {
+      this.load.start();
+    }
   }
 
   private drawGrid() {
@@ -203,17 +294,64 @@ class PixlPhaserEditorScene extends Phaser.Scene {
   private drawObject(object: SceneObject) {
     if (!this.objectLayer) return;
 
-    const x = object.position[0] * WORLD_SCALE;
-    const y = object.position[2] * WORLD_SCALE;
+    const { x, y } = getObjectWorldPosition(object);
     const { width, height } = getObjectFootprint(object);
     const color = Phaser.Display.Color.HexStringToColor(getObjectLabelColor(object)).color;
     const isSelected = this.snapshot.selectedObjectId === object.id;
+    const rotation = getObjectRotation(object);
+
+    if (isImageLike2DObject(object)) {
+      const url = getDataString(object, 'imageUrl') ?? getDataString(object, 'url');
+      if (url && this.textures.exists(url)) {
+        const image = this.add.image(x, y, url);
+        image.setName(object.name);
+        image.setDepth(getDataNumber(object, 'depth', 0));
+        image.setRotation(rotation);
+        image.setScale(
+          (object.scale[0] || 1) * getDataNumber(object, 'scale', 1),
+          (object.scale[1] || 1) * getDataNumber(object, 'scale', 1),
+        );
+        image.setVisible(object.visible !== false);
+        if (typeof object.data?.alpha === 'number') image.setAlpha(object.data.alpha);
+        if (typeof object.data?.displayWidth === 'number') image.displayWidth = object.data.displayWidth;
+        if (typeof object.data?.displayHeight === 'number') image.displayHeight = object.data.displayHeight;
+        if (typeof object.data?.flipX === 'boolean') image.setFlipX(object.data.flipX);
+        if (typeof object.data?.flipY === 'boolean') image.setFlipY(object.data.flipY);
+        this.renderLayer.push(image);
+      } else if (url) {
+        this.ensureTexture(url);
+      }
+    }
+
+    if (object.type === 'text') {
+      const text = this.add.text(x, y, getDataString(object, 'text') ?? object.name, {
+        color: getDataString(object, 'color') ?? object.color ?? '#ffffff',
+        fontFamily: getDataString(object, 'fontFamily') ?? 'Roboto, Noto Sans, Arial, sans-serif',
+        fontSize: `${getDataNumber(object, 'fontSize', 16)}px`,
+      });
+      text.setDepth(getDataNumber(object, 'depth', 0));
+      text.setRotation(rotation);
+      text.setScale(object.scale[0] || 1, object.scale[1] || 1);
+      this.renderLayer.push(text);
+    }
 
     this.objectLayer.save();
     this.objectLayer.translateCanvas(x, y);
-    this.objectLayer.rotateCanvas(object.rotation[1] || 0);
+    this.objectLayer.rotateCanvas(rotation);
 
-    if (object.type === 'player' || object.type === 'camera') {
+    if (isImageLike2DObject(object) || object.type === 'text') {
+      if (isSelected || !getDataString(object, 'imageUrl')) {
+        this.objectLayer.fillStyle(color, isSelected ? 0.14 : 0.08);
+        this.objectLayer.lineStyle(isSelected ? 3 : 1.5, isSelected ? 0xffffff : color, isSelected ? 0.95 : 0.45);
+        this.objectLayer.fillRect(-width / 2, -height / 2, width, height);
+        this.objectLayer.strokeRect(-width / 2, -height / 2, width, height);
+      }
+    } else if (object.type === 'circle') {
+      this.objectLayer.fillStyle(color, isSelected ? 0.75 : 0.45);
+      this.objectLayer.lineStyle(isSelected ? 3 : 1.5, isSelected ? 0xffffff : color, 0.95);
+      this.objectLayer.fillCircle(0, 0, Math.max(width, height) / 2);
+      this.objectLayer.strokeCircle(0, 0, Math.max(width, height) / 2);
+    } else if (object.type === 'player' || object.type === 'camera') {
       this.objectLayer.fillStyle(color, isSelected ? 0.9 : 0.65);
       this.objectLayer.lineStyle(isSelected ? 3 : 1.5, isSelected ? 0xffffff : color, 0.95);
       this.objectLayer.fillCircle(0, 0, Math.max(width, height) / 2);
@@ -254,8 +392,7 @@ class PixlPhaserEditorScene extends Phaser.Scene {
       const object = this.snapshot.objects[index];
       if (object.visible === false || object.locked) continue;
 
-      const x = object.position[0] * WORLD_SCALE;
-      const y = object.position[2] * WORLD_SCALE;
+      const { x, y } = getObjectWorldPosition(object);
       const { width, height } = getObjectFootprint(object);
 
       if (
@@ -274,18 +411,49 @@ class PixlPhaserEditorScene extends Phaser.Scene {
   private handlePointerDown(pointer: any) {
     this.isPanning = pointer.rightButtonDown() || pointer.middleButtonDown();
     this.lastPointer = { x: pointer.x, y: pointer.y };
+    this.draggingObjectId = null;
 
     if (this.isPanning) return;
 
     const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-    this.snapshot.onSelect(this.pickObject(worldPoint.x, worldPoint.y));
+    const pickedId = this.pickObject(worldPoint.x, worldPoint.y);
+    this.snapshot.onSelect(pickedId);
+
+    if (pickedId && pointer.leftButtonDown()) {
+      const picked = this.snapshot.objects.find((object) => object.id === pickedId);
+      if (picked && !picked.locked) {
+        const position = getObjectWorldPosition(picked);
+        this.draggingObjectId = pickedId;
+        this.dragOffset = {
+          x: worldPoint.x - position.x,
+          y: worldPoint.y - position.y,
+        };
+        this.input.setDefaultCursor('grabbing');
+      }
+    }
   }
 
   private handlePointerUp() {
     this.isPanning = false;
+    this.draggingObjectId = null;
+    this.input.setDefaultCursor('default');
   }
 
   private handlePointerMove(pointer: any) {
+    if (this.draggingObjectId) {
+      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      const next: [number, number, number] = [
+        worldPoint.x - this.dragOffset.x,
+        worldPoint.y - this.dragOffset.y,
+        0,
+      ];
+      const object = this.snapshot.objects.find((item) => item.id === this.draggingObjectId);
+      if (object) object.position = next;
+      this.snapshot.onMoveObject(this.draggingObjectId, next);
+      this.refresh(this.snapshot);
+      return;
+    }
+
     if (!this.isPanning) return;
 
     const camera = this.cameras.main;
@@ -304,8 +472,65 @@ export const PhaserViewport2D = () => {
   const hostRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const sceneRef = useRef<PixlPhaserEditorScene | null>(null);
-  const { objects, selectedObjectId, selectObject } = useEditorStore();
+  const { objects, selectedObjectId, selectObject, updateObject, addSpriteFromAsset } = useEditorStore();
+  const { endDrag } = useAssetDragStore();
   const showGrid = useEditorStore((state) => state.showGrid);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+    endDrag();
+
+    const raw = event.dataTransfer.getData('application/json');
+    if (!raw) return;
+
+    try {
+      const asset = JSON.parse(raw) as {
+        type?: string;
+        name?: string;
+        url?: string;
+        assetType?: string;
+        thumbnailUrl?: string;
+      };
+      if (asset.type !== 'pixlland-asset' || !asset.url || !asset.name) return;
+
+      const assetType = asset.assetType ?? 'image';
+      if (!['texture', 'image', 'sprite', 'spritesheet'].includes(assetType)) {
+        toast.error('Use imagens ou sprites no viewport 2D.');
+        return;
+      }
+
+      const rect = hostRef.current?.getBoundingClientRect();
+      const world = rect && sceneRef.current
+        ? sceneRef.current.screenToWorld(event.clientX, event.clientY, rect)
+        : { x: 0, y: 0 };
+      addSpriteFromAsset({
+        name: asset.name,
+        url: asset.url,
+        type: assetType,
+        thumbnailUrl: asset.thumbnailUrl,
+      }, [Math.round(world.x), Math.round(world.y), 0]);
+      toast.success(`${asset.name} adicionado ao viewport 2D.`);
+    } catch (error) {
+      console.error('[PhaserViewport2D] Failed to parse dropped asset:', error);
+      toast.error('Nao foi possivel adicionar o asset 2D.');
+    }
+  }, [addSpriteFromAsset, endDrag]);
 
   useEffect(() => {
     if (!hostRef.current || gameRef.current) return;
@@ -315,6 +540,7 @@ export const PhaserViewport2D = () => {
       selectedObjectId,
       showGrid,
       onSelect: selectObject,
+      onMoveObject: (id, position) => updateObject(id, { position }),
     };
     const scene = new PixlPhaserEditorScene(snapshot);
     sceneRef.current = scene;
@@ -345,12 +571,27 @@ export const PhaserViewport2D = () => {
       selectedObjectId,
       showGrid,
       onSelect: selectObject,
+      onMoveObject: (id, position) => updateObject(id, { position }),
     });
-  }, [objects, selectedObjectId, selectObject, showGrid]);
+  }, [objects, selectedObjectId, selectObject, showGrid, updateObject]);
 
   return (
-    <div className="relative w-full h-full bg-[#3c3c3c] overflow-hidden">
+    <div
+      className="relative w-full h-full bg-[#3c3c3c] overflow-hidden"
+      data-testid="phaser-viewport-2d"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div ref={hostRef} className="absolute inset-0" />
+      {isDragOver && (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center border-2 border-dashed border-primary bg-primary/20">
+          <div className="border border-border bg-card/95 px-5 py-3 text-center shadow-xl">
+            <p className="text-sm font-semibold text-foreground">Solte para criar sprite 2D</p>
+            <p className="text-xs text-muted-foreground">O asset entra na cena exatamente neste ponto.</p>
+          </div>
+        </div>
+      )}
       <Viewport2DRulers sceneRef={sceneRef} />
     </div>
   );

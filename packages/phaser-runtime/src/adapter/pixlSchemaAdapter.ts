@@ -58,6 +58,7 @@ export interface PixlSceneCamera {
 
 export interface PixlSceneEnvironment {
   background?: string;
+  pixelArt?: boolean;
 }
 
 export interface PixlScenePhysics {
@@ -73,6 +74,7 @@ export interface PixlSceneDocument {
   camera?: PixlSceneCamera;
   environment?: PixlSceneEnvironment;
   physics?: PixlScenePhysics;
+  runtimeScript?: string;
 }
 
 export interface PixlProjectDocument {
@@ -147,10 +149,13 @@ export const pixlSceneToPhaserScene = (pixl: PixlSceneDocument): SceneJSON => {
           zoom: pixl.camera.zoom,
         }
       : undefined,
-    environment: pixl.environment ? { background: pixl.environment.background } : undefined,
+    environment: pixl.environment
+      ? { background: pixl.environment.background, pixelArt: pixl.environment.pixelArt }
+      : undefined,
     physics: pixl.physics
       ? { engine: pixl.physics.engine, gravity: gravityToTuple(pixl.physics.gravity) }
       : undefined,
+    runtimeScript: pixl.runtimeScript,
   };
 };
 
@@ -212,7 +217,9 @@ export const phaserSceneToPixlScene = (json: SceneJSON): PixlSceneDocument => {
           zoom: json.camera.zoom,
         }
       : undefined,
-    environment: json.environment ? { background: json.environment.background } : undefined,
+    environment: json.environment
+      ? { background: json.environment.background, pixelArt: json.environment.pixelArt }
+      : undefined,
     physics: json.physics
       ? {
           engine: json.physics.engine,
@@ -222,5 +229,6 @@ export const phaserSceneToPixlScene = (json: SceneJSON): PixlSceneDocument => {
               : undefined,
         }
       : undefined,
+    runtimeScript: json.runtimeScript,
   };
 };

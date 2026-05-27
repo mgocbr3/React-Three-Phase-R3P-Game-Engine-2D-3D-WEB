@@ -5,6 +5,8 @@ import { printMigrationResult, runMigrate } from './commands/migrate.js';
 import { printNewResult, runNew, type ProjectKind } from './commands/new.js';
 import { runImportLevel3D, runExportLevel3D } from './commands/level3d.js';
 import { runExportThree, printExportThreeResult } from './commands/exportThree.js';
+import { runExportPhaser, printExportPhaserResult } from './commands/exportPhaser.js';
+import { runExportPixlland, printExportPixllandResult } from './commands/exportPixlland.js';
 import { runExportRuntime, printExportRuntimeResult } from './commands/exportRuntime.js';
 import {
   printInspectResult,
@@ -33,6 +35,11 @@ Commands:
   export-level3d <project.pixlproject.json> <out.level3d.json>   Reverse: project doc -> level3d.json.
   export-three <project.pixlproject.json> <out-dir> [--asset-search <dir>...] [--skip-bundle] [--sourcemap] [--no-minify]
                                                Emit a standalone Three.js+Rapier web bundle for the project.
+  export-phaser <project.pixlproject.json> <out-dir> [--asset-search <dir>...] [--skip-bundle] [--sourcemap] [--no-minify]
+                                               Emit a standalone Phaser 4 web bundle for a 2D project.
+  export-pixlland <project.pixlproject.json> <out.pixlbuild> [--asset-search <dir>...] [--build-dir <dir>] [--skip-bundle] [--sourcemap] [--no-minify]
+                                               Build the project with the correct runtime and pack it into a
+                                               single Pixlland upload archive.
   export-runtime <project.pixlproject.json> <out-dir> [--runtime-file <path>] [--sourcemap] [--no-minify]
                                                Bundle the project's GAME runtime (game.source.runtimeFile) as a
                                                standalone playable web app. Distinct from export-three (which
@@ -50,6 +57,8 @@ Examples:
   pixl-engine import-level3d ./apps/portal/games-src/harvest-rush-3d/public/levels/harvest-rush.level3d.json /tmp/harvest.pixlproject.json
   pixl-engine export-level3d /tmp/harvest.pixlproject.json /tmp/harvest.level3d.json
   pixl-engine export-three ./apps/studio/public/sample-projects/harvest-rush-3d/project.pixlproject.json /tmp/harvest-three
+  pixl-engine export-phaser ./apps/studio/public/sample-projects/magic-battleground-2d/project.pixlproject.json /tmp/magic-phaser
+  pixl-engine export-pixlland ./apps/studio/public/sample-projects/magic-battleground-2d/project.pixlproject.json /tmp/magic.pixlbuild
   pixl-engine pack    ./apps/portal/games-src/harvest-rush-3d/pixlplayground /tmp/harvest-rush.pixl
   pixl-engine unpack  /tmp/harvest-rush.pixl /tmp/harvest-rush-unpacked
   pixl-engine inspect /tmp/harvest-rush.pixl
@@ -174,6 +183,102 @@ const main = async (): Promise<number> => {
       });
       printExportThreeResult(result);
       return result.missingAssets.length > 0 ? 0 : 0;
+    }
+
+    case 'export-phaser': {
+      const source = rest[0];
+      const out = rest[1];
+      if (!source || !out) {
+        console.error('export-phaser: <project.pixlproject.json> <out-dir> obrigatorios.\n');
+        console.error(USAGE);
+        return 1;
+      }
+      const assetSearchPaths: string[] = [];
+      let skipBundle = false;
+      let sourcemap = false;
+      let minify: boolean | undefined = undefined;
+      for (let i = 2; i < rest.length; i += 1) {
+        const arg = rest[i];
+        if (arg === '--asset-search') {
+          const value = rest[i + 1];
+          if (!value) {
+            console.error('export-phaser: --asset-search requer um caminho.');
+            return 1;
+          }
+          assetSearchPaths.push(value);
+          i += 1;
+        } else if (arg === '--skip-bundle') {
+          skipBundle = true;
+        } else if (arg === '--sourcemap') {
+          sourcemap = true;
+        } else if (arg === '--no-minify') {
+          minify = false;
+        } else {
+          console.error(`export-phaser: opcao desconhecida "${arg}".`);
+          return 1;
+        }
+      }
+      const result = await runExportPhaser(source, out, {
+        assetSearchPaths,
+        skipBundle,
+        sourcemap,
+        minify,
+      });
+      printExportPhaserResult(result);
+      return 0;
+    }
+
+    case 'export-pixlland': {
+      const source = rest[0];
+      const out = rest[1];
+      if (!source || !out) {
+        console.error('export-pixlland: <project.pixlproject.json> <out.pixlbuild> obrigatorios.\n');
+        console.error(USAGE);
+        return 1;
+      }
+      const assetSearchPaths: string[] = [];
+      let buildDir: string | undefined = undefined;
+      let skipBundle = false;
+      let sourcemap = false;
+      let minify: boolean | undefined = undefined;
+      for (let i = 2; i < rest.length; i += 1) {
+        const arg = rest[i];
+        if (arg === '--asset-search') {
+          const value = rest[i + 1];
+          if (!value) {
+            console.error('export-pixlland: --asset-search requer um caminho.');
+            return 1;
+          }
+          assetSearchPaths.push(value);
+          i += 1;
+        } else if (arg === '--build-dir') {
+          const value = rest[i + 1];
+          if (!value) {
+            console.error('export-pixlland: --build-dir requer um caminho.');
+            return 1;
+          }
+          buildDir = value;
+          i += 1;
+        } else if (arg === '--skip-bundle') {
+          skipBundle = true;
+        } else if (arg === '--sourcemap') {
+          sourcemap = true;
+        } else if (arg === '--no-minify') {
+          minify = false;
+        } else {
+          console.error(`export-pixlland: opcao desconhecida "${arg}".`);
+          return 1;
+        }
+      }
+      const result = await runExportPixlland(source, out, {
+        assetSearchPaths,
+        buildDir,
+        skipBundle,
+        sourcemap,
+        minify,
+      });
+      printExportPixllandResult(result);
+      return 0;
     }
 
     case 'export-runtime': {

@@ -1,12 +1,12 @@
 import {
+  AlertTriangle,
   Box,
   Camera,
   ChevronDown,
+  CheckCircle2,
   Circle,
   Clipboard,
   Copy,
-  Download,
-  ExternalLink,
   Eye,
   FileArchive,
   FolderOpen,
@@ -15,6 +15,7 @@ import {
   Grid3X3,
   HelpCircle,
   History,
+  Info,
   Keyboard,
   Layers,
   LayoutGrid,
@@ -35,31 +36,37 @@ import {
   Sun,
   Trash2,
   Undo,
-  Upload,
-  User,
   Wrench,
   MessageSquare,
   Book,
 } from 'lucide-react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoSilver from '@/assets/r3p-logo-light.png';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { EngineSettingsModal } from './EngineSettingsModal';
+import { BuildSettingsModal } from './BuildSettingsModal';
 import { defaultTerrainSettings, useTerrainStore, TerrainSettings } from '@/stores/terrainStore';
 import { TerrainSettingsModal } from '@/components/terrain/TerrainSettingsModal';
 import { toast } from 'sonner';
 import { useInterfaceStore } from '@/stores/interfaceStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { useAssetStore } from '@/stores/assetStore';
 import { cn } from '@/lib/utils';
 import {
   getCurrentProjectWorkspace,
   openProjectDocumentFromDirectory,
   saveActiveProjectDocumentToDirectory,
 } from '@/services/localProjectFiles';
+import type { PixlProjectDocument } from '@/engine/project/schema';
+import {
+  createActiveProjectDiagnosticsSnapshot,
+  type ProjectDiagnosticsSummary,
+  type ProjectDiagnosticStatus,
+} from '@/services/projectDiagnostics';
 import {
   announcePixlOpen,
   announcePixlSave,
@@ -89,11 +96,21 @@ export const EditorHeader = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBuildSettingsOpen, setIsBuildSettingsOpen] = useState(false);
+  const [buildProject, setBuildProject] = useState<PixlProjectDocument | null>(null);
   const [localWorkspace, setLocalWorkspace] = useState(() => getCurrentProjectWorkspace());
   const menuRef = useRef<HTMLDivElement>(null);
 
   const {
+    activeSceneKind,
+    objects,
     isEditMode,
+    gameScript,
+    transformSpace,
+    snapEnabled,
+    snapTranslate,
+    snapRotate,
+    snapScale,
     undo,
     redo,
     canUndo,
@@ -121,6 +138,7 @@ export const EditorHeader = () => {
   const { interfaceMode, setInterfaceMode } = useInterfaceStore();
   const localProjectId = useProjectStore((s) => s.currentProjectId);
   const localProject = useProjectStore((s) => s.projects.find((project) => project.id === localProjectId));
+  const projectAssets = useAssetStore((s) => s.projectAssets);
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const previewDisplayMode = useRuntimeGameStore((s) => s.previewDisplayMode);
   const togglePreviewFullscreen = useRuntimeGameStore((s) => s.togglePreviewFullscreen);
@@ -137,6 +155,25 @@ export const EditorHeader = () => {
     : previewSession
       ? getRuntimeAdapterLabel(previewSession.runtime)
       : null;
+  const diagnosticsSnapshot = useMemo(() => {
+    try {
+      return createActiveProjectDiagnosticsSnapshot(projectName);
+    } catch {
+      return null;
+    }
+  }, [
+    activeSceneKind,
+    gameScript,
+    objects,
+    projectAssets,
+    projectName,
+    snapEnabled,
+    snapRotate,
+    snapScale,
+    snapTranslate,
+    transformSpace,
+  ]);
+  const diagnostics = diagnosticsSnapshot?.diagnostics ?? null;
 
   const handleRuntimeToggle = useCallback(() => {
     try {
@@ -152,6 +189,18 @@ export const EditorHeader = () => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Nao foi possivel iniciar o runtime.';
+      toast.error(message);
+    }
+  }, [projectName]);
+
+  const openBuildSettings = useCallback(() => {
+    try {
+      const snapshot = createActiveProjectDiagnosticsSnapshot(projectName);
+      setBuildProject(snapshot.document);
+      setLocalWorkspace(snapshot.workspace);
+      setIsBuildSettingsOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Nao foi possivel abrir Build Settings.';
       toast.error(message);
     }
   }, [projectName]);
@@ -342,6 +391,12 @@ export const EditorHeader = () => {
     ],
     Build: [
       {
+        label: 'Build Settings',
+        icon: FileArchive,
+        action: openBuildSettings,
+      },
+      { label: '', divider: true },
+      {
         label: isRuntimePreviewActive ? 'Stop Runtime' : 'Play Runtime',
         shortcut: 'Ctrl+P',
         icon: isRuntimePreviewActive ? Pause : Play,
@@ -439,6 +494,10 @@ export const EditorHeader = () => {
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
+            {diagnostics && (
+              <ProjectDiagnosticsButton diagnostics={diagnostics} onClick={openBuildSettings} />
+            )}
+
             {previewSession && (
               <div
                 className="editor-command-chip hidden h-7 items-center gap-1.5 px-2 text-xs font-semibold text-primary md:flex"
@@ -508,6 +567,12 @@ export const EditorHeader = () => {
       </header>
 
       <EngineSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <BuildSettingsModal
+        isOpen={isBuildSettingsOpen}
+        onClose={() => setIsBuildSettingsOpen(false)}
+        project={buildProject}
+        workspace={localWorkspace}
+      />
       <TerrainSettingsModal
         isOpen={isModalOpen}
         onClose={() => setTerrainModalOpen(false)}
@@ -515,7 +580,6 @@ export const EditorHeader = () => {
         onSettingsChange={handleTerrainSettingsChange}
         onGenerate={handleTerrainGenerate}
       />
-
     </>
   );
 };
@@ -558,3 +622,52 @@ const IconButton = ({ icon: Icon, label, onClick, disabled }: IconButtonProps) =
 );
 
 const HeaderSeparator = () => <div className="mx-1 h-6 w-px bg-border" />;
+
+const diagnosticsIcon: Record<ProjectDiagnosticStatus, typeof CheckCircle2> = {
+  blocked: AlertTriangle,
+  warning: Info,
+  ready: CheckCircle2,
+};
+
+const diagnosticsTone: Record<ProjectDiagnosticStatus, string> = {
+  blocked: 'border-destructive/30 bg-destructive/10 text-destructive hover:text-destructive',
+  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-100 hover:text-amber-100',
+  ready: 'border-primary/25 bg-primary/10 text-primary hover:text-primary',
+};
+
+const getDiagnosticsLabel = (diagnostics: ProjectDiagnosticsSummary): string => {
+  if (diagnostics.errors > 0) return `${diagnostics.errors} error${diagnostics.errors === 1 ? '' : 's'}`;
+  if (diagnostics.warnings > 0) return `${diagnostics.warnings} warning${diagnostics.warnings === 1 ? '' : 's'}`;
+  return 'Ready';
+};
+
+const getDiagnosticsTitle = (diagnostics: ProjectDiagnosticsSummary): string => {
+  const firstIssue = diagnostics.issues[0];
+  if (!firstIssue) {
+    return `Engine diagnostics ready: ${diagnostics.runtimePrimary} / ${diagnostics.sceneKind ?? 'no scene'}`;
+  }
+  return `Engine diagnostics: ${getDiagnosticsLabel(diagnostics)}. ${firstIssue.message}`;
+};
+
+interface ProjectDiagnosticsButtonProps {
+  diagnostics: ProjectDiagnosticsSummary;
+  onClick: () => void;
+}
+
+const ProjectDiagnosticsButton = ({ diagnostics, onClick }: ProjectDiagnosticsButtonProps) => {
+  const Icon = diagnosticsIcon[diagnostics.status];
+
+  return (
+    <button
+      onClick={onClick}
+      title={getDiagnosticsTitle(diagnostics)}
+      className={cn(
+        'editor-command-chip hidden h-7 items-center gap-1.5 border px-2 text-xs font-semibold transition-colors md:flex',
+        diagnosticsTone[diagnostics.status],
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      <span>{getDiagnosticsLabel(diagnostics)}</span>
+    </button>
+  );
+};

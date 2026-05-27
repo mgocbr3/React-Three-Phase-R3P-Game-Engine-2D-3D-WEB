@@ -12,7 +12,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "build": "tsc -p tsconfig.json && node -e \"try{require('fs').chmodSync('dist/index.js',0o755)}catch(e){if(process.platform!=='win32')throw e}\"",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
@@ -20,6 +20,7 @@
   "dependencies": {
     "@pixlland/engine-core": "workspace:*",
     "@pixlland/engine-ops": "workspace:*",
+    "@pixlland/phaser-runtime": "workspace:*",
     "@pixlland/three-runtime": "workspace:*",
     "vite": "^5.4.19"
   },

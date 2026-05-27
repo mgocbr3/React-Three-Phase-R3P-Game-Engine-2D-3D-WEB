@@ -123,6 +123,135 @@ describe('editor project adapter', () => {
     expect(snapshot.transformSpace).toBe('local');
   });
 
+  it('preserves 2D schema objects, raw render data, components and project assets', () => {
+    const project = createProjectDocumentFromEditorState({
+      gameScript: '// 2d',
+      transformSpace: 'world',
+      snapEnabled: false,
+      snapTranslate: 1,
+      snapRotate: 15,
+      snapScale: 0.25,
+      activeSceneKind: '2d',
+      objects: [
+        {
+          id: 'hero',
+          name: 'Hero Sprite',
+          type: 'sprite',
+          position: [120, 180, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          color: '#ffffff',
+          visible: true,
+          locked: false,
+          components: [
+            {
+              id: 'hero-physics',
+              type: 'pixl.physics2d',
+              enabled: true,
+              data: { bodyType: 'dynamic' },
+            },
+          ],
+          data: {
+            imageUrl: 'Assets/Sprites/hero.png',
+            frameWidth: 32,
+            frameHeight: 48,
+            depth: 10,
+          },
+        },
+      ],
+    }, {
+      name: '2D Roundtrip',
+    });
+
+    const snapshot = createEditorSnapshotFromProjectDocument(project);
+
+    expect(project.runtime.primary).toBe('phaser-2d');
+    expect(project.runtime.renderers).toEqual(['phaser']);
+    expect(project.runtime.physics).toEqual(['arcade']);
+    expect(project.scenes[0].kind).toBe('2d');
+    expect(project.scenes[0].units).toBe('pixels');
+    expect(project.assets.entries[0]).toMatchObject({
+      kind: 'spritesheet',
+      path: 'Assets/Sprites/hero.png',
+    });
+    expect(snapshot.activeSceneKind).toBe('2d');
+    expect(snapshot.projectAssets[0]).toMatchObject({
+      type: 'spritesheet',
+      url: 'Assets/Sprites/hero.png',
+    });
+    expect(snapshot.objects[0].type).toBe('sprite');
+    expect(snapshot.objects[0].data?.imageUrl).toBe('Assets/Sprites/hero.png');
+    expect(snapshot.objects[0].components?.[0].type).toBe('pixl.physics2d');
+  });
+
+  it('serializes parented editor objects as a scene tree and restores a flat editor hierarchy', () => {
+    const project = createProjectDocumentFromEditorState({
+      gameScript: '// hierarchy',
+      transformSpace: 'world',
+      snapEnabled: false,
+      snapTranslate: 1,
+      snapRotate: 15,
+      snapScale: 0.25,
+      activeSceneKind: '2d',
+      objects: [
+        {
+          id: 'party',
+          name: 'Party',
+          type: 'group',
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          color: '#ffffff',
+          visible: true,
+          locked: false,
+        },
+        {
+          id: 'hero',
+          parentId: 'party',
+          name: 'Hero',
+          type: 'sprite',
+          position: [64, 96, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          color: '#ffffff',
+          visible: true,
+          locked: false,
+          components: [
+            {
+              id: 'hero-physics',
+              type: 'pixl.physics2d',
+              enabled: true,
+              data: { bodyType: 'dynamic' },
+            },
+          ],
+          data: {
+            imageUrl: 'Assets/Sprites/hero.png',
+          },
+        },
+      ],
+    }, {
+      name: 'Hierarchy',
+    });
+
+    const root = project.scenes[0].rootObjects[0];
+    const child = root.children?.[0];
+    const snapshot = createEditorSnapshotFromProjectDocument(project);
+
+    expect(project.scenes[0].rootObjects).toHaveLength(1);
+    expect(root.id).toBe('party');
+    expect(root.parentId).toBeNull();
+    expect(child).toMatchObject({
+      id: 'hero',
+      parentId: 'party',
+      components: [
+        expect.objectContaining({ type: 'pixl.physics2d' }),
+      ],
+    });
+    expect(snapshot.objects.map((object) => object.id)).toEqual(['party', 'hero']);
+    expect(snapshot.objects[1].parentId).toBe('party');
+    expect(snapshot.objects[1].components?.[0].type).toBe('pixl.physics2d');
+  });
+
   it('keeps the bundled Harvest Rush sample portable across machines', () => {
     const samplePath = path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),

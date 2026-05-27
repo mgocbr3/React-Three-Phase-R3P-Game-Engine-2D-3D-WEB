@@ -141,11 +141,19 @@ const rewriteObject = (
     }
   }
   // object.data is optional per schema — only walk it when present.
-  const newTopData = object.data ? rewriteComponentData(object.data, lookup, counter) : object.data;
-  if (newTopData !== object.data) {
-    return { ...object, components, data: newTopData };
+  const data = object.data ? rewriteComponentData(object.data, lookup, counter) : object.data;
+  if (data !== object.data) changed = true;
+
+  let children = object.children;
+  if (children) {
+    const nextChildren = children.map((child) => rewriteObject(child, lookup, counter));
+    if (nextChildren.some((child, index) => child !== children![index])) {
+      children = nextChildren;
+      changed = true;
+    }
   }
-  return changed ? { ...object, components } : object;
+
+  return changed ? { ...object, components, data, children } : object;
 };
 
 /**
