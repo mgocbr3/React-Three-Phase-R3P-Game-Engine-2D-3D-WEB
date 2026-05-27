@@ -98,3 +98,33 @@ Trabalho estimado: **2-4h** (vs 8-16h da Opção B com resultado inferior).
 ## Próximo passo
 
 Aguardando decisão do usuário entre as 3 opções. Se for A (realism-effects), implemento em uma sessão. Se for C (só drei/postprocessing), implemento mais rápido. Se for B (forkar), preciso outra sessão dedicada.
+
+---
+
+## Update 2026-05-26 — Opção A FALHOU EM PROD
+
+Tentei adotar `realism-effects@1.1.2` conforme recomendado. **Não funciona** com Three.js 0.184: o build falha porque a lib importa `WebGLMultipleRenderTargets`, que foi **removido do Three.js em ~v0.162** (substituído por `WebGLRenderTarget` com `count` param). Erro do Vite:
+
+```
+No matching export in "three.module.js" for import "WebGLMultipleRenderTargets"
+```
+
+O `peerDependencies.three: ">=0.148.0"` no `package.json` da lib é **mentiroso** — diz que aceita 0.148+, mas o código quebra em 0.162+.
+
+### Caminhos disponíveis daqui
+
+**B (forkar realism-effects):**
+1. Patch substituindo `import { WebGLMultipleRenderTargets }` por `WebGLRenderTarget` com `count` em todos os passes
+2. Verificar se o shader code de SSGI/SSR/TRAA usa `gl_FragData[0..n]` que também mudou para `texture2DArray` em Three.js novo
+3. Trabalho estimado: 4-8h sem garantia de paridade visual com o original
+
+**C (drei/postprocessing puros) — caminho mais realista agora:**
+- Instalar `@react-three/postprocessing` (compat com nosso stack)
+- Usar `<Bloom>`, `<Vignette>`, `<Noise>`, `<SSAO>` (limitado), `<ToneMapping>`
+- Sem SSGI, sem TRAA real (só FXAA/SMAA), sem MotionBlur real
+- Trabalho: 1-2h, alta probabilidade de funcionar
+
+**Reverter status atual**: a tentativa A foi revertida (deletado RealismEffects.tsx, `pnpm remove realism-effects @react-three/postprocessing`, restaurado RTXPostProcessing). EngineSettings restaurado para o shape original.
+
+Aguardando direção do usuário entre forkar (B) ou aceitar limites (C).
+

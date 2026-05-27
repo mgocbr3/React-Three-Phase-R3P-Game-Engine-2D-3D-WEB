@@ -222,13 +222,13 @@ const defaultSettings: EngineSettings = {
   ssaoIntensity: 0.5,
   ssaoRadius: 0.3,
   ssaoBias: 0.02,
-  
+
   // Depth of Field
   depthOfField: false,
   dofFocusDistance: 10,
   dofFocalLength: 50,
   dofBokehScale: 2,
-  
+
   // Motion Blur
   motionBlur: false,
   motionBlurIntensity: 0.5,

@@ -32,3 +32,12 @@ A licença original também vive em `apps/studio/public/models/manequin/license.
 
 A atribuição também vive como `gltf.asset.extras.author/license/source` dentro do próprio `ue4-sky.glb` — qualquer viewer GLTF a exibe.
 
+## realism-effects (0beqz) — **NÃO integrado** (incompatibilidade técnica)
+
+- **Repo**: https://github.com/0beqz/realism-effects
+- **Autor**: 0beqz (Felix Mariotto), MIT
+- **Sponsor**: https://buymeacoffee.com/0beqz
+
+Tentamos adotar nesta engine (SSGI/HBAO/SSR/TRAA/MotionBlur). A versão npm `1.1.2` declara peer dep `three >= 0.148` mas internamente importa `WebGLMultipleRenderTargets`, removida do Three.js em ~0.162. Nosso `three@0.184` rejeita o import e o build quebra. A entrada está aqui como **referência de crédito** caso futuramente seja forkado/portado — quem fizer o port deve preservar o crédito ao autor original. Veja `docs/REALISM-SHADERS-EVAL.md` para a história completa e o caminho de port.
+
+
