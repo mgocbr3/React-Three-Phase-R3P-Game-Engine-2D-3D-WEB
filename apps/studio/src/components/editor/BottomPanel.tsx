@@ -51,7 +51,7 @@ const getFolderIcon = (folder: AssetFolder): LucideIcon => {
 };
 
 const INITIAL_CONSOLE: ConsoleMessage[] = [
-  { id: '1', type: 'info', message: 'PixlPlayground inicializado', timestamp: new Date().toLocaleTimeString() },
+  { id: '1', type: 'info', message: 'React 3 Phase inicializado', timestamp: new Date().toLocaleTimeString() },
 ];
 
 type BottomTabId = 'assets' | 'ui' | 'console' | 'timeline';

@@ -1,7 +1,7 @@
 import { Github, HelpCircle, Settings } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import logo from '@/assets/logo.png';
+import logoSilver from '@/assets/r3p-logo-light.png';
 
 export const Header = () => {
   return (
@@ -9,8 +9,8 @@ export const Header = () => {
       <div className="flex h-full items-center justify-between px-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <img src={logo} alt="PixlPlayground" className="h-5 w-5 shrink-0" />
-            <span className="truncate text-sm font-semibold text-foreground">PixlPlayground</span>
+            <img src={logoSilver} alt="React 3 Phase" className="h-6 w-6 shrink-0 object-contain" />
+            <span className="truncate text-sm font-semibold text-foreground">React 3 Phase</span>
           </div>
         </div>
 

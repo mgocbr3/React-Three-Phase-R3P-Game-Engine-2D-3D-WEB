@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '@/assets/logo.png';
+import logoSilver from '@/assets/r3p-logo-light.png';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
@@ -319,7 +319,7 @@ export const EditorHeader = () => {
       { label: 'Delete', shortcut: 'Del', icon: Trash2, action: () => selectedObjectId && deleteObject(selectedObjectId), disabled: !selectedObjectId },
     ],
     Scene: [
-      { label: 'Pixlland Terrain', icon: Mountain, action: () => setTerrainModalOpen(true) },
+      { label: 'Terrain', icon: Mountain, action: () => setTerrainModalOpen(true) },
       { label: '', divider: true },
       { label: 'Cube', icon: Box, action: () => addObject('box') },
       { label: 'Sphere', icon: Circle, action: () => addObject('sphere') },
@@ -383,7 +383,7 @@ export const EditorHeader = () => {
               className="editor-command-chip flex h-7 items-center gap-1.5 px-1.5 text-xs font-semibold text-foreground"
               title="Voltar ao Hub"
             >
-              <img src={logo} alt="PixlPlayground" className="h-4 w-4" />
+              <img src={logoSilver} alt="React 3 Phase" className="h-4 w-4 object-contain" />
               <span>Pixl</span>
             </button>
           </div>

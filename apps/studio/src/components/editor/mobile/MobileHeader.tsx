@@ -139,7 +139,7 @@ export const MobileHeader = () => {
       { label: 'Console', icon: PanelBottom, color: 'text-muted-foreground' },
       { label: '', divider: true },
       { label: interfaceMode === 'auto' ? ' Automático' : 'Automático', icon: MonitorSmartphone, action: () => setInterfaceMode('auto'), color: 'text-muted-foreground' },
-      { label: interfaceMode === 'mobile' ? ' PixlPlayground' : 'PixlPlayground', icon: Smartphone, action: () => setInterfaceMode('mobile'), color: 'text-muted-foreground' },
+      { label: interfaceMode === 'mobile' ? ' React 3 Phase' : 'React 3 Phase', icon: Smartphone, action: () => setInterfaceMode('mobile'), color: 'text-muted-foreground' },
       { label: interfaceMode === 'desktop' ? ' PixlStudio Pro' : 'PixlStudio Pro', icon: Monitor, action: () => setInterfaceMode('desktop'), color: 'text-muted-foreground' },
       { label: '', divider: true },
       { label: 'Restaurar Layout', icon: LayoutGrid, color: 'text-slate-400' },
