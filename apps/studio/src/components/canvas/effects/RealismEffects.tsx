@@ -39,8 +39,6 @@ import {
   BlendFunction,
   Effect,
 } from 'postprocessing';
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-expect-error — vendored fork has no type declarations
 import {
   VelocityDepthNormalPass,
   SSGIEffect,
@@ -49,7 +47,6 @@ import {
   MotionBlurEffect,
   SharpnessEffect,
 } from 'realism-effects';
-/* eslint-enable @typescript-eslint/ban-ts-comment */
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 
 export const RealismEffects = () => {
