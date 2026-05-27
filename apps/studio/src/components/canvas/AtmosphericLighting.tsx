@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, Suspense } from 'react';
 import { Sky, Cloud, Stars, Environment } from '@react-three/drei';
 import { useEditorStore } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
+import { Skybox } from './primitives/Skybox';
 
 /**
  * AtmosphericLighting - Environment (IBL) + balanced fill lights
@@ -42,9 +43,21 @@ export const AtmosphericLighting = () => {
 
   return (
     <>
-      {/* Solid sky background color */}
+      {/* Fallback solid background color (shows during Suspense load
+          of the UE4 sky GLB, and at night when the skydome textures
+          are intentionally dark). */}
       <color attach="background" args={[skyColor]} />
-      
+
+      {/* Default skybox — Unreal Engine 4 sky GLB (CC-BY-4.0). The
+          dome is parented to the camera inside <Skybox> so it always
+          surrounds the viewport regardless of where the user flies.
+          Hidden at night so the Stars below take over the background. */}
+      {!isNight && (
+        <Suspense fallback={null}>
+          <Skybox />
+        </Suspense>
+      )}
+
       {/* Environment (IBL) - skybox lighting only */}
       <Environment
         preset={envPreset}
@@ -52,7 +65,7 @@ export const AtmosphericLighting = () => {
         blur={0.9}
         environmentIntensity={envIntensity}
       />
-      
+
       {/* Stars at night */}
       {isNight && (
         <Stars

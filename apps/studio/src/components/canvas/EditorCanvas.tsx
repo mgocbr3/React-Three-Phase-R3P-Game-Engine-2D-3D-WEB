@@ -35,6 +35,7 @@ import type { StaticGltfEditorObject } from './StaticGltfScene';
 import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { AtmosphericLighting } from './AtmosphericLighting';
+import { Skybox } from './primitives/Skybox';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useIsTouchDevice } from '@/hooks/use-touch-device';
 import { ActiveTerrain } from '@/components/terrain/ActiveTerrain';
@@ -94,11 +95,19 @@ const isBackgroundSelectionRole = (role: string | undefined, type: string | unde
   type === 'platform'
 );
 
-// Sober neutral scene-view lighting, Unity/Godot-style. Replaces the
-// previous sky-blue default that bled into every empty editor view.
+// Editor-time scene lighting. Neutral fill + the UE4 sky GLB so the
+// designer sees the same horizon their players will see at runtime.
+// The Suspense fallback paints a flat sky-ish blue (matches the avg
+// of the GLB texture) so we don't flash grey while the GLB streams in
+// — but we deliberately skip `<color attach="background">` because
+// it competes with the skydome and wins on a noticeable percentage of
+// frames during R3F's reconciliation, leaving a grey halo around the
+// skydome edges.
 const MavonEditorLighting = () => (
   <>
-    <color attach="background" args={['#3c3c3c']} />
+    <Suspense fallback={<color attach="background" args={['#a4bdd2']} />}>
+      <Skybox />
+    </Suspense>
     <ambientLight color="#ffffff" intensity={0.35} />
     <hemisphereLight color="#aaaaaa" groundColor="#3a3a3a" intensity={0.45} />
   </>
