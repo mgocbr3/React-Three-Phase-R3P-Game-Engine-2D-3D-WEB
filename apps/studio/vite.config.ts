@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
+import glsl from "vite-plugin-glsl";
 import path from "path";
 
 const repoRoot = path.resolve(__dirname, "../../..").replace(/\\/g, "/");
@@ -20,7 +21,19 @@ export default defineConfig(() => ({
   define: {
     "import.meta.env.VITE_PIXL_REPO_ROOT": JSON.stringify(repoRoot),
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    // GLSL transform — required because the vendored realism-effects fork
+    // (tools/vendor/realism-effects/src/) imports raw .frag/.vert/.glsl
+    // files. Without this plugin Vite tries to parse them as JS modules
+    // and throws "Unexpected identifier 'vec2'". The plugin inlines them
+    // as string exports, matching what rollup-plugin-glslify does for
+    // the upstream package's pre-built dist.
+    glsl({
+      include: ['**/*.glsl', '**/*.frag', '**/*.vert', '**/*.fs', '**/*.vs'],
+      compress: false,
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -48,6 +61,13 @@ export default defineConfig(() => ({
       'react-dom',
       '@radix-ui/react-tooltip',
     ],
+    // Exclude realism-effects from esbuild's pre-bundling — esbuild does
+    // not respect the `resolve.alias` above for already-installed npm
+    // packages and would pull in the broken upstream
+    // `realism-effects/dist/index.js` (which imports the removed
+    // `WebGLMultipleRenderTargets`). Excluding it forces Vite's full
+    // resolver, which honors the alias to the patched vendor src.
+    exclude: ['realism-effects'],
     force: true,
   },
 }));
