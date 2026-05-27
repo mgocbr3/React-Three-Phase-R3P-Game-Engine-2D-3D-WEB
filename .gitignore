@@ -48,3 +48,6 @@ Thumbs.db
 
 # Vite
 .vite/
+
+# CLI scratch (export-* temp directories created by `pnpm cli export ...`)
+packages/cli/.tmp/
