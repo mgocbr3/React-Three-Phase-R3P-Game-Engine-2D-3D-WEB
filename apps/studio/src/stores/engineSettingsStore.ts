@@ -206,22 +206,22 @@ const defaultSettings: EngineSettings = {
   maxDpr: 2,
   frameloop: 'always',
   
-  // Post-Processing - Basic
-  bloom: false,
-  bloomIntensity: 0.3,
+  // Post-Processing - Basic — ULTRA REALISM defaults (all on)
+  bloom: true,
+  bloomIntensity: 0.6,
   bloomThreshold: 0.85,
-  bloomRadius: 0.4,
-  vignette: false,
-  vignetteIntensity: 0.3,
+  bloomRadius: 0.5,
+  vignette: true,
+  vignetteIntensity: 0.4,
   vignetteOffset: 0.3,
-  noise: false,
-  noiseIntensity: 0.05,
-  
-  // Post-Processing - Advanced
-  ssao: false,
-  ssaoIntensity: 0.5,
-  ssaoRadius: 0.3,
-  ssaoBias: 0.02,
+  noise: true,
+  noiseIntensity: 0.04,
+
+  // Post-Processing - Advanced — HBAO on by default
+  ssao: true,
+  ssaoIntensity: 0.8,
+  ssaoRadius: 5,
+  ssaoBias: 35,
 
   // Depth of Field
   depthOfField: false,
@@ -241,11 +241,13 @@ const defaultSettings: EngineSettings = {
   saturation: 0,
   hue: 0,
   
-  // Screen Space Reflections
-  ssr: false,
+  // Screen Space Global Illumination (re-purposed `ssr` toggle drives
+  // SSGIEffect which is a superset — diffuse bounce + reflections).
+  // ON by default for the ultra-realism preset.
+  ssr: true,
   ssrIntensity: 1.0,
-  ssrMaxSteps: 50,
-  ssrThickness: 0.5,
+  ssrMaxSteps: 24,
+  ssrThickness: 1.5,
   
   // Chromatic Aberration
   chromaticAberration: false,
