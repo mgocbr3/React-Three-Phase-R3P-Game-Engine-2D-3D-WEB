@@ -24,6 +24,13 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // realism-effects: o pacote upstream 1.1.2 importa
+      // `WebGLMultipleRenderTargets` que foi removida do Three.js em
+      // ~0.162 — nossa versao 0.184 quebra o build. Substituimos o
+      // resolve pela copia em `tools/vendor/realism-effects/src` que
+      // tem o patch aplicado (WebGLRenderTarget + count). Veja
+      // tools/vendor/realism-effects/PATCH-NOTES.md.
+      "realism-effects": path.resolve(__dirname, "../../tools/vendor/realism-effects/src/index.js"),
     },
     dedupe: [
       'react', 
@@ -37,9 +44,8 @@ export default defineConfig(() => ({
   },
   optimizeDeps: {
     include: [
-      'react', 
-      'react-dom', 
-      '@tanstack/react-query',
+      'react',
+      'react-dom',
       '@radix-ui/react-tooltip',
     ],
     force: true,

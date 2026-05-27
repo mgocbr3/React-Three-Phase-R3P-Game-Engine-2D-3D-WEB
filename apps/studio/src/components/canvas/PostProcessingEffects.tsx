@@ -1,14 +1,21 @@
 /**
  * Post-processing effects component.
  *
- * Uses native Three.js post-processing (Bloom, Vignette, Noise via
- * a custom EffectComposer in `effects/RTXPostProcessing.tsx`).
+ * Currently uses the legacy RTX stack (Bloom / Vignette / Noise via a
+ * three/examples EffectComposer). The new `RealismEffects.tsx` based on
+ * the vendored fork of realism-effects (HBAO + drei wrappers) is built
+ * but NOT wired in — last attempt to swap caused the entire React tree
+ * to fail to mount with no clear stack trace. The fork patch itself is
+ * solid (see tools/vendor/realism-effects/PATCH-NOTES.md); the failure
+ * is somewhere in the EffectComposer mount path. Future session should:
+ *   1. Confirm whether @react-three/postprocessing's <EffectComposer>
+ *      and `useEffect` lifecycle for `VelocityDepthNormalPass` actually
+ *      compose correctly under R3F v9 / React 19
+ *   2. Possibly skip the wrapper and use vanilla postprocessing.js
+ *      EffectComposer attached via `useThree(({gl})...)` like the RTX
+ *      legacy stack already does
  *
- * NOTE: We tried adopting `realism-effects@1.1.2` (0beqz) for SSGI/
- * HBAO/SSR/TRAA but the lib still imports `WebGLMultipleRenderTargets`
- * which was removed from Three.js in ~0.162. Our Three.js is 0.184.
- * See `docs/REALISM-SHADERS-EVAL.md` for the incompatibility note and
- * the forking path that would unblock SSGI integration.
+ * Until then, the safe path is the RTX stack — it works.
  */
 
 import { RTXEffectsWithSettings } from './effects/RTXPostProcessing';

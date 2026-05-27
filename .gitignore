@@ -8,8 +8,15 @@ build/
 out/
 *.tsbuildinfo
 
-# Local reference engine mirrors
-tools/vendor/
+# Local reference engine mirrors (read-only mirrors of upstream repos
+# used as source-of-truth for porting). Most are ignored — we don't
+# want to bloat the repo with full upstream clones. EXCEPT:
+# `tools/vendor/realism-effects/` is checked in because we maintain a
+# patch (WebGLMultipleRenderTargets -> WebGLRenderTarget{count}) that
+# must travel with the repo. See PATCH-NOTES.md inside.
+tools/vendor/*
+!tools/vendor/realism-effects
+!tools/vendor/realism-effects/**
 
 # Test/coverage
 coverage/
