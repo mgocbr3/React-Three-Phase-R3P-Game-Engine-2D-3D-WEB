@@ -1,15 +1,20 @@
 // Skybox renderer.
 //
-// Loads the UE4 sky GLB (CC-BY-4.0, see docs/THIRD-PARTY-ASSETS.md),
-// extracts its color texture, and runs it through PMREMGenerator to
-// produce a proper cubemap render target. Three.js's scene.background
-// can then sample the cubemap correctly regardless of the source
-// texture aspect ratio — sidesteps the 2:1-equirect assumption that
-// broke when we tried to bind the 1024×1024 source directly.
+// Extracts the color texture from the UE4 sky GLB and runs it through
+// PMREMGenerator to produce a proper cubemap render target, then binds
+// the cubemap as scene.background. PMREM handles any source aspect
+// ratio cleanly — the UE4 texture is 1024×1024 (not the 2:1 equirect
+// Three.js's direct equirect sampling path assumes), so binding the
+// raw texture as background gave solid bands. PMREM bakes it into a
+// cubemap with 6 native faces; sampling works in any direction.
 //
-// PMREM is built for IBL environment maps but works perfectly fine as
-// a skybox source — drei's `<Environment>` uses the same pipeline for
-// HDR files.
+// `flipY = false` matches the artist's intent: V=0 in the source
+// image is the top of the sky (white clouds) and V=1 is the bottom
+// (horizon haze). With flipY=true the GLTF loader's default flips
+// the source, which puts clouds on the ground.
+//
+// Default model: Unreal Engine 4 Sky (CC-BY-4.0) baked into
+// `public/models/skybox/`. See `docs/THIRD-PARTY-ASSETS.md`.
 
 import { useEffect } from 'react';
 import { useGLTF } from '@react-three/drei';
@@ -27,7 +32,6 @@ export const Skybox = ({
   const { scene: r3fScene, gl } = useThree();
 
   useEffect(() => {
-    // Pull the texture out of the GLB's first textured mesh.
     let sourceTexture: THREE.Texture | null = null;
     scene.traverse((obj) => {
       if (sourceTexture) return;
@@ -37,7 +41,6 @@ export const Skybox = ({
         if (m.map) sourceTexture = m.map;
       }
     });
-
     if (!sourceTexture) return;
 
     const tex = sourceTexture as THREE.Texture;
@@ -46,9 +49,6 @@ export const Skybox = ({
     tex.flipY = false;
     tex.needsUpdate = true;
 
-    // Run PMREM to bake the equirect texture into a cubemap render
-    // target. This is the same path drei's <Environment> uses for HDRs
-    // and is the most robust way to display a non-2:1 source as a sky.
     const pmrem = new THREE.PMREMGenerator(gl);
     pmrem.compileEquirectangularShader();
     const target = pmrem.fromEquirectangular(tex);
