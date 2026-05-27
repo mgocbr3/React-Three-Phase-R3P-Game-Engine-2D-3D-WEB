@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
 import { useEditorArrowNudge } from '@/hooks/useEditorArrowNudge';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
+import { useViewportStore } from '@/stores/viewportStore';
 import { hasSampleProject, openSampleProject } from '@/services/sampleProjects';
 import {
   hasActiveProjectWorkspace,
@@ -60,6 +61,21 @@ const EditorPage = () => {
   const rawProjectParam = searchParams.get('project');
   const sampleProjectSlug = searchParams.get('sampleProject') || (rawProjectParam && hasSampleProject(rawProjectParam) ? rawProjectParam : null);
   const localProjectId = searchParams.get('localProject');
+
+  // Lock the viewport kind based on the URL `?kind=2d|3d`. This
+  // captures projects created via "Novo Projeto" (CreateProjectDialog
+  // navigates with `&kind=...`) — sample/disk projects continue to
+  // get the lock from `applyProjectDocumentToEditor` when the
+  // .pixlproject.json loads. Without this, freshly-created projects
+  // landed in the editor with the lock still null and the toolbar
+  // showed both 2D and 3D buttons (instead of the locked badge).
+  useEffect(() => {
+    const k = searchParams.get('kind');
+    if (k === '2d' || k === '3d') {
+      useViewportStore.getState().setLockedKind(k);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const lastSaveRef = useRef<number>(Date.now());
   const hasLoadedSavedRef = useRef<boolean>(false);
