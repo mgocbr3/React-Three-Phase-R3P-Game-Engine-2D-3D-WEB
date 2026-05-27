@@ -1,13 +1,15 @@
 import { toast } from 'sonner';
 import { useEditorStore } from '@/stores/editorStore';
-import { useAssetStore } from '@/stores/assetStore';
+import { useAssetStore, type ProjectAsset } from '@/stores/assetStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { useViewportStore } from '@/stores/viewportStore';
 import {
   AnyPixlProjectDocument,
   DEFAULT_PROJECT_FOLDERS,
   PixlVec3,
   PixlProjectDocument,
   PixlAssetEntry,
+  PixlAssetKind,
   PixlSceneDocument,
   cloneJson,
 } from '@/engine/project/schema';
@@ -56,6 +58,7 @@ interface FileSystemDirectoryHandle {
   name: string;
   getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
   getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
+  removeEntry?(name: string, options?: { recursive?: boolean }): Promise<void>;
   queryPermission?(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
   requestPermission?(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
 }
@@ -94,9 +97,13 @@ const ASSET_URL_KEYS = new Set([
   'href',
   'modelUrl',
   'textureUrl',
+  'imageUrl',
   'thumbnail',
   'thumbnailUrl',
   'audioUrl',
+  'texturePath',
+  'tilemapPath',
+  'sourceAsset',
 ]);
 
 const ASSET_PATH_KEYS = new Set([
@@ -106,6 +113,7 @@ const ASSET_PATH_KEYS = new Set([
 const ASSET_REFERENCE_RE = /\.(?:glb|gltf|fbx|obj|png|jpe?g|webp|svg|mp3|wav|ogg|opus|json|js|mjs|css)(?:[?#].*)?$/i;
 const GAMES_SRC_RE = /(?:^|\/)apps\/portal\/games-src\/[^/]+\/(.+)$/i;
 const SAMPLE_PROJECT_RE = /(?:^|\/)engine\/apps\/studio\/public\/sample-projects\/[^/]+\/(.+)$/i;
+const PUBLIC_SAMPLE_PROJECT_RE = /(?:^|\/)sample-projects\/[^/]+\/(.+)$/i;
 const WORKSPACE_DB_NAME = 'pixlplayground-local-workspaces';
 const WORKSPACE_STORE_NAME = 'workspaces';
 
@@ -114,6 +122,165 @@ const normalizeSlashes = (value: string) => value.replace(/\\/g, '/');
 const stripQueryAndHash = (value: string) => value.replace(/[?#].*$/, '');
 
 const isExternalUrl = (value: string) => /^(?:https?:|data:)/i.test(value);
+
+const stripLeadingProjectSlashes = (value: string) => normalizeSlashes(value).replace(/^\.\//, '').replace(/^\/+/, '');
+
+export const normalizeProjectFolderPath = (folderPath: string): string => {
+  const normalized = stripLeadingProjectSlashes(folderPath.trim()).replace(/\/+$/, '');
+  if (!normalized || normalized === '.') return 'Assets';
+
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.some((part) => part === '.' || part === '..')) {
+    throw new Error('Caminho de pasta invalido dentro do projeto.');
+  }
+
+  return parts.join('/');
+};
+
+const sanitizeProjectFileName = (fileName: string): string => {
+  const sanitized = fileName
+    .replace(/[<>:"\\|?*\x00-\x1F]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return sanitized || `asset-${Date.now()}`;
+};
+
+const getProjectAssetPathFromAsset = (asset: Pick<ProjectAsset, 'url' | 'path' | 'folder' | 'name' | 'metadata'>): string | null => {
+  if (asset.path) return stripLeadingProjectSlashes(asset.path);
+
+  const metadataPath = typeof asset.metadata?.projectPath === 'string'
+    ? asset.metadata.projectPath
+    : typeof asset.metadata?.path === 'string'
+      ? asset.metadata.path
+      : null;
+  if (metadataPath) return stripLeadingProjectSlashes(metadataPath);
+
+  return getPortableAssetPath(asset.url);
+};
+
+const releaseObjectUrlForProjectPath = (projectPath: string) => {
+  const normalizedPath = stripLeadingProjectSlashes(projectPath);
+  const url = objectUrlByProjectPath.get(normalizedPath);
+  if (!url) return;
+
+  URL.revokeObjectURL(url);
+  objectUrlByProjectPath.delete(normalizedPath);
+  projectPathByObjectUrl.delete(url);
+};
+
+const ensureProjectDirectoryPath = async (
+  directory: FileSystemDirectoryHandle,
+  folderPath: string,
+) => {
+  const normalizedFolder = normalizeProjectFolderPath(folderPath);
+  let current = directory;
+
+  for (const part of normalizedFolder.split('/').filter(Boolean)) {
+    current = await current.getDirectoryHandle(part, { create: true });
+  }
+
+  return current;
+};
+
+const projectFileExists = async (
+  directory: FileSystemDirectoryHandle,
+  projectPath: string,
+) => Boolean(await tryResolveFileHandle(directory, stripLeadingProjectSlashes(projectPath).split('/')));
+
+const getAvailableProjectFilePath = async (
+  directory: FileSystemDirectoryHandle,
+  folderPath: string,
+  fileName: string,
+) => {
+  const normalizedFolder = normalizeProjectFolderPath(folderPath);
+  const safeName = sanitizeProjectFileName(fileName);
+  const dotIndex = safeName.lastIndexOf('.');
+  const stem = dotIndex > 0 ? safeName.slice(0, dotIndex) : safeName;
+  const ext = dotIndex > 0 ? safeName.slice(dotIndex) : '';
+
+  let candidate = `${normalizedFolder}/${safeName}`;
+  let suffix = 2;
+  while (await projectFileExists(directory, candidate)) {
+    candidate = `${normalizedFolder}/${stem}-${suffix}${ext}`;
+    suffix += 1;
+  }
+
+  return candidate;
+};
+
+const writeProjectFile = async (
+  directory: FileSystemDirectoryHandle,
+  projectPath: string,
+  data: BlobPart,
+) => {
+  const normalizedPath = stripLeadingProjectSlashes(projectPath);
+  const parts = normalizedPath.split('/').filter(Boolean);
+  if (parts.length < 2) throw new Error('Caminho de arquivo invalido dentro do projeto.');
+
+  await ensureProjectDirectoryPath(directory, parts.slice(0, -1).join('/'));
+  const fileHandle = await resolveFileHandle(directory, parts, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(data);
+  await writable.close();
+  releaseObjectUrlForProjectPath(normalizedPath);
+};
+
+const removeProjectFile = async (
+  directory: FileSystemDirectoryHandle,
+  projectPath: string,
+) => {
+  if (!directory.removeEntry) return;
+
+  const normalizedPath = stripLeadingProjectSlashes(projectPath);
+  const parts = normalizedPath.split('/').filter(Boolean);
+  if (parts.length < 2) return;
+
+  let current = directory;
+  for (const part of parts.slice(0, -1)) {
+    current = await current.getDirectoryHandle(part);
+  }
+
+  await current.removeEntry(parts[parts.length - 1]);
+  releaseObjectUrlForProjectPath(normalizedPath);
+};
+
+const PROJECT_ASSET_TYPE_TO_KIND: Record<ProjectAsset['type'], PixlAssetKind> = {
+  model: 'model',
+  texture: 'texture',
+  image: 'image',
+  sprite: 'sprite',
+  spritesheet: 'spritesheet',
+  tilemap: 'tilemap',
+  audio: 'audio',
+  script: 'script',
+};
+
+const getAssetFileName = (asset: Pick<ProjectAsset, 'name' | 'url' | 'path'>): string => {
+  const source = asset.path || asset.url || asset.name;
+  return stripQueryAndHash(source).split('/').pop() || asset.name;
+};
+
+const projectAssetToManifestEntry = (asset: ProjectAsset, index: number): PixlAssetEntry => {
+  const portablePath = getProjectAssetPathFromAsset(asset)
+    ?? (asset.folder ? `${normalizeProjectFolderPath(asset.folder)}/${sanitizeProjectFileName(getAssetFileName(asset))}` : asset.url);
+  const portableUrl = getPortableAssetPath(asset.url);
+  const metadata = {
+    ...(asset.metadata ?? {}),
+    ...(asset.thumbnail ? { thumbnail: asset.thumbnail } : {}),
+  };
+
+  return {
+    id: asset.id || `asset-${index + 1}`,
+    name: asset.name,
+    kind: PROJECT_ASSET_TYPE_TO_KIND[asset.type],
+    path: portablePath,
+    url: portableUrl ?? (asset.path ? portablePath : asset.url),
+    tags: Array.isArray(asset.metadata?.tags)
+      ? asset.metadata.tags.filter((tag): tag is string => typeof tag === 'string')
+      : [],
+    metadata,
+  };
+};
 
 export const getPortableAssetPath = (value: string): string | null => {
   if (!value) return null;
@@ -142,6 +309,9 @@ export const getPortableAssetPath = (value: string): string | null => {
 
   const sampleProjectMatch = candidate.match(SAMPLE_PROJECT_RE);
   if (sampleProjectMatch?.[1]) return sampleProjectMatch[1];
+
+  const publicSampleProjectMatch = candidate.match(PUBLIC_SAMPLE_PROJECT_RE);
+  if (publicSampleProjectMatch?.[1]) return publicSampleProjectMatch[1];
 
   const withoutPrefix = candidate.replace(/^\.\//, '').replace(/^\/+/, '');
   if (/^[a-z]:\//i.test(withoutPrefix)) return null;
@@ -293,12 +463,35 @@ export const resolveProjectDocumentAssetUrls = async (
     return null;
   });
 
-  return resolved as PixlProjectDocument;
+  const resolvedDocument = resolved as PixlProjectDocument;
+
+  if (options.directory || options.assetBaseUrl) {
+    resolvedDocument.assets = {
+      ...resolvedDocument.assets,
+      entries: await Promise.all((resolvedDocument.assets.entries ?? []).map(async (entry) => {
+        if (entry.url || !entry.path) return entry;
+        const url = options.directory
+          ? await resolveProjectPathToObjectUrl(options.directory, entry.path)
+          : options.assetBaseUrl
+            ? joinUrl(options.assetBaseUrl, entry.path)
+            : null;
+        return url ? { ...entry, url } : entry;
+      })),
+    };
+  }
+
+  return resolvedDocument;
 };
 
 export const makeProjectDocumentPortable = (document: PixlProjectDocument): PixlProjectDocument => (
   transformProjectAssetReferencesSync(document, (projectPath) => projectPath) as PixlProjectDocument
 );
+
+export const createProjectDocumentContentSignature = (document: PixlProjectDocument): string => {
+  const comparable = cloneJson(document);
+  comparable.savedAt = 0;
+  return JSON.stringify(comparable);
+};
 
 export const supportsLocalProjectFolders = () => (
   typeof window !== 'undefined' &&
@@ -316,6 +509,135 @@ export const getCurrentProjectWorkspace = (): LocalProjectWorkspace => ({
 });
 
 export const hasActiveProjectWorkspace = () => Boolean(currentProjectDirectory);
+
+export interface ImportedProjectAssetFile {
+  name: string;
+  url: string;
+  path: string;
+  folder: string;
+  metadata: Record<string, unknown>;
+}
+
+export const ensureProjectAssetFolder = async (folderPath: string): Promise<string> => {
+  const normalizedFolder = normalizeProjectFolderPath(folderPath);
+
+  if (!currentProjectDirectory) return normalizedFolder;
+
+  const permitted = await ensurePermission(currentProjectDirectory);
+  if (!permitted) {
+    throw new Error('Permissao negada para criar pasta de asset no projeto.');
+  }
+
+  await ensureProjectDirectoryPath(currentProjectDirectory, normalizedFolder);
+  return normalizedFolder;
+};
+
+export const importProjectAssetFiles = async (
+  files: File[],
+  folderPath: string,
+): Promise<ImportedProjectAssetFile[]> => {
+  const normalizedFolder = normalizeProjectFolderPath(folderPath);
+
+  if (!currentProjectDirectory) {
+    return files.map((file) => {
+      const path = `${normalizedFolder}/${sanitizeProjectFileName(file.name)}`;
+      return {
+        name: file.name,
+        url: URL.createObjectURL(file),
+        path,
+        folder: normalizedFolder,
+        metadata: {
+          format: file.name.split('.').pop()?.toLowerCase() || '',
+          size: file.size,
+          projectPath: path,
+          transient: true,
+        },
+      };
+    });
+  }
+
+  const permitted = await ensurePermission(currentProjectDirectory);
+  if (!permitted) {
+    throw new Error('Permissao negada para importar assets na pasta do projeto.');
+  }
+
+  await ensureProjectDirectoryPath(currentProjectDirectory, normalizedFolder);
+
+  return Promise.all(files.map(async (file) => {
+    const path = await getAvailableProjectFilePath(currentProjectDirectory!, normalizedFolder, file.name);
+    await writeProjectFile(currentProjectDirectory!, path, file);
+    const url = await resolveProjectPathToObjectUrl(currentProjectDirectory!, path);
+
+    return {
+      name: file.name,
+      url: url ?? path,
+      path,
+      folder: normalizedFolder,
+      metadata: {
+        format: file.name.split('.').pop()?.toLowerCase() || '',
+        size: file.size,
+        projectPath: path,
+      },
+    };
+  }));
+};
+
+export const moveProjectAssetToFolder = async (
+  asset: ProjectAsset,
+  folderPath: string,
+): Promise<Pick<ProjectAsset, 'url' | 'path' | 'folder' | 'metadata'>> => {
+  const normalizedFolder = normalizeProjectFolderPath(folderPath);
+  const sourcePath = getProjectAssetPathFromAsset(asset);
+  const fileName = sanitizeProjectFileName(sourcePath?.split('/').pop() || getAssetFileName(asset));
+  const fallbackPath = `${normalizedFolder}/${fileName}`;
+
+  if (!sourcePath || !currentProjectDirectory) {
+    return {
+      url: asset.url,
+      path: fallbackPath,
+      folder: normalizedFolder,
+      metadata: {
+        ...(asset.metadata ?? {}),
+        projectPath: fallbackPath,
+      },
+    };
+  }
+
+  const currentFolder = sourcePath.split('/').slice(0, -1).join('/');
+  if (normalizeProjectFolderPath(currentFolder) === normalizedFolder) {
+    return {
+      url: asset.url,
+      path: sourcePath,
+      folder: normalizedFolder,
+      metadata: {
+        ...(asset.metadata ?? {}),
+        projectPath: sourcePath,
+      },
+    };
+  }
+
+  const permitted = await ensurePermission(currentProjectDirectory);
+  if (!permitted) {
+    throw new Error('Permissao negada para mover asset dentro do projeto.');
+  }
+
+  const sourceHandle = await resolveFileHandle(currentProjectDirectory, sourcePath.split('/'));
+  const sourceFile = await sourceHandle.getFile();
+  const targetPath = await getAvailableProjectFilePath(currentProjectDirectory, normalizedFolder, fileName);
+  await writeProjectFile(currentProjectDirectory, targetPath, sourceFile);
+  await removeProjectFile(currentProjectDirectory, sourcePath);
+  const url = await resolveProjectPathToObjectUrl(currentProjectDirectory, targetPath);
+
+  return {
+    url: url ?? targetPath,
+    path: targetPath,
+    folder: normalizedFolder,
+    metadata: {
+      ...(asset.metadata ?? {}),
+      projectPath: targetPath,
+    },
+  };
+};
 
 /**
  * True once `applyProjectDocumentToEditor` has been called at least once
@@ -419,6 +741,7 @@ export const deleteLocalProjectDoc = (projectId: string): void => {
 export const createProjectDocumentFromEditor = (name = 'Untitled Project'): PixlProjectDocument => {
   const {
     objects,
+    activeSceneKind,
     currentTemplateId,
     gameScript,
     transformSpace,
@@ -427,6 +750,7 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     snapRotate,
     snapScale,
   } = useEditorStore.getState();
+  const projectAssets = useAssetStore.getState().projectAssets;
 
   const now = Date.now();
   const stateDocument = createProjectDocumentFromEditorState({
@@ -438,6 +762,7 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     snapTranslate,
     snapRotate,
     snapScale,
+    activeSceneKind,
   }, {
     id: currentProjectDocument?.id,
     name: name || currentProjectDocument?.name,
@@ -446,7 +771,26 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     savedAt: now,
   });
 
-  if (!currentProjectDocument) return stateDocument;
+  if (!currentProjectDocument) {
+    const projectAssetEntries = projectAssets.map(projectAssetToManifestEntry);
+    const entriesByKey = new Map<string, PixlAssetEntry>();
+    [...stateDocument.assets.entries, ...projectAssetEntries].forEach((entry) => {
+      entriesByKey.set(entry.path || entry.url || entry.id, { ...entry });
+    });
+    return {
+      ...stateDocument,
+      assets: {
+        ...stateDocument.assets,
+        folders: [
+          ...new Set([
+            ...stateDocument.assets.folders,
+            ...projectAssets.map((asset) => normalizeProjectFolderPath(asset.folder)),
+          ]),
+        ],
+        entries: [...entriesByKey.values()],
+      },
+    };
+  }
 
   const activeSceneId = currentProjectDocument.activeSceneId || stateDocument.activeSceneId;
   const editedScene = stateDocument.scenes[0];
@@ -461,11 +805,22 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     ? existingScenes.map((scene) => scene.id === activeSceneId ? nextScene : scene)
     : [nextScene, ...existingScenes];
   const entriesByKey = new Map<string, PixlAssetEntry>();
+  const projectAssetEntries = projectAssets.map(projectAssetToManifestEntry);
 
-  [...(currentProjectDocument.assets?.entries ?? []), ...(stateDocument.assets.entries ?? [])].forEach((entry) => {
-    const key = entry.id || entry.url || entry.path;
+  [
+    ...(currentProjectDocument.assets?.entries ?? []),
+    ...(stateDocument.assets.entries ?? []),
+    ...projectAssetEntries,
+  ].forEach((entry) => {
+    const key = entry.path || entry.url || entry.id;
     entriesByKey.set(key, { ...entry });
   });
+  const folders = new Set([
+    ...(currentProjectDocument.assets?.folders?.length
+      ? currentProjectDocument.assets.folders
+      : stateDocument.assets.folders),
+    ...projectAssets.map((asset) => normalizeProjectFolderPath(asset.folder)),
+  ]);
 
   return {
     ...cloneJson(currentProjectDocument),
@@ -475,9 +830,7 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     scenes,
     assets: {
       root: currentProjectDocument.assets?.root ?? stateDocument.assets.root,
-      folders: currentProjectDocument.assets?.folders?.length
-        ? [...currentProjectDocument.assets.folders]
-        : [...stateDocument.assets.folders],
+      folders: [...folders],
       entries: [...entriesByKey.values()],
     },
     editor: {
@@ -490,6 +843,21 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
       templateId: stateDocument.game.templateId,
       script: stateDocument.game.script,
     },
+  };
+};
+
+export interface ActiveProjectDocumentSnapshot {
+  document: PixlProjectDocument;
+  signature: string;
+  workspace: LocalProjectWorkspace;
+}
+
+export const createActiveProjectDocumentSnapshot = (name = 'Untitled Project'): ActiveProjectDocumentSnapshot => {
+  const document = createProjectDocumentFromEditor(name);
+  return {
+    document,
+    signature: createProjectDocumentContentSignature(document),
+    workspace: getCurrentProjectWorkspace(),
   };
 };
 
@@ -576,6 +944,7 @@ export const applyProjectDocumentToEditor = (
 
   useEditorStore.setState({
     objects: snapshot.objects,
+    activeSceneKind: snapshot.activeSceneKind === '2d' ? '2d' : '3d',
     currentTemplateId: snapshot.currentTemplateId,
     gameScript: snapshot.gameScript,
     transformSpace: (snapshot.transformSpace as any) || 'world',
@@ -592,6 +961,8 @@ export const applyProjectDocumentToEditor = (
     history: [JSON.parse(JSON.stringify(snapshot.objects))],
     historyIndex: 0,
   });
+
+  useViewportStore.getState().setViewportMode(snapshot.activeSceneKind === '2d' ? '2d' : '3d');
 
   useAssetStore.setState({
     projectAssets: snapshot.projectAssets,
@@ -625,14 +996,12 @@ const ensurePermission = async (directory: FileSystemDirectoryHandle) => {
   return request === 'granted';
 };
 
-const ensureProjectFolders = async (directory: FileSystemDirectoryHandle) => {
-  for (const folder of DEFAULT_PROJECT_FOLDERS) {
-    const parts = folder.split('/').filter(Boolean);
-    let current = directory;
-
-    for (const part of parts) {
-      current = await current.getDirectoryHandle(part, { create: true });
-    }
+const ensureProjectFolders = async (
+  directory: FileSystemDirectoryHandle,
+  folders: string[] = DEFAULT_PROJECT_FOLDERS,
+) => {
+  for (const folder of folders) {
+    await ensureProjectDirectoryPath(directory, folder);
   }
 };
 
@@ -666,7 +1035,10 @@ export const saveProjectDocumentToDirectory = async (document: PixlProjectDocume
     throw new Error('Permissao negada para salvar na pasta do projeto.');
   }
 
-  await ensureProjectFolders(currentProjectDirectory);
+  await ensureProjectFolders(currentProjectDirectory, [
+    ...DEFAULT_PROJECT_FOLDERS,
+    ...(portableDocument.assets?.folders ?? []),
+  ]);
   const fileHandle = await resolveFileHandle(currentProjectDirectory, currentProjectFilePath, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(JSON.stringify(portableDocument, null, 2));

@@ -262,6 +262,20 @@ describe('rewriteAssetUrlsInProject (pure)', () => {
     expect(sfxAudio.data!.url).toBe('Assets/Audio/click.ogg');
   });
 
+  it('rewrites asset URLs inside nested scene-object children', () => {
+    const project = buildProjectWithMismatch();
+    const farm = project.scenes[0]!.rootObjects[0]!;
+    const sfx = project.scenes[0]!.rootObjects[1]!;
+    farm.children = [{ ...sfx, parentId: farm.id }];
+    project.scenes[0]!.rootObjects = [farm];
+
+    const out = rewriteAssetUrlsInProject(project);
+
+    expect(out.rewriteCount).toBe(3);
+    const childAudio = out.project.scenes[0]!.rootObjects[0]!.children![0]!.components![0]!;
+    expect(childAudio.data!.url).toBe('Assets/Audio/click.ogg');
+  });
+
   it('does not mutate the input project document', () => {
     const project = buildProjectWithMismatch();
     const before = JSON.stringify(project);

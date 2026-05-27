@@ -24,8 +24,10 @@ export const TexturePicker = ({
   
   const { projectAssets, addProjectAsset } = useAssetStore();
   
-  // Filter texture assets
-  const textureAssets = projectAssets.filter(a => a.type === 'texture');
+  // Project image-like assets back both 3D materials and 2D spritesheets.
+  const textureAssets = projectAssets.filter((asset) =>
+    ['texture', 'image', 'sprite', 'spritesheet'].includes(asset.type)
+  );
   
   // Close on click outside
   useEffect(() => {
@@ -94,6 +96,7 @@ export const TexturePicker = ({
           className={cn(
             "w-full flex items-center gap-2 px-2 py-1.5 bg-muted rounded text-xs text-left transition-colors",
             "hover:bg-muted/80 border border-transparent focus:border-primary focus:outline-none",
+            value && "pr-8",
             isOpen && "border-primary"
           )}
         >
@@ -118,20 +121,22 @@ export const TexturePicker = ({
             {selectedAsset?.name || (value ? 'URL externa' : placeholder)}
           </span>
           
-          {/* Actions */}
-          {value && (
-            <button
-              onClick={clearTexture}
-              className="p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
           <ChevronDown className={cn(
             "w-3.5 h-3.5 text-muted-foreground transition-transform",
             isOpen && "rotate-180"
           )} />
         </button>
+
+        {value && (
+          <button
+            type="button"
+            onClick={clearTexture}
+            className="absolute right-6 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+            title="Limpar"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
         
         {/* Dropdown */}
         {isOpen && (

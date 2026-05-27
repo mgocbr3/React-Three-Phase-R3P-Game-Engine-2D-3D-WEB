@@ -48,6 +48,7 @@ export interface ScenePhysicsJSON {
 
 export interface SceneEnvironmentJSON {
   background?: string;
+  pixelArt?: boolean;
 }
 
 export interface SceneJSON {
@@ -58,6 +59,8 @@ export interface SceneJSON {
   camera?: SceneCameraJSON;
   environment?: SceneEnvironmentJSON;
   physics?: ScenePhysicsJSON;
+  /** Optional browser ES module loaded after the scene has been created. */
+  runtimeScript?: string;
 }
 
 export interface GameJSON {
@@ -72,6 +75,14 @@ export interface GameOptions {
   height?: number;
   parent?: string | HTMLElement;
   pixelArt?: boolean;
-  /** Provided by the consumer; phaser-runtime never instantiates Phaser itself. */
+  /**
+   * Base URL used to fetch project assets and runtime scripts. Defaults to
+   * "." so standalone exports resolve files next to index.html.
+   */
+  assetBaseUrl?: string;
+  /**
+   * Optional preloaded Phaser module namespace. When omitted, Game.play()
+   * dynamically imports "phaser".
+   */
   phaserModule?: unknown;
 }

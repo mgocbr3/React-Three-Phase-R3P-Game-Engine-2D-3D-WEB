@@ -18,6 +18,7 @@ export const useProjectAutoSave = () => {
   const { objects, currentTemplateId, gameScript, saveProject } = useEditorStore();
   const { setSaveStatus, recordVersion } = useAutoSaveStore();
   const { user } = useAuthStore();
+  const legacyCloudPersistenceEnabled = !ENGINE_LOCAL_ONLY;
   const cloudEnabled = Boolean(!ENGINE_LOCAL_ONLY && isPixllandConfigured && user);
 
   const cloudProjectIdRef = useRef<string | null>(null);
@@ -30,12 +31,14 @@ export const useProjectAutoSave = () => {
 
   // Pega o projectId da URL se existir
   useEffect(() => {
+    if (!legacyCloudPersistenceEnabled) return;
+
     const params = new URLSearchParams(window.location.search);
     const projectId = params.get('project') || params.get('projectId');
     if (projectId) {
       cloudProjectIdRef.current = projectId;
     }
-  }, []);
+  }, [legacyCloudPersistenceEnabled]);
 
   // Salvar na nuvem
   const saveToCloud = useCallback(async () => {
@@ -134,6 +137,7 @@ export const useProjectAutoSave = () => {
 
   // Auto-save local a cada 30 segundos
   useEffect(() => {
+    if (!legacyCloudPersistenceEnabled) return;
     if (objects.length === 0) return;
 
     const interval = setInterval(async () => {
@@ -180,10 +184,12 @@ export const useProjectAutoSave = () => {
     }, AUTO_SAVE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [objects, currentTemplateId, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion]);
+  }, [objects, currentTemplateId, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion, legacyCloudPersistenceEnabled]);
 
   // Manual save com Ctrl+S / Cmd+S
   useEffect(() => {
+    if (!legacyCloudPersistenceEnabled) return;
+
     const handleKeyDown = async (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -228,10 +234,11 @@ export const useProjectAutoSave = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [objects, currentTemplateId, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion]);
+  }, [objects, currentTemplateId, gameScript, cloudEnabled, saveProject, saveToCloud, setSaveStatus, recordVersion, legacyCloudPersistenceEnabled]);
 
   // Resolver conflito
   const handleConflictResolution = useCallback(async (strategy: ConflictResolutionStrategy) => {
+    if (!legacyCloudPersistenceEnabled) return;
     if (!pendingConflict || !cloudProjectIdRef.current) return;
 
     setIsResolvingConflict(true);
@@ -279,11 +286,12 @@ export const useProjectAutoSave = () => {
     } finally {
       setIsResolvingConflict(false);
     }
-  }, [pendingConflict, setSaveStatus]);
+  }, [pendingConflict, setSaveStatus, legacyCloudPersistenceEnabled]);
 
   // Retorna função para definir o projectId externamente + estados de conflito
   return {
     setCloudProjectId: (id: string | null) => {
+      if (!legacyCloudPersistenceEnabled) return;
       cloudProjectIdRef.current = id;
     },
     getCloudProjectId: () => cloudProjectIdRef.current,

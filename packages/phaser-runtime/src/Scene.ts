@@ -18,6 +18,7 @@ export default class Scene {
   camera?: SceneCameraJSON;
   environment?: SceneEnvironmentJSON;
   physics?: ScenePhysicsJSON;
+  runtimeScript?: string;
 
   constructor(json: SceneJSON) {
     if (!json.id) throw new Error('Scene: id required');
@@ -31,6 +32,7 @@ export default class Scene {
     this.camera = json.camera;
     this.environment = json.environment;
     this.physics = json.physics;
+    this.runtimeScript = json.runtimeScript;
   }
 
   findObject(id: string): GameObject | undefined {
@@ -68,6 +70,7 @@ export default class Scene {
       camera: this.camera,
       environment: this.environment,
       physics: this.physics,
+      runtimeScript: this.runtimeScript,
     };
   }
 }

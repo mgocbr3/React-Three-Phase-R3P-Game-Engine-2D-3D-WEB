@@ -1,0 +1,2074 @@
+{
+  "format": "pixlplayground-project",
+  "version": 2,
+  "id": "where-angels-die",
+  "slug": "where-angels-die",
+  "name": "Where Angels Die",
+  "createdAt": 1779746014173,
+  "savedAt": 1779746014173,
+  "engine": {
+    "name": "PixlPlayground",
+    "version": "0.2.0",
+    "schemaVersion": 2,
+    "runtimeManifest": {
+      "runtime": "three-3d",
+      "dependencies": {
+        "three": "0.184.0",
+        "@react-three/fiber": "9.6.1",
+        "@react-three/drei": "10.7.7",
+        "@react-three/rapier": "2.2.0"
+      }
+    }
+  },
+  "runtime": {
+    "primary": "three-3d",
+    "renderers": [
+      "three"
+    ],
+    "physics": [
+      "rapier"
+    ]
+  },
+  "activeSceneId": "wad-main",
+  "scenes": [
+    {
+      "id": "wad-main",
+      "name": "Dead City Approach",
+      "kind": "3d",
+      "units": "meters",
+      "rootObjects": [
+        {
+          "id": "wad-world-root",
+          "name": "WAD World",
+          "type": "group",
+          "parentId": null,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "folder"
+          ],
+          "components": [],
+          "data": {
+            "editor": {
+              "color": "#ffffff"
+            }
+          }
+        },
+        {
+          "id": "wad-actors-root",
+          "name": "Actors",
+          "type": "group",
+          "parentId": "wad-world-root",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "folder"
+          ],
+          "components": [],
+          "data": {
+            "editor": {
+              "color": "#ffffff"
+            }
+          }
+        },
+        {
+          "id": "wad-lighting-root",
+          "name": "Lighting",
+          "type": "group",
+          "parentId": "wad-world-root",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": false,
+          "locked": true,
+          "tags": [
+            "folder"
+          ],
+          "components": [],
+          "data": {
+            "editor": {
+              "color": "#ffffff"
+            }
+          }
+        },
+        {
+          "id": "wad-city-core",
+          "name": "Ruined Procedural City Core",
+          "type": "box",
+          "parentId": null,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.08,
+              0.08,
+              0.08
+            ]
+          },
+          "visible": true,
+          "locked": true,
+          "tags": [
+            "environment",
+            "city",
+            "babylon-source"
+          ],
+          "components": [
+            {
+              "id": "wad-city-core-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_extracted/procedural_city_5/scene.gltf",
+                "assetPath": "_extracted/procedural_city_5/scene.gltf",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-city-core-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_extracted/procedural_city_5/scene.gltf",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-city-core-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0.05,
+                "roughness": 0.95,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-city-core-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "trimesh",
+                "mass": 0,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-city-core-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "environment",
+                  "city"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "Babylon.js Editor WAD pack",
+                  "renderOnly": true
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#303038"
+            }
+          }
+        },
+        {
+          "id": "wad-city-east",
+          "name": "Ruined Procedural City East",
+          "type": "box",
+          "parentId": null,
+          "transform": {
+            "position": [
+              42,
+              0,
+              -28
+            ],
+            "rotation": [
+              0,
+              0.42,
+              0
+            ],
+            "scale": [
+              0.08,
+              0.08,
+              0.08
+            ]
+          },
+          "visible": true,
+          "locked": true,
+          "tags": [
+            "environment",
+            "city",
+            "babylon-source"
+          ],
+          "components": [
+            {
+              "id": "wad-city-east-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_extracted/procedural_city_6/scene.gltf",
+                "assetPath": "_extracted/procedural_city_6/scene.gltf",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-city-east-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_extracted/procedural_city_6/scene.gltf",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-city-east-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0.05,
+                "roughness": 0.95,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-city-east-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "trimesh",
+                "mass": 0,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-city-east-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "environment",
+                  "city"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "source": "Babylon.js Editor WAD pack",
+                  "renderOnly": true
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#303038"
+            }
+          }
+        },
+        {
+          "id": "wad-ground-fog-catcher",
+          "name": "Ash Wet Street Collision Plane",
+          "type": "plane",
+          "parentId": null,
+          "transform": {
+            "position": [
+              8,
+              -0.03,
+              -6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              90,
+              1,
+              90
+            ]
+          },
+          "visible": true,
+          "locked": true,
+          "tags": [
+            "ground",
+            "collision"
+          ],
+          "components": [
+            {
+              "id": "wad-ground-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0.02,
+                "roughness": 0.98,
+                "emissiveIntensity": 0,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-ground-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "fixed",
+                "colliderShape": "cuboid",
+                "mass": 0,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-ground-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "ground",
+                  "collision"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "gameplayCritical": true
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#1a1a1d"
+            }
+          }
+        },
+        {
+          "id": "wad-player",
+          "name": "Sledge High",
+          "type": "player",
+          "parentId": "wad-actors-root",
+          "transform": {
+            "position": [
+              0,
+              0.2,
+              6
+            ],
+            "rotation": [
+              0,
+              3.14159,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "player",
+            "hunter",
+            "sledge"
+          ],
+          "components": [
+            {
+              "id": "wad-player-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/sledge-high-character.glb",
+                "assetPath": "_three-ready/characters/sledge-high-character.glb",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-player-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/sledge-high-character.glb",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-player-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "character",
+                "team": "player",
+                "maxHealth": 100,
+                "currentHealth": 100,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": false,
+                "contactDamage": 0,
+                "knockbackResistance": 0.35,
+                "destroyOnDeath": true,
+                "isInteractable": false,
+                "interactionRange": 2,
+                "aiEnabled": false,
+                "aiType": "none",
+                "aiSpeed": 0,
+                "aiDetectionRange": 0,
+                "aiAttackRange": 0,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ]
+              }
+            },
+            {
+              "id": "wad-player-settings",
+              "type": "pixl.player",
+              "enabled": true,
+              "data": {
+                "speed": 5,
+                "jumpForce": 8,
+                "gravity": 20,
+                "maxHealth": 100,
+                "movementMode": "free",
+                "canDoubleJump": false,
+                "doubleJumpForce": 6,
+                "coyoteTime": 0.15,
+                "jumpBufferTime": 0.1,
+                "canSprint": true,
+                "sprintSpeed": 8,
+                "sprintStaminaCost": 10,
+                "maxStamina": 100,
+                "staminaRegenRate": 15,
+                "canCrouch": true,
+                "crouchSpeed": 2.5,
+                "crouchHeightMultiplier": 0.5,
+                "canDodge": true,
+                "dodgeDistance": 4,
+                "dodgeDuration": 0.3,
+                "dodgeCooldown": 0.8,
+                "dodgeInvincibilityFrames": true,
+                "attackEnabled": true,
+                "attackType": "melee",
+                "attackDamage": 35,
+                "attackCooldown": 0.55,
+                "attackRange": 2.4,
+                "meleeWeaponType": "hammer",
+                "meleeComboEnabled": true,
+                "meleeComboHits": 3,
+                "meleeKnockback": 10,
+                "meleeSweepAngle": 120,
+                "projectileSpeed": 50,
+                "projectileGravity": 0.1,
+                "projectileSpread": 0,
+                "projectilesPerShot": 1,
+                "ammoEnabled": false,
+                "maxAmmo": 0,
+                "ammoPerShot": 0,
+                "reloadTime": 1.5,
+                "projectileType": "bullet",
+                "explosionRadius": 0,
+                "explosionForce": 0,
+                "stompEnabled": false,
+                "stompDamage": 0,
+                "stompBounceForce": 0,
+                "stompRequiresDownward": true,
+                "canWallJump": false,
+                "canWallSlide": false,
+                "wallSlideSpeed": 2,
+                "wallJumpForce": 10,
+                "canSwim": false,
+                "swimSpeed": 3,
+                "airControlMultiplier": 0.7,
+                "gamePreset": "third-person-action"
+              }
+            },
+            {
+              "id": "wad-player-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "dynamic",
+                "colliderShape": "capsule",
+                "mass": 1,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-player-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "player",
+                  "hunter"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "weapon": "sledgehammer",
+                  "objective": "survive-the-descent"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#c9d4e5"
+            }
+          }
+        },
+        {
+          "id": "wad-camera",
+          "name": "Third Person Camera",
+          "type": "camera",
+          "parentId": "wad-actors-root",
+          "transform": {
+            "position": [
+              0,
+              5.2,
+              14
+            ],
+            "rotation": [
+              -0.32,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "camera"
+          ],
+          "components": [
+            {
+              "id": "wad-camera-settings",
+              "type": "pixl.camera3d",
+              "enabled": true,
+              "data": {
+                "mode": "third-person",
+                "distance": 8,
+                "height": 4,
+                "fov": 55,
+                "followPlayer": true,
+                "targetId": "wad-player",
+                "lockedZ": false,
+                "lockedY": false,
+                "smoothing": 0.12
+              }
+            },
+            {
+              "id": "wad-camera-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "camera"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "shot": "third-person-over-shoulder"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#60a5fa"
+            }
+          }
+        },
+        {
+          "id": "wad-zombie-01",
+          "name": "Fallen Angel 01",
+          "type": "npc",
+          "parentId": null,
+          "transform": {
+            "position": [
+              -14,
+              0.1,
+              -9
+            ],
+            "rotation": [
+              0,
+              -0.7,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "enemy",
+            "zombie",
+            "fallen"
+          ],
+          "components": [
+            {
+              "id": "wad-zombie-01-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-01.glb",
+                "assetPath": "_three-ready/characters/zombie-01.glb",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-zombie-01-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-01.glb",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-zombie-01-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "character",
+                "team": "enemy",
+                "maxHealth": 60,
+                "currentHealth": 60,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": true,
+                "contactDamage": 18,
+                "knockbackResistance": 0.1,
+                "destroyOnDeath": true,
+                "isInteractable": false,
+                "interactionRange": 2,
+                "aiEnabled": true,
+                "aiType": "chase",
+                "aiSpeed": 1.78,
+                "aiDetectionRange": 18,
+                "aiAttackRange": 1.7,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ]
+              }
+            },
+            {
+              "id": "wad-zombie-01-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "dynamic",
+                "colliderShape": "capsule",
+                "mass": 1,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-zombie-01-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "enemy",
+                  "zombie",
+                  "fallen"
+                ],
+                "behavior": "patrol",
+                "behaviorSpeed": 0.75,
+                "patrolDistance": 8,
+                "customData": {
+                  "role": "horde-minion",
+                  "spawnWave": 1
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#6f8f6a"
+            }
+          }
+        },
+        {
+          "id": "wad-zombie-02",
+          "name": "Fallen Angel 02",
+          "type": "npc",
+          "parentId": null,
+          "transform": {
+            "position": [
+              -8.4,
+              0.1,
+              -16
+            ],
+            "rotation": [
+              0,
+              -0.35,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "enemy",
+            "zombie",
+            "fallen"
+          ],
+          "components": [
+            {
+              "id": "wad-zombie-02-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-02.glb",
+                "assetPath": "_three-ready/characters/zombie-02.glb",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-zombie-02-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-02.glb",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-zombie-02-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "character",
+                "team": "enemy",
+                "maxHealth": 65,
+                "currentHealth": 65,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": true,
+                "contactDamage": 18,
+                "knockbackResistance": 0.1,
+                "destroyOnDeath": true,
+                "isInteractable": false,
+                "interactionRange": 2,
+                "aiEnabled": true,
+                "aiType": "chase",
+                "aiSpeed": 1.8599999999999999,
+                "aiDetectionRange": 18,
+                "aiAttackRange": 1.7,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ]
+              }
+            },
+            {
+              "id": "wad-zombie-02-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "dynamic",
+                "colliderShape": "capsule",
+                "mass": 1,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-zombie-02-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "enemy",
+                  "zombie",
+                  "fallen"
+                ],
+                "behavior": "patrol",
+                "behaviorSpeed": 0.75,
+                "patrolDistance": 8,
+                "customData": {
+                  "role": "horde-minion",
+                  "spawnWave": 1
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#6f8f6a"
+            }
+          }
+        },
+        {
+          "id": "wad-zombie-03",
+          "name": "Fallen Angel 03",
+          "type": "npc",
+          "parentId": null,
+          "transform": {
+            "position": [
+              -2.8000000000000007,
+              0.1,
+              -9
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "enemy",
+            "zombie",
+            "fallen"
+          ],
+          "components": [
+            {
+              "id": "wad-zombie-03-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-03.glb",
+                "assetPath": "_three-ready/characters/zombie-03.glb",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-zombie-03-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-03.glb",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-zombie-03-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "character",
+                "team": "enemy",
+                "maxHealth": 70,
+                "currentHealth": 70,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": true,
+                "contactDamage": 18,
+                "knockbackResistance": 0.1,
+                "destroyOnDeath": true,
+                "isInteractable": false,
+                "interactionRange": 2,
+                "aiEnabled": true,
+                "aiType": "chase",
+                "aiSpeed": 1.94,
+                "aiDetectionRange": 18,
+                "aiAttackRange": 1.7,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ]
+              }
+            },
+            {
+              "id": "wad-zombie-03-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "dynamic",
+                "colliderShape": "capsule",
+                "mass": 1,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-zombie-03-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "enemy",
+                  "zombie",
+                  "fallen"
+                ],
+                "behavior": "patrol",
+                "behaviorSpeed": 0.75,
+                "patrolDistance": 8,
+                "customData": {
+                  "role": "horde-minion",
+                  "spawnWave": 1
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#6f8f6a"
+            }
+          }
+        },
+        {
+          "id": "wad-zombie-04",
+          "name": "Fallen Angel 04",
+          "type": "npc",
+          "parentId": null,
+          "transform": {
+            "position": [
+              2.799999999999997,
+              0.1,
+              -16
+            ],
+            "rotation": [
+              0,
+              0.35,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "enemy",
+            "zombie",
+            "fallen"
+          ],
+          "components": [
+            {
+              "id": "wad-zombie-04-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-04.glb",
+                "assetPath": "_three-ready/characters/zombie-04.glb",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-zombie-04-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-04.glb",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-zombie-04-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "character",
+                "team": "enemy",
+                "maxHealth": 75,
+                "currentHealth": 75,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": true,
+                "contactDamage": 18,
+                "knockbackResistance": 0.1,
+                "destroyOnDeath": true,
+                "isInteractable": false,
+                "interactionRange": 2,
+                "aiEnabled": true,
+                "aiType": "chase",
+                "aiSpeed": 2.02,
+                "aiDetectionRange": 18,
+                "aiAttackRange": 1.7,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ]
+              }
+            },
+            {
+              "id": "wad-zombie-04-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "dynamic",
+                "colliderShape": "capsule",
+                "mass": 1,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-zombie-04-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "enemy",
+                  "zombie",
+                  "fallen"
+                ],
+                "behavior": "patrol",
+                "behaviorSpeed": 0.75,
+                "patrolDistance": 8,
+                "customData": {
+                  "role": "horde-minion",
+                  "spawnWave": 1
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#6f8f6a"
+            }
+          }
+        },
+        {
+          "id": "wad-zombie-05",
+          "name": "Fallen Angel 05",
+          "type": "npc",
+          "parentId": null,
+          "transform": {
+            "position": [
+              8.399999999999999,
+              0.1,
+              -9
+            ],
+            "rotation": [
+              0,
+              0.7,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "enemy",
+            "zombie",
+            "fallen"
+          ],
+          "components": [
+            {
+              "id": "wad-zombie-05-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-05.glb",
+                "assetPath": "_three-ready/characters/zombie-05.glb",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-zombie-05-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-05.glb",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-zombie-05-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "character",
+                "team": "enemy",
+                "maxHealth": 80,
+                "currentHealth": 80,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": true,
+                "contactDamage": 18,
+                "knockbackResistance": 0.1,
+                "destroyOnDeath": true,
+                "isInteractable": false,
+                "interactionRange": 2,
+                "aiEnabled": true,
+                "aiType": "chase",
+                "aiSpeed": 2.1,
+                "aiDetectionRange": 18,
+                "aiAttackRange": 1.7,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ]
+              }
+            },
+            {
+              "id": "wad-zombie-05-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "dynamic",
+                "colliderShape": "capsule",
+                "mass": 1,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-zombie-05-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "enemy",
+                  "zombie",
+                  "fallen"
+                ],
+                "behavior": "patrol",
+                "behaviorSpeed": 0.75,
+                "patrolDistance": 8,
+                "customData": {
+                  "role": "horde-minion",
+                  "spawnWave": 1
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#6f8f6a"
+            }
+          }
+        },
+        {
+          "id": "wad-zombie-06",
+          "name": "Fallen Angel 06",
+          "type": "npc",
+          "parentId": null,
+          "transform": {
+            "position": [
+              14,
+              0.1,
+              -16
+            ],
+            "rotation": [
+              0,
+              1.0499999999999998,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "enemy",
+            "zombie",
+            "fallen"
+          ],
+          "components": [
+            {
+              "id": "wad-zombie-06-mesh",
+              "type": "pixl.mesh",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-08.glb",
+                "assetPath": "_three-ready/characters/zombie-08.glb",
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "id": "wad-zombie-06-animation",
+              "type": "pixl.animation",
+              "enabled": true,
+              "data": {
+                "modelUrl": "_three-ready/characters/zombie-08.glb",
+                "currentAnimation": "Idle",
+                "availableAnimations": [],
+                "autoPlay": true,
+                "loop": true,
+                "speed": 1,
+                "crossFadeDuration": 0.3,
+                "paused": false,
+                "currentTime": 0
+              }
+            },
+            {
+              "id": "wad-zombie-06-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "character",
+                "team": "enemy",
+                "maxHealth": 85,
+                "currentHealth": 85,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": true,
+                "contactDamage": 18,
+                "knockbackResistance": 0.1,
+                "destroyOnDeath": true,
+                "isInteractable": false,
+                "interactionRange": 2,
+                "aiEnabled": true,
+                "aiType": "chase",
+                "aiSpeed": 2.1799999999999997,
+                "aiDetectionRange": 18,
+                "aiAttackRange": 1.7,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ]
+              }
+            },
+            {
+              "id": "wad-zombie-06-physics",
+              "type": "pixl.physics",
+              "enabled": true,
+              "data": {
+                "bodyType": "dynamic",
+                "colliderShape": "capsule",
+                "mass": 1,
+                "restitution": 0.05,
+                "friction": 0.85,
+                "linearDamping": 0.1,
+                "angularDamping": 0.2,
+                "isSensor": false
+              }
+            },
+            {
+              "id": "wad-zombie-06-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "enemy",
+                  "zombie",
+                  "fallen"
+                ],
+                "behavior": "patrol",
+                "behaviorSpeed": 0.75,
+                "patrolDistance": 8,
+                "customData": {
+                  "role": "horde-minion",
+                  "spawnWave": 1
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#6f8f6a"
+            }
+          }
+        },
+        {
+          "id": "wad-safe-zone",
+          "name": "Broken Chapel Safe Zone",
+          "type": "box",
+          "parentId": null,
+          "transform": {
+            "position": [
+              -9,
+              1.5,
+              11
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              5,
+              3,
+              4
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "objective",
+            "safe-zone"
+          ],
+          "components": [
+            {
+              "id": "wad-safe-zone-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 0.28,
+                "metalness": 0.15,
+                "roughness": 0.85,
+                "emissiveIntensity": 0.35,
+                "wireframe": false,
+                "castShadow": false,
+                "receiveShadow": false,
+                "emissiveColor": "#5eead4"
+              }
+            },
+            {
+              "id": "wad-safe-zone-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "objective",
+                  "safe-zone"
+                ],
+                "behavior": "none",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "prompt": "Reach the chapel before the horde seals the street."
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#334155"
+            }
+          }
+        },
+        {
+          "id": "wad-moon-key",
+          "name": "Moon Gate Key Pickup",
+          "type": "sphere",
+          "parentId": null,
+          "transform": {
+            "position": [
+              13,
+              1.25,
+              -14
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.65,
+              0.65,
+              0.65
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "pickup",
+            "key"
+          ],
+          "components": [
+            {
+              "id": "wad-key-visual",
+              "type": "pixl.visual",
+              "enabled": true,
+              "data": {
+                "textureUrl": "",
+                "opacity": 1,
+                "metalness": 0.8,
+                "roughness": 0.18,
+                "emissiveIntensity": 1.4,
+                "wireframe": false,
+                "castShadow": true,
+                "receiveShadow": true,
+                "emissiveColor": "#facc15"
+              }
+            },
+            {
+              "id": "wad-key-entity",
+              "type": "pixl.entity",
+              "enabled": true,
+              "data": {
+                "entityType": "pickup",
+                "team": "neutral",
+                "maxHealth": 45,
+                "currentHealth": 45,
+                "isInvulnerable": false,
+                "invulnerabilityDuration": 0.5,
+                "canDealDamage": false,
+                "contactDamage": 0,
+                "knockbackResistance": 0.1,
+                "destroyOnDeath": true,
+                "isInteractable": true,
+                "interactionRange": 2,
+                "aiEnabled": false,
+                "aiType": "none",
+                "aiSpeed": 0,
+                "aiDetectionRange": 0,
+                "aiAttackRange": 0,
+                "aiAttackCooldown": 1.25,
+                "modelScale": 1,
+                "modelOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "modelRotationOffset": [
+                  0,
+                  0,
+                  0
+                ],
+                "hitboxScale": [
+                  1,
+                  1,
+                  1
+                ],
+                "hitboxOffset": [
+                  0,
+                  0.9,
+                  0
+                ],
+                "interactionPrompt": "Take Moon Gate Key",
+                "pickupType": "key",
+                "pickupValue": 1
+              }
+            },
+            {
+              "id": "wad-key-logic",
+              "type": "pixl.logic",
+              "enabled": true,
+              "data": {
+                "tags": [
+                  "pickup",
+                  "key"
+                ],
+                "behavior": "float",
+                "behaviorSpeed": 0,
+                "patrolDistance": 0,
+                "customData": {
+                  "unlocks": "moon-gate"
+                }
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#f8fafc"
+            }
+          }
+        },
+        {
+          "id": "wad-blood-moon",
+          "name": "Blood Moon Key Light",
+          "type": "light",
+          "parentId": "wad-lighting-root",
+          "transform": {
+            "position": [
+              13,
+              5,
+              -14
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "light",
+            "mood"
+          ],
+          "components": [
+            {
+              "id": "wad-blood-moon-light",
+              "type": "pixl.light3d",
+              "enabled": true,
+              "data": {
+                "lightType": "PointLight",
+                "intensity": 2.2,
+                "distance": 18,
+                "color": "#ef4444",
+                "castShadow": true
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#ef4444"
+            }
+          }
+        },
+        {
+          "id": "wad-street-sun",
+          "name": "Dead Dawn Directional Light",
+          "type": "sunlight",
+          "parentId": "wad-lighting-root",
+          "transform": {
+            "position": [
+              -15,
+              18,
+              10
+            ],
+            "rotation": [
+              -0.7,
+              -0.45,
+              -0.2
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "visible": true,
+          "locked": false,
+          "tags": [
+            "light",
+            "sun"
+          ],
+          "components": [
+            {
+              "id": "wad-street-sun-light",
+              "type": "pixl.light3d",
+              "enabled": true,
+              "data": {
+                "lightType": "DirectionalLight",
+                "intensity": 1.05,
+                "color": "#fbbf7a",
+                "castShadow": true
+              }
+            }
+          ],
+          "data": {
+            "editor": {
+              "color": "#fbbf7a"
+            }
+          }
+        }
+      ],
+      "camera": {
+        "id": "editor-camera",
+        "name": "Editor Camera",
+        "position": [
+          18,
+          13,
+          24
+        ],
+        "target": [
+          4,
+          1.5,
+          -5
+        ],
+        "fov": 52,
+        "near": 0.1,
+        "far": 1600
+      },
+      "environment": {
+        "background": "#0d0f14",
+        "ambientLight": "#8a9bb8",
+        "ambientIntensity": 0.45,
+        "sunColor": "#fbbf7a",
+        "sunIntensity": 1.05
+      },
+      "physics": {
+        "engine": "rapier",
+        "gravity": [
+          0,
+          -9.81,
+          0
+        ]
+      },
+      "metadata": {
+        "genre": "third-person survival horror",
+        "source": "Babylon.js Editor WAD asset pack migrated to Three.js/PixlPlayground"
+      }
+    }
+  ],
+  "assets": {
+    "root": "Assets",
+    "folders": [
+      "Assets/3D_Models",
+      "Assets/Sprites",
+      "Assets/Textures",
+      "Assets/Audio",
+      "Assets/VFX",
+      "Assets/Materials",
+      "Assets/Prefabs",
+      "Scenes",
+      "Scripts",
+      "ProjectSettings",
+      "Builds",
+      "Dev"
+    ],
+    "entries": [
+      {
+        "id": "wad-city-5",
+        "name": "Procedural City 5",
+        "kind": "model",
+        "path": "_extracted/procedural_city_5/scene.gltf",
+        "url": "_extracted/procedural_city_5/scene.gltf",
+        "tags": [
+          "city",
+          "environment"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-city-6",
+        "name": "Procedural City 6",
+        "kind": "model",
+        "path": "_extracted/procedural_city_6/scene.gltf",
+        "url": "_extracted/procedural_city_6/scene.gltf",
+        "tags": [
+          "city",
+          "environment"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-sledge-high",
+        "name": "Sledge High",
+        "kind": "model",
+        "path": "_three-ready/characters/sledge-high-character.glb",
+        "url": "_three-ready/characters/sledge-high-character.glb",
+        "tags": [
+          "player",
+          "character"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-zombie-1",
+        "name": "Zombie 1",
+        "kind": "model",
+        "path": "_three-ready/characters/zombie-01.glb",
+        "url": "_three-ready/characters/zombie-01.glb",
+        "tags": [
+          "enemy",
+          "character"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-zombie-2",
+        "name": "Zombie 2",
+        "kind": "model",
+        "path": "_three-ready/characters/zombie-02.glb",
+        "url": "_three-ready/characters/zombie-02.glb",
+        "tags": [
+          "enemy",
+          "character"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-zombie-3",
+        "name": "Zombie 3",
+        "kind": "model",
+        "path": "_three-ready/characters/zombie-03.glb",
+        "url": "_three-ready/characters/zombie-03.glb",
+        "tags": [
+          "enemy",
+          "character"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-zombie-4",
+        "name": "Zombie 4",
+        "kind": "model",
+        "path": "_three-ready/characters/zombie-04.glb",
+        "url": "_three-ready/characters/zombie-04.glb",
+        "tags": [
+          "enemy",
+          "character"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-zombie-5",
+        "name": "Zombie 5",
+        "kind": "model",
+        "path": "_three-ready/characters/zombie-05.glb",
+        "url": "_three-ready/characters/zombie-05.glb",
+        "tags": [
+          "enemy",
+          "character"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-zombie-6",
+        "name": "Zombie 6",
+        "kind": "model",
+        "path": "_three-ready/characters/zombie-08.glb",
+        "url": "_three-ready/characters/zombie-08.glb",
+        "tags": [
+          "enemy",
+          "character"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-logo",
+        "name": "Where Angels Die Logo",
+        "kind": "texture",
+        "path": "WAD -logo.png",
+        "url": "WAD -logo.png",
+        "tags": [
+          "branding"
+        ],
+        "metadata": {}
+      },
+      {
+        "id": "wad-icon",
+        "name": "Where Angels Die Icon",
+        "kind": "texture",
+        "path": "icone-WAD.png",
+        "url": "icone-WAD.png",
+        "tags": [
+          "branding"
+        ],
+        "metadata": {}
+      }
+    ]
+  },
+  "editor": {
+    "mode": "3d",
+    "transformSpace": "world",
+    "snapEnabled": false,
+    "snapTranslate": 1,
+    "snapRotate": 15,
+    "snapScale": 0.25,
+    "selectedSceneId": "wad-main",
+    "layoutPreset": "default"
+  },
+  "game": {
+    "templateId": null,
+    "script": "// Where Angels Die - first playable loop\n// Core fantasy: Sledge High crosses a ruined procedural city while fallen angels/zombies hunt him.\n// Verbs: move, dodge, heavy melee, collect the Moon Gate key, reach the chapel safe zone.\n// Next implementation pass: wire enemy chase, melee hit arcs, health/stamina HUD, and win/loss gates.\n",
+    "source": {
+      "originalEngine": "Babylon.js Editor 9",
+      "migrationTarget": "PixlPlayground Three.js",
+      "assetRoot": "C:/Users/PCSP/Documents/doc/Three/WAD"
+    }
+  }
+}

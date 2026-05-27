@@ -111,8 +111,8 @@ export const createEmptyProjectDocument = (params: {
           sunIntensity: 0,
         },
         physics: {
-          engine: 'rapier' as const,
-          gravity: [0, -9.81, 0] as [number, number, number],
+          engine: 'arcade' as const,
+          gravity: [0, 980, 0] as [number, number, number],
         },
       }
     : {
@@ -159,7 +159,7 @@ export const createEmptyProjectDocument = (params: {
     runtime: {
       primary: runtimePrimary,
       renderers: [...renderers],
-      physics: ['rapier'],
+      physics: kind === '2d' ? ['arcade'] : ['rapier'],
     },
     activeSceneId: scene.id,
     scenes: [scene],

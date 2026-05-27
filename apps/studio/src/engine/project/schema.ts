@@ -6,11 +6,13 @@ export type PixlProjectVersion = typeof PIXL_PROJECT_VERSION;
 
 export type PixlRuntimeKind = 'phaser-2d' | 'three-3d' | 'hybrid';
 export type PixlRendererKind = 'phaser' | 'three';
-export type PixlPhysicsKind = 'matter' | 'rapier' | 'none';
+export type PixlPhysicsKind = 'arcade' | 'matter' | 'rapier' | 'none';
 export type PixlSceneKind = '2d' | '3d' | 'hybrid';
 export type PixlAssetKind =
   | 'model'
   | 'texture'
+  | 'image'
+  | 'spritesheet'
   | 'audio'
   | 'script'
   | 'sprite'
@@ -141,6 +143,7 @@ export interface PixlSceneObject {
   locked: boolean;
   tags: string[];
   components: PixlComponentInstance[];
+  children?: PixlSceneObject[];
   data?: Record<string, unknown>;
 }
 
@@ -272,6 +275,7 @@ export type AnyPixlProjectDocument = PixlProjectDocument | LegacyPixlProjectDocu
 export const DEFAULT_PROJECT_FOLDERS = [
   'Assets/3D_Models',
   'Assets/Sprites',
+  'Assets/Tilemaps',
   'Assets/Textures',
   'Assets/Audio',
   'Assets/VFX',

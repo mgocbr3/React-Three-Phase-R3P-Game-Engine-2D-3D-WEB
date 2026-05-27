@@ -226,6 +226,17 @@ const getModelUrl = (object: PixlSceneObjectShape): string | undefined => (
   getString(getComponentData(object, 'pixl.animation')?.modelUrl)
 );
 
+const flattenSceneObjects = (objects: PixlSceneObjectShape[]): PixlSceneObjectShape[] => {
+  const flattened: PixlSceneObjectShape[] = [];
+  for (const object of objects) {
+    flattened.push(object);
+    if (object.children?.length) {
+      flattened.push(...flattenSceneObjects(object.children));
+    }
+  }
+  return flattened;
+};
+
 export const exportProjectToLevel3D = (
   project: PixlProjectShape,
   sceneId?: string,
@@ -261,7 +272,7 @@ export const exportProjectToLevel3D = (
     }
   }
 
-  const objects: Level3DObject[] = scene.rootObjects.flatMap((object) => {
+  const objects: Level3DObject[] = flattenSceneObjects(scene.rootObjects).flatMap((object) => {
     const customData = getComponentData(object, 'pixl.logic')?.customData as Record<string, unknown> | undefined;
     const modelUrl = getModelUrl(object);
     const normalizedModelUrl = normalizeAssetUrl(modelUrl);

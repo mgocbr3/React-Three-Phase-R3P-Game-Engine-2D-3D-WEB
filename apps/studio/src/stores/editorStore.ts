@@ -4,11 +4,33 @@ import { TemplateId } from './gameStore';
 import type { ScriptInstance } from '@/scripts/types';
 import type { TerrainSettings } from './terrainStore';
 import { storageManager } from '@/services/storageManager';
+import type { PixlComponentInstance } from '@/engine/project/schema';
+import { isComponentAllowedForScene } from '@/services/componentCatalog';
 
-export type ObjectType = 'box' | 'sphere' | 'cylinder' | 'plane' | 'platform' | 'light' | 'sunlight' | 'spotlight' | 'npc' | 'ring' | 'group' | 'camera' | 'player' | 'terrain';
+export type ObjectType =
+  | 'box'
+  | 'sphere'
+  | 'cylinder'
+  | 'plane'
+  | 'platform'
+  | 'light'
+  | 'sunlight'
+  | 'spotlight'
+  | 'npc'
+  | 'ring'
+  | 'group'
+  | 'camera'
+  | 'player'
+  | 'terrain'
+  | 'image'
+  | 'sprite'
+  | 'rectangle'
+  | 'circle'
+  | 'text';
 export type TransformMode = 'select' | 'translate' | 'rotate' | 'scale';
 export type TransformSpace = 'world' | 'local';
 export type CameraMode = 'third-person' | 'first-person' | 'side-2d' | 'top-down' | 'fixed';
+export type HierarchyReorderPosition = 'before' | 'after';
 
 // GDD §6.6 Phase 6B step 6: single source of truth for which viewport
 // the editor is showing. Toolbar 2D/3D buttons write here; Viewport reads
@@ -360,6 +382,8 @@ export interface SceneObject {
   visible: boolean;
   locked: boolean;
   parentId?: string | null; // Parent object ID for hierarchy
+  components?: PixlComponentInstance[]; // Raw schema components preserved for 2D/runtime authoring.
+  data?: Record<string, unknown>; // Raw schema payload (imageUrl, dimensions, depth, text, etc.).
   isStatic?: boolean; // Legacy, now use physicsSettings.bodyType
   emissive?: boolean;
   lightSettings?: LightSettings; // NEW: Advanced light properties
@@ -422,7 +446,14 @@ interface EditorState {
   focusOnObject: (id: string) => void;
   addObject: (type: ObjectType, position?: [number, number, number]) => void;
   addModelFromAsset: (asset: { name: string; url: string; type?: string; thumbnailUrl?: string }, position?: [number, number, number]) => void;
+  addSpriteFromAsset: (asset: { id?: string; name: string; url: string; type?: string; thumbnailUrl?: string }, position?: [number, number, number]) => SceneObject | null;
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
+  reparentObject: (id: string, parentId: string | null) => boolean;
+  reorderObject: (id: string, targetId: string, position: HierarchyReorderPosition) => boolean;
+  addComponentToObject: (objectId: string, component: PixlComponentInstance) => void;
+  updateObjectComponent: (objectId: string, componentId: string, updates: Partial<PixlComponentInstance>) => void;
+  updateObjectComponentData: (objectId: string, componentId: string, data: Record<string, unknown>) => void;
+  removeComponentFromObject: (objectId: string, componentId: string) => void;
   deleteObject: (id: string) => void;
   duplicateObject: (id: string) => void;
   setObjects: (objects: SceneObject[]) => void;
@@ -454,6 +485,55 @@ interface EditorState {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+const buildChildrenByParent = (objects: SceneObject[]): Map<string, SceneObject[]> => {
+  const childrenByParent = new Map<string, SceneObject[]>();
+  for (const object of objects) {
+    if (!object.parentId) continue;
+    const children = childrenByParent.get(object.parentId) ?? [];
+    children.push(object);
+    childrenByParent.set(object.parentId, children);
+  }
+  return childrenByParent;
+};
+
+const collectDescendantIds = (objects: SceneObject[], objectId: string): Set<string> => {
+  const childrenByParent = buildChildrenByParent(objects);
+  const descendants = new Set<string>();
+  const queue = [...(childrenByParent.get(objectId) ?? [])];
+
+  while (queue.length) {
+    const child = queue.shift()!;
+    if (descendants.has(child.id)) continue;
+    descendants.add(child.id);
+    queue.push(...(childrenByParent.get(child.id) ?? []));
+  }
+
+  return descendants;
+};
+
+const wouldCreateHierarchyCycle = (
+  objects: SceneObject[],
+  objectId: string,
+  parentId: string,
+): boolean => {
+  const objectsById = new Map(objects.map((object) => [object.id, object]));
+  let current = objectsById.get(parentId);
+  let guard = 0;
+
+  while (current && guard <= objects.length) {
+    if (current.id === objectId) return true;
+    if (!current.parentId) return false;
+    current = objectsById.get(current.parentId);
+    guard += 1;
+  }
+
+  return false;
+};
+
+const hasSameObjectOrder = (a: SceneObject[], b: SceneObject[]): boolean => (
+  a.length === b.length && a.every((object, index) => object.id === b[index]?.id)
+);
 
 const getDefaultCameraSettings = (mode: CameraMode): CameraSettings => ({
   mode,
@@ -1289,6 +1369,50 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     
     return newObject;
   },
+
+  addSpriteFromAsset: (asset, position = [0, 0, 0]) => {
+    if (!asset.url) return null;
+
+    const id = generateId();
+    const isSprite = asset.type === 'sprite' || asset.type === 'spritesheet';
+    const newObject: SceneObject = {
+      id,
+      name: asset.name || 'Sprite',
+      type: isSprite ? 'sprite' : 'image',
+      position,
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      color: '#ffffff',
+      visible: true,
+      locked: false,
+      components: [
+        {
+          id: `${id}-sprite`,
+          type: 'pixl.sprite',
+          enabled: true,
+          data: {
+            textureId: asset.id ?? asset.url,
+            imageUrl: asset.url,
+            centered: true,
+          },
+        },
+      ],
+      data: {
+        imageUrl: asset.url,
+        url: asset.url,
+        depth: 0,
+        ...(isSprite ? { frame: 0 } : {}),
+      },
+    };
+
+    set((state) => ({
+      objects: [...state.objects, newObject],
+      selectedObjectId: id,
+    }));
+    get().saveToHistory();
+
+    return newObject;
+  },
   
   updateObject: (id, updates) => {
     set((state) => ({
@@ -1297,13 +1421,177 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ),
     }));
   },
+
+  reparentObject: (id, parentId) => {
+    const nextParentId = parentId ?? null;
+    let didReparent = false;
+
+    set((state) => {
+      const object = state.objects.find((item) => item.id === id);
+      if (!object) return state;
+      if (nextParentId === id) return state;
+      if ((object.parentId ?? null) === nextParentId) return state;
+      if (nextParentId && !state.objects.some((item) => item.id === nextParentId)) return state;
+      if (nextParentId && wouldCreateHierarchyCycle(state.objects, id, nextParentId)) return state;
+
+      didReparent = true;
+      return {
+        objects: state.objects.map((item) => (
+          item.id === id ? { ...item, parentId: nextParentId } : item
+        )),
+        selectedObjectId: id,
+      };
+    });
+
+    if (didReparent) get().saveToHistory();
+    return didReparent;
+  },
+
+  reorderObject: (id, targetId, position) => {
+    let didReorder = false;
+
+    set((state) => {
+      if (id === targetId) return state;
+
+      const source = state.objects.find((item) => item.id === id);
+      const target = state.objects.find((item) => item.id === targetId);
+      if (!source || !target) return state;
+
+      const movedIds = collectDescendantIds(state.objects, id);
+      movedIds.add(id);
+      if (movedIds.has(targetId)) return state;
+
+      const nextParentId = target.parentId ?? null;
+      if (nextParentId === id) return state;
+      if (nextParentId && wouldCreateHierarchyCycle(state.objects, id, nextParentId)) return state;
+
+      const movedObjects = state.objects.map((item) => (
+        item.id === id && (item.parentId ?? null) !== nextParentId
+          ? { ...item, parentId: nextParentId }
+          : item
+      )).filter((item) => movedIds.has(item.id));
+      const remainingObjects = state.objects.filter((item) => !movedIds.has(item.id));
+      const targetIndex = remainingObjects.findIndex((item) => item.id === targetId);
+      if (targetIndex === -1) return state;
+
+      let insertIndex = targetIndex;
+      if (position === 'after') {
+        const targetSubtreeIds = collectDescendantIds(remainingObjects, targetId);
+        targetSubtreeIds.add(targetId);
+        insertIndex = remainingObjects.reduce(
+          (lastIndex, item, index) => (targetSubtreeIds.has(item.id) ? index : lastIndex),
+          targetIndex,
+        ) + 1;
+      }
+
+      const nextObjects = [
+        ...remainingObjects.slice(0, insertIndex),
+        ...movedObjects,
+        ...remainingObjects.slice(insertIndex),
+      ];
+
+      if (
+        (source.parentId ?? null) === nextParentId
+        && hasSameObjectOrder(state.objects, nextObjects)
+      ) {
+        return state;
+      }
+
+      didReorder = true;
+      return {
+        objects: nextObjects,
+        selectedObjectId: id,
+      };
+    });
+
+    if (didReorder) get().saveToHistory();
+    return didReorder;
+  },
+
+  addComponentToObject: (objectId, component) => {
+    if (!isComponentAllowedForScene(component.type, get().activeSceneKind)) return;
+
+    let changed = false;
+    set((state) => {
+      const objects = state.objects.map((obj) => {
+        if (obj.id !== objectId) return obj;
+        const components = obj.components ?? [];
+        if (components.some((item) => item.id === component.id || item.type === component.type)) return obj;
+        changed = true;
+        return {
+          ...obj,
+          components: [...components, component],
+        };
+      });
+      return changed ? { objects } : state;
+    });
+    if (changed) get().saveToHistory();
+  },
+
+  updateObjectComponent: (objectId, componentId, updates) => {
+    set((state) => {
+      let changed = false;
+      const objects = state.objects.map((obj) => {
+        if (obj.id !== objectId) return obj;
+        const components = obj.components;
+        if (!components?.length) return obj;
+        let objectChanged = false;
+        const nextComponents = components.map((component) => {
+          if (component.id !== componentId) return component;
+          objectChanged = true;
+          return { ...component, ...updates };
+        });
+        if (!objectChanged) return obj;
+        changed = true;
+        return {
+          ...obj,
+          components: nextComponents,
+        };
+      });
+      return changed ? { objects } : state;
+    });
+  },
+
+  updateObjectComponentData: (objectId, componentId, data) => {
+    get().updateObjectComponent(objectId, componentId, { data });
+  },
+
+  removeComponentFromObject: (objectId, componentId) => {
+    let changed = false;
+    set((state) => {
+      const objects = state.objects.map((obj) => {
+        if (obj.id !== objectId) return obj;
+        const components = obj.components ?? [];
+        const nextComponents = components.filter((component) => component.id !== componentId);
+        if (nextComponents.length === components.length) return obj;
+        changed = true;
+        return {
+          ...obj,
+          components: nextComponents,
+        };
+      });
+      return changed ? { objects } : state;
+    });
+    if (changed) get().saveToHistory();
+  },
   
   deleteObject: (id) => {
-    set((state) => ({
-      objects: state.objects.filter((obj) => obj.id !== id),
-      selectedObjectId: state.selectedObjectId === id ? null : state.selectedObjectId,
-    }));
-    get().saveToHistory();
+    let deletedIds = new Set<string>();
+
+    set((state) => {
+      if (!state.objects.some((obj) => obj.id === id)) return state;
+      deletedIds = collectDescendantIds(state.objects, id);
+      deletedIds.add(id);
+
+      return {
+        objects: state.objects.filter((obj) => !deletedIds.has(obj.id)),
+        selectedObjectId: state.selectedObjectId && deletedIds.has(state.selectedObjectId)
+          ? null
+          : state.selectedObjectId,
+      };
+    });
+
+    if (deletedIds.size) get().saveToHistory();
   },
   
   duplicateObject: (id) => {

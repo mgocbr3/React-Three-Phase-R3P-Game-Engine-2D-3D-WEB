@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 
 import {
   applyProjectDocumentToEditor,
-  createProjectDocumentFromEditor,
+  createActiveProjectDocumentSnapshot,
 } from './localProjectFiles';
 import { withFilePicker } from './filePickerLock';
 import type { AnyPixlProjectDocument } from '@/engine/project/schema';
@@ -72,7 +72,7 @@ const slugifyProjectName = (name: string): string => (
 
 export const saveCurrentProjectAsPixl = async (projectName: string): Promise<PixlPackageManifest> => (
   withFilePicker('save .pixl', async () => {
-    const document = createProjectDocumentFromEditor(projectName);
+    const { document } = createActiveProjectDocumentSnapshot(projectName);
     const projectDocBytes = TEXT_ENCODER.encode(JSON.stringify(document, null, 2));
     const { bytes, manifest } = await packProject({
       files: [{ path: PIXL_PROJECT_DOCUMENT_PATH, bytes: projectDocBytes }],

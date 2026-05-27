@@ -33,8 +33,9 @@ export interface AssetLoadProgress {
 export interface ProjectAsset {
   id: string;
   name: string;
-  type: 'model' | 'texture' | 'audio' | 'script';
+  type: 'model' | 'texture' | 'image' | 'sprite' | 'spritesheet' | 'tilemap' | 'audio' | 'script';
   url: string;
+  path?: string;
   thumbnail?: string;
   folder: string;
   createdAt: number;

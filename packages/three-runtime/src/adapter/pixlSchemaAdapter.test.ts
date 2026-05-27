@@ -64,6 +64,28 @@ describe('pixlSceneToWesScene', () => {
     expect(child1?.children![0].name).toBe('Grand');
   });
 
+  it('accepts Pixl documents that already store nested children', () => {
+    const scene = makeScene([
+      makeObject({
+        id: 'root',
+        name: 'Root',
+        children: [
+          makeObject({
+            id: 'child',
+            name: 'Nested Child',
+            parentId: null,
+          }),
+        ],
+      }),
+    ]);
+
+    const out = pixlSceneToWesScene(scene);
+
+    expect(out.gameObjects).toHaveLength(1);
+    expect(out.gameObjects![0].name).toBe('Root');
+    expect(out.gameObjects![0].children?.[0].name).toBe('Nested Child');
+  });
+
   it('translates pixl.mesh components to Wes model components', () => {
     const scene = makeScene([
       makeObject({

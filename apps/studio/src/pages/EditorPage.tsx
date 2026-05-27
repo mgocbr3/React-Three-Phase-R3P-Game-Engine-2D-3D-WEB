@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useCallback, useRef, useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { EditorCanvas } from '@/components/canvas/EditorCanvas';
@@ -13,19 +13,14 @@ import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
 import { RuntimePreviewOverlay } from '@/components/editor/RuntimePreviewOverlay';
 import { MobileEditorLayout } from '@/components/editor/mobile';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
-import { ConflictResolutionDialog } from '@/components/editor/ConflictResolutionDialog';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useProjectAutoSave } from '@/legacy/cloud/hooks/useProjectAutoSave';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
 import { useEditorArrowNudge } from '@/hooks/useEditorArrowNudge';
 import { TemplateId, GAME_TEMPLATES } from '@/stores/gameStore';
-import { usePixllandBridge } from '@/hooks/usePixllandBridge';
-import { usePixllandProjectStore } from '@/stores/pixllandProjectStore';
-import { useAuthStore } from '@/legacy/cloud/stores/authStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
-import { fetchProject } from '@/legacy/cloud/services/projectService';
+import { getEditorCloudBridge } from '@/stores/editorCloudBridgeStore';
 import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 import { hasSampleProject, openSampleProject } from '@/services/sampleProjects';
 import {
@@ -36,18 +31,18 @@ import {
 import { FilePickerBusyError } from '@/services/filePickerLock';
 import { toast } from 'sonner';
 
+const LegacyCloudEditorIntegration = ENGINE_CLOUD_ENABLED
+  ? lazy(() => import('@/legacy/cloud/components/LegacyCloudEditorIntegration'))
+  : null;
+
 const EditorPage = () => {
   const isMobile = useIsMobile();
   const { templateId } = useParams<{ templateId: string }>();
   const { loadTemplate, currentTemplateId, saveProject, loadSavedProject, hasSavedProject, objects } = useEditorStore();
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const previewDisplayMode = useRuntimeGameStore((s) => s.previewDisplayMode);
-  const { user } = useAuthStore();
   const panels = useEditorLayoutStore((s) => s.panels);
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
-
-  //  Ativar auto-save híbrido (local + nuvem quando logado)
-  const { setCloudProjectId, pendingConflict, isResolvingConflict, resolveConflict } = useProjectAutoSave();
 
   // Local autosave — writes `pixl-project-document` + per-id snapshot after
   // any editor mutation. Without this, Inspector edits / drags / gizmo moves
@@ -77,15 +72,8 @@ const EditorPage = () => {
   const autoCreate = searchParams.get('autocreate') === 'true';
   const autoCreateTitle = searchParams.get('title') || undefined;
 
-  const { openProject, saveToPixlland, requestProjects } = usePixllandBridge();
-  const currentProjectId = usePixllandProjectStore((s) => s.currentProjectId);
-  const setCurrentProjectId = usePixllandProjectStore((s) => s.setCurrentProjectId);
-
   const lastSaveRef = useRef<number>(Date.now());
   const hasLoadedSavedRef = useRef<boolean>(false);
-  const hasRequestedRemoteProjectRef = useRef<boolean>(false);
-  const hasAutoCreatedRef = useRef<boolean>(false);
-  const hasLoadedFromCloudRef = useRef<boolean>(false);
   const hasLoadedSampleProjectRef = useRef<boolean>(false);
   const hasLoadedLocalProjectRef = useRef<boolean>(false);
   const [isOpeningDiskProject, setIsOpeningDiskProject] = useState(Boolean(sampleProjectSlug || localProjectId));
@@ -96,13 +84,19 @@ const EditorPage = () => {
   // Manual save function with toast notification
   const handleSave = useCallback(() => {
     if (isEmbedded) {
-      const pid = urlProjectId || currentProjectId;
+      const cloudBridge = getEditorCloudBridge();
+      if (!cloudBridge.isReady) {
+        toast.error('Integração Pixlland ainda está inicializando.');
+        return;
+      }
+
+      const pid = urlProjectId || cloudBridge.currentProjectId;
       if (!pid) {
         toast.error('Abra ou crie um projeto antes de salvar.');
         return;
       }
-      saveToPixlland({ projectId: pid, title: autoCreateTitle || 'Meu Projeto' });
-      requestProjects();
+      cloudBridge.saveToPixlland({ projectId: pid, title: autoCreateTitle || 'Meu Projeto' });
+      cloudBridge.requestProjects();
       lastSaveRef.current = Date.now();
       toast.success('Projeto salvo e sincronizado!', { duration: 2000 });
       return;
@@ -130,7 +124,7 @@ const EditorPage = () => {
     saveProject();
     lastSaveRef.current = Date.now();
     toast.success('Projeto salvo!', { duration: 2000 });
-  }, [isEmbedded, urlProjectId, currentProjectId, saveToPixlland, requestProjects, autoCreateTitle, saveProject]);
+  }, [isEmbedded, urlProjectId, autoCreateTitle, saveProject]);
   
   // Keyboard shortcut: Ctrl+S to save
   useEffect(() => {
@@ -185,47 +179,11 @@ const EditorPage = () => {
       });
   }, [localProjectId]);
   
-  // Try to load project from cloud if user is logged in and has projectId in URL
-  useEffect(() => {
-    const loadCloudProject = async () => {
-      if (hasLoadedFromCloudRef.current) return;
-      if (!ENGINE_CLOUD_ENABLED) return;
-      if (sampleProjectSlug) return;
-      if (localProjectId) return;
-      if (!user || !urlProjectId || isEmbedded) return;
-      
-      hasLoadedFromCloudRef.current = true;
-      
-      try {
-        const project = await fetchProject(urlProjectId);
-
-        if (project && project.game_data) {
-          const gameData = project.game_data as any;
-
-          useEditorStore.setState({
-            objects: gameData.objects || [],
-            currentTemplateId: gameData.currentTemplateId || null,
-            gameScript: gameData.gameScript || '// Game Script\n',
-          });
-
-          setCloudProjectId(urlProjectId);
-          toast.success('Projeto carregado da nuvem!');
-          return;
-        }
-      } catch (error) {
-        console.error('[EditorPage] Erro ao carregar projeto:', error);
-      }
-    };
-    
-    loadCloudProject();
-  }, [user, urlProjectId, isEmbedded, setCloudProjectId, sampleProjectSlug, localProjectId]);
-  
   // Try to load saved project on first mount (automatic restore) - only if no cloud project
   useEffect(() => {
     if (sampleProjectSlug) return;
     if (localProjectId) return;
-    if (hasLoadedFromCloudRef.current) return;
-    if (urlProjectId && user) return; // Espera carregar da nuvem
+    if (ENGINE_CLOUD_ENABLED && urlProjectId && !isEmbedded) return;
     
     // Always try to restore last local save first
     if (!hasLoadedSavedRef.current && hasSavedProject()) {
@@ -244,55 +202,7 @@ const EditorPage = () => {
       // Projeto em branco - carrega template 'blank' que só tem o chão
       loadTemplate('blank' as TemplateId);
     }
-  }, [templateId, isValidTemplate, currentTemplateId, loadTemplate, hasSavedProject, loadSavedProject, urlProjectId, user, sampleProjectSlug, localProjectId]);
-
-  // Embedded: if URL has projectId, ask platform to load it.
-  useEffect(() => {
-    if (!isEmbedded) return;
-    if (!urlProjectId) return;
-    if (hasRequestedRemoteProjectRef.current) return;
-    hasRequestedRemoteProjectRef.current = true;
-
-    setCurrentProjectId(urlProjectId);
-    openProject(urlProjectId);
-  }, [isEmbedded, urlProjectId, openProject, setCurrentProjectId]);
-
-  // Embedded: create a platform project automatically when coming from dashboard.
-  useEffect(() => {
-    if (!isEmbedded) return;
-    if (!autoCreate) return;
-    if (hasAutoCreatedRef.current) return;
-    if (urlProjectId) return; // already created
-
-    // Wait a moment so template loading applies objects before saving.
-    hasAutoCreatedRef.current = true;
-    const timer = setTimeout(async () => {
-      try {
-        const resp: any = await saveToPixlland({ projectId: null, title: autoCreateTitle || 'Novo Projeto' });
-        const newId = resp?.projectId || resp?.id || resp?.gameId;
-
-        if (newId) {
-          setCurrentProjectId(newId);
-
-          const url = new URL(window.location.href);
-          url.searchParams.set('embedded', 'true');
-          url.searchParams.set('projectId', newId);
-          url.searchParams.delete('autocreate');
-          url.searchParams.delete('title');
-          window.history.replaceState({}, '', url.toString());
-
-          requestProjects();
-          toast.success('Projeto criado e sincronizado!', { duration: 2000 });
-        } else {
-          toast.error('Projeto criado, mas sem ID retornado pela plataforma.');
-        }
-      } catch (e) {
-        toast.error('Falha ao criar projeto na plataforma.');
-      }
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [isEmbedded, autoCreate, urlProjectId, saveToPixlland, autoCreateTitle, requestProjects, setCurrentProjectId]);
+  }, [templateId, isValidTemplate, currentTemplateId, loadTemplate, hasSavedProject, loadSavedProject, urlProjectId, isEmbedded, sampleProjectSlug, localProjectId]);
   
   if (!isValidTemplate) {
     return <Navigate to="/" replace />;
@@ -391,17 +301,17 @@ const EditorPage = () => {
       {/* Motion Control Overlay - renders on top of everything when enabled */}
       <MotionControlOverlay />
       
-      {/* Conflict Resolution Dialog */}
-      {ENGINE_CLOUD_ENABLED && (
-        <ConflictResolutionDialog
-          conflict={pendingConflict}
-          onResolve={resolveConflict}
-          onCancel={() => {
-            // User canceled - could show warning about unsaved changes
-            toast.warning('Conflito não resolvido. Suas mudanças não foram salvas na nuvem.');
-          }}
-          isResolving={isResolvingConflict}
-        />
+      {LegacyCloudEditorIntegration && (
+        <Suspense fallback={null}>
+          <LegacyCloudEditorIntegration
+            isEmbedded={isEmbedded}
+            urlProjectId={urlProjectId}
+            sampleProjectSlug={sampleProjectSlug}
+            localProjectId={localProjectId}
+            autoCreate={autoCreate}
+            autoCreateTitle={autoCreateTitle}
+          />
+        </Suspense>
       )}
     </div>
   );

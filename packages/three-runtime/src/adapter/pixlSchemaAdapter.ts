@@ -44,6 +44,7 @@ export interface PixlSceneObject {
   locked?: boolean;
   tags?: string[];
   components?: PixlComponentInstance[];
+  children?: PixlSceneObject[];
   data?: Record<string, unknown>;
 }
 
@@ -300,6 +301,26 @@ const buildGameObjectJSON = (object: PixlSceneObject, children: PixlSceneObject[
 
 let allSceneObjects: PixlSceneObject[] = [];
 
+const flattenPixlSceneObjects = (
+  objects: PixlSceneObject[],
+  parentId: string | null = null,
+): PixlSceneObject[] => {
+  const flattened: PixlSceneObject[] = [];
+
+  for (const object of objects) {
+    const normalized = parentId && !object.parentId
+      ? { ...object, parentId }
+      : object;
+    flattened.push(normalized);
+
+    if (object.children?.length) {
+      flattened.push(...flattenPixlSceneObjects(object.children, normalized.id));
+    }
+  }
+
+  return flattened;
+};
+
 const getChildren = (parentId: string, list: PixlSceneObject[]): PixlSceneObject[] => (
   list.filter((o) => (o.parentId ?? null) === parentId)
 );
@@ -334,10 +355,10 @@ const synthesizeEnvironmentLights = (
 };
 
 export const pixlSceneToWesScene = (scene: PixlSceneDocument): SceneJSON => {
-  allSceneObjects = scene.rootObjects;
-  const roots = getRoots(scene.rootObjects);
+  allSceneObjects = flattenPixlSceneObjects(scene.rootObjects);
+  const roots = getRoots(allSceneObjects);
   const gameObjects = roots.map((root) => (
-    buildGameObjectJSON(root, getChildren(root.id, scene.rootObjects))
+    buildGameObjectJSON(root, getChildren(root.id, allSceneObjects))
   ));
 
   return {

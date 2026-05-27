@@ -15,6 +15,8 @@ export interface SampleProjectMeta {
   projectUrl: string;
   /** Optional asset base used when binaries live outside the project dir. */
   assetBaseUrl?: string;
+  /** Whether the Hub should open this sample through the native runtime viewport. */
+  useNativeViewport?: boolean;
   /** Human-friendly title for Hub cards / page titles. */
   displayName: string;
   /** One-line elevator pitch shown beneath the title in the Hub. */
@@ -57,7 +59,20 @@ const SAMPLE_PROJECTS: Record<string, SampleProjectMeta> = {
     kind: '2d',
     accent: 'cyan',
   },
+  'where-angels-die': {
+    projectUrl: '/sample-projects/where-angels-die/project.pixlproject.json',
+    assetBaseUrl: import.meta.env.DEV && REPO_FS_ROOT ? `/@fs/${REPO_FS_ROOT}/doc/Three/WAD/` : undefined,
+    useNativeViewport: false,
+    displayName: 'Where Angels Die',
+    description: 'Survival horror 3D migrado do Babylon 9 - cidade procedural, Sledge High e horda zumbi',
+    kind: '3d',
+    accent: 'red',
+  },
 };
+
+const getSampleDocumentBaseUrl = (sample: SampleProjectMeta): string => (
+  sample.projectUrl.replace(/\/project\.pixlproject\.json$/i, '')
+);
 
 export interface SampleProjectEntry extends SampleProjectMeta {
   slug: string;
@@ -73,7 +88,7 @@ export const buildSampleEditorUrl = (slug: string): string | null => {
   if (!meta) return null;
   const params = new URLSearchParams();
   params.set('sampleProject', slug);
-  params.set('engine', 'native');
+  if (meta.useNativeViewport !== false) params.set('engine', 'native');
   if (meta.kind === '2d') params.set('kind', '2d');
   return `/editor?${params.toString()}`;
 };
@@ -92,7 +107,9 @@ export const loadSampleProjectDocument = async (slug: string): Promise<PixlProje
   }
 
   const document = normalizeProjectDocument(await response.json() as AnyPixlProjectDocument);
-  return resolveProjectDocumentAssetUrls(document, { assetBaseUrl: sample.assetBaseUrl });
+  return resolveProjectDocumentAssetUrls(document, {
+    assetBaseUrl: sample.assetBaseUrl ?? getSampleDocumentBaseUrl(sample),
+  });
 };
 
 export const openSampleProject = async (slug: string): Promise<PixlProjectDocument> => {
@@ -108,6 +125,8 @@ export const openSampleProject = async (slug: string): Promise<PixlProjectDocume
     && typeof snapshot.savedAt === 'number'
     && snapshot.savedAt > (fresh.savedAt ?? 0));
   const document = useSnapshot ? mergeSnapshotOntoFresh(fresh, snapshot) : fresh;
-  applyProjectDocumentToEditor(document, { assetBaseUrl: SAMPLE_PROJECTS[slug].assetBaseUrl ?? null });
+  applyProjectDocumentToEditor(document, {
+    assetBaseUrl: SAMPLE_PROJECTS[slug].assetBaseUrl ?? getSampleDocumentBaseUrl(SAMPLE_PROJECTS[slug]),
+  });
   return document;
 };

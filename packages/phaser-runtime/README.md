@@ -19,9 +19,22 @@ The shape matches `@pixlland/three-runtime` so the studio's mount logic
 
 ## Phaser as peer dep
 
-Phaser is declared as a `peerDependency`. Consumers (the studio) own the
-Phaser instance and version; this package only ships type wrappers and
-the adapter logic.
+Phaser is declared as a `peerDependency`. Consumers can still pass their own
+Phaser namespace via `new Game(..., { phaserModule })`, but the runtime now
+also supports standalone boot:
+
+```ts
+const game = Game.fromPixlProject(project, {
+  parent: 'game',
+  width: window.innerWidth,
+  height: window.innerHeight,
+  assetBaseUrl: '.',
+});
+
+await game.play();
+```
+
+That path is what `pixl-engine export-phaser` uses for static 2D builds.
 
 ## Schema adapter (`pixlSchemaAdapter.ts`)
 
@@ -41,9 +54,11 @@ Phaser needs a DOM. Tests in this package focus on:
 - Pure adapter functions (no Phaser instance required)
 - Class shape / contract (no runtime instantiation)
 - JSON serialization of components
+- PixlProjectDocument bootstrap metadata (`runtimeScript`, active 2D scene)
 
 Runtime integration is exercised by the studio's `PhaserRuntimeMount`
-component in Phase 6 (browser context, where Phaser can boot normally).
+component and by the CLI's exported Phaser smoke path (browser context,
+where Phaser can boot normally).
 
 ## Attribution
 

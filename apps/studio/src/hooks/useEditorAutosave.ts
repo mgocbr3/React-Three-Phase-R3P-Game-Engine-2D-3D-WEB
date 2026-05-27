@@ -8,15 +8,17 @@
  * editor would re-hydrate from the original sample doc on next load.
  *
  * This hook subscribes to the slice of editor state that actually affects
- * persistence (objects + transform settings) and, after a 500 ms debounce,
+ * persistence (objects, scene kind, assets, script + transform settings) and,
+ * after a 500 ms debounce,
  * writes a fresh `PixlProjectDocument` to both the singleton key and the
  * per-id snapshot key (the latter is what `openStoredProjectWorkspace`
  * uses as fallback when a project has no file-system backing).
  */
 import { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/stores/editorStore';
+import { useAssetStore } from '@/stores/assetStore';
 import {
-  createProjectDocumentFromEditor,
+  createActiveProjectDocumentSnapshot,
   hasLoadedAnyProjectDocument,
   type LocalProjectWorkspace,
 } from '@/services/localProjectFiles';
@@ -58,6 +60,7 @@ export const useEditorAutosave = ({
   // — and `updateObject` always rebuilds `objects` via `state.objects.map`,
   // so this fires exactly when something actually mutated.
   const objects = useEditorStore((s) => s.objects);
+  const activeSceneKind = useEditorStore((s) => s.activeSceneKind);
   const transformSpace = useEditorStore((s) => s.transformSpace);
   const snapEnabled = useEditorStore((s) => s.snapEnabled);
   const snapTranslate = useEditorStore((s) => s.snapTranslate);
@@ -65,6 +68,7 @@ export const useEditorAutosave = ({
   const snapScale = useEditorStore((s) => s.snapScale);
   const currentTemplateId = useEditorStore((s) => s.currentTemplateId);
   const gameScript = useEditorStore((s) => s.gameScript);
+  const projectAssets = useAssetStore((s) => s.projectAssets);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -86,15 +90,12 @@ export const useEditorAutosave = ({
       // between effect schedule and fire.
       if (!hasLoadedAnyProjectDocument()) return;
       try {
-        const doc = createProjectDocumentFromEditor(projectName);
-        // Cheap signature so we don't rewrite identical bytes (e.g. when
-        // an unrelated subscriber fires this effect during a no-op update).
-        const sig = `${doc.id}:${doc.savedAt}:${doc.scenes[0]?.rootObjects?.length ?? 0}`;
-        const serialized = JSON.stringify(doc);
-        const fullSig = `${sig}:${serialized.length}`;
-        if (fullSig === lastWriteSignatureRef.current) return;
-        lastWriteSignatureRef.current = fullSig;
+        const snapshot = createActiveProjectDocumentSnapshot(projectName);
+        if (snapshot.signature === lastWriteSignatureRef.current) return;
+        lastWriteSignatureRef.current = snapshot.signature;
 
+        const doc = snapshot.document;
+        const serialized = JSON.stringify(doc);
         safeWrite(SINGLE_PROJECT_DOC_KEY, serialized);
         saveProjectDocSnapshot(doc);
 
@@ -117,6 +118,7 @@ export const useEditorAutosave = ({
     debounceMs,
     projectName,
     objects,
+    activeSceneKind,
     transformSpace,
     snapEnabled,
     snapTranslate,
@@ -124,6 +126,7 @@ export const useEditorAutosave = ({
     snapScale,
     currentTemplateId,
     gameScript,
+    projectAssets,
   ]);
 };
 

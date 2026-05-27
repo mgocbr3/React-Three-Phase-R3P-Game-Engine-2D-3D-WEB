@@ -56,6 +56,32 @@ describe('validateProjectDocument', () => {
     expect(report.warnings.some((issue) => issue.message.includes('editorObject'))).toBe(true);
   });
 
+  it('avisa quando filhos carregam data.editorObject', () => {
+    const project = baseProject();
+    project.scenes[0].rootObjects[0] = {
+      ...project.scenes[0].rootObjects[0],
+      children: [
+        {
+          id: 'child-1',
+          name: 'Child',
+          type: 'box',
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+          data: { editorObject: { id: 'child-1', type: 'box' } },
+        },
+      ],
+    };
+
+    const report = validateProjectDocument(project, '/tmp/project.json');
+
+    expect(report.ok).toBe(true);
+    expect(report.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: '$.scenes[0].rootObjects[0].children[0].data.editorObject',
+      }),
+    ]));
+  });
+
   it('rejeita format incorreto', () => {
     const report = validateProjectDocument({ ...baseProject(), format: 'something-else' }, '/tmp/project.json');
     expect(report.ok).toBe(false);

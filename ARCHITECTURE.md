@@ -133,7 +133,7 @@ pixl-engine migrate   <project> [--dry]   # alinha project com manifest
 pixl-engine import-level3d  <level3d>    <out>   # legacy importer extraido
 pixl-engine export-three    <project>    <out>   # bundle Three+Rapier+DOM
 pixl-engine export-phaser   <project>    <out>   # bundle Phaser 4+DOM
-pixl-engine export-pixlland <project>    <out>   # bundle pro upload no Pixlland
+pixl-engine export-pixlland <project>    <out.pixlbuild> # build target unificado pro Pixlland
 pixl-engine new             <name> --kind 2d|3d  # scaffold de projeto
 ```
 

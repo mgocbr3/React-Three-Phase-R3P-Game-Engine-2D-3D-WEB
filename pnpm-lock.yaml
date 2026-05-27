@@ -306,6 +306,9 @@ importers:
       '@pixlland/engine-ops':
         specifier: workspace:*
         version: link:../ops
+      '@pixlland/phaser-runtime':
+        specifier: workspace:*
+        version: link:../phaser-runtime
       '@pixlland/three-runtime':
         specifier: workspace:*
         version: link:../three-runtime

@@ -1,30 +1,43 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { 
-  Globe, FolderOpen, Terminal, ShoppingBag, Package, 
+import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import {
+  FolderOpen, Terminal, ShoppingBag, Package,
   Search, Filter, RefreshCw, Download, FolderPlus, Trash2,
-  AlertCircle, AlertTriangle, Info, ChevronRight, Play, X, Grid, List,
-  Upload, FileBox, Image, Music, Code, Clock, ExternalLink, Loader2,
-  User, LogIn, Library, FolderPlus as AddToProject, Check, Link2, Plus, Move, Layout,
+  AlertCircle, AlertTriangle, Info, ChevronRight, Play, Grid, List,
+  Upload, FileBox, Image, Music, Code, Clock, Layout,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAssetStore, ProjectAsset } from '@/stores/assetStore';
-import { usePixllandAssetStore, PixllandAsset } from '@/stores/pixllandAssetStore';
 import { useAssetDragStore } from '@/stores/assetDragStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useProjectStore } from '@/stores/projectStore';
 import { TimelinePanel } from './TimelinePanel';
 import { UIEditorPanel } from './UIEditorPanel';
-import { usePixllandBridge } from '@/hooks/usePixllandBridge';
-import { useAuthStore } from '@/legacy/cloud/stores/authStore';
-import { useUserInventory, useProjectAssets, useAddAssetToProject, useRemoveAssetFromProject } from '@/hooks/useProjects';
-import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  ensureProjectAssetFolder,
+  hasActiveProjectWorkspace,
+  importProjectAssetFiles,
+  moveProjectAssetToFolder,
+} from '@/services/localProjectFiles';
+import {
+  createActiveProjectDiagnosticsSnapshot,
+  createProjectDiagnosticConsoleMessages,
+  type ProjectDiagnosticConsoleMessage,
+} from '@/services/projectDiagnostics';
+import { ENGINE_CLOUD_ENABLED } from '@/config/engineMode';
 
 interface ConsoleMessage {
   id: string;
   type: 'info' | 'warn' | 'error';
   message: string;
   timestamp: string;
+  source?: string;
+  path?: string;
+  targetObjectId?: string;
+  targetObjectName?: string;
+  targetSceneId?: string;
+  targetSceneName?: string;
 }
 
 interface AssetFolder {
@@ -43,6 +56,7 @@ const ASSET_FOLDERS: AssetFolder[] = [
     children: [
       { id: '3d_models', name: '3D_Models', icon: '' },
       { id: 'sprites', name: 'Sprites', icon: '' },
+      { id: 'tilemaps', name: 'Tilemaps', icon: '' },
       { id: 'audio', name: 'Audio', icon: '' },
       { id: 'vfx', name: 'VFX', icon: '' },
     ]
@@ -60,51 +74,6 @@ const INITIAL_CONSOLE: ConsoleMessage[] = [
   { id: '1', type: 'info', message: 'PixlPlayground inicializado', timestamp: new Date().toLocaleTimeString() },
 ];
 
-// Store asset categories
-const STORE_CATEGORIES = [
-  { id: 'all', label: 'Todos', icon: Package },
-  { id: 'characters', label: 'Personagens', icon: Globe },
-  { id: 'animals', label: 'Animais', icon: Globe },
-  { id: 'nature', label: 'Natureza', icon: Globe },
-  { id: 'construction', label: 'Construção', icon: Globe },
-  { id: 'effects', label: 'Efeitos', icon: Globe },
-  { id: 'controls', label: 'Controles', icon: Globe },
-];
-
-interface StoreAsset {
-  id: string;
-  name: string;
-  category: string;
-  license: string;
-  prefab: string;
-  hasPreview?: boolean;
-  isSystem?: boolean;
-  pixllandId?: string;
-  thumbnailUrl?: string;
-}
-
-// Minecraft-style prefab assets
-const STORE_ASSETS: StoreAsset[] = [
-  // NPCs - Minecraft Style
-  { id: 'npc-villager', name: 'Villager NPC', category: 'characters', license: 'Built-in', prefab: 'MinecraftVillager', hasPreview: true },
-  { id: 'npc-guard', name: 'Guard NPC', category: 'characters', license: 'Built-in', prefab: 'MinecraftGuard', hasPreview: true },
-  { id: 'npc-merchant', name: 'Merchant NPC', category: 'characters', license: 'Built-in', prefab: 'MinecraftMerchant', hasPreview: true },
-  { id: 'npc-zombie', name: 'Zombie Enemy', category: 'characters', license: 'Built-in', prefab: 'MinecraftZombie', hasPreview: true },
-  { id: 'npc-skeleton', name: 'Skeleton Enemy', category: 'characters', license: 'Built-in', prefab: 'MinecraftSkeleton', hasPreview: true },
-  // Animals - Minecraft Style
-  { id: 'animal-pig', name: 'Pig', category: 'animals', license: 'Built-in', prefab: 'MinecraftPig', hasPreview: true },
-  { id: 'animal-chicken', name: 'Chicken', category: 'animals', license: 'Built-in', prefab: 'MinecraftChicken', hasPreview: true },
-  { id: 'animal-cow', name: 'Cow', category: 'animals', license: 'Built-in', prefab: 'MinecraftCow', hasPreview: true },
-  { id: 'animal-sheep', name: 'Sheep', category: 'animals', license: 'Built-in', prefab: 'MinecraftSheep', hasPreview: true },
-  // Environment
-  { id: 'env-tree', name: 'Minecraft Tree', category: 'nature', license: 'Built-in', prefab: 'MinecraftTree' },
-  { id: 'env-house', name: 'Minecraft House', category: 'construction', license: 'Built-in', prefab: 'MinecraftHouse' },
-  { id: 'env-fence', name: 'Wooden Fence', category: 'construction', license: 'Built-in', prefab: 'MinecraftFence' },
-  { id: 'env-lamp', name: 'Lamp Post', category: 'construction', license: 'Built-in', prefab: 'MinecraftLampPost' },
-  // Motion Controls - Wii Style
-  { id: 'ctrl-motion', name: 'Motion Control', category: 'controls', license: 'Built-in', prefab: 'MotionControl', hasPreview: true, isSystem: true },
-];
-
 type BottomTabId = 'assets' | 'ui' | 'console' | 'store' | 'timeline';
 
 const BOTTOM_TAB_ORDER_KEY = 'pixlplayground.bottomTabOrder';
@@ -113,7 +82,9 @@ const CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH = 188;
 const CONTENT_BROWSER_SIDEBAR_MIN_WIDTH = 132;
 const CONTENT_BROWSER_SIDEBAR_MAX_WIDTH = 360;
 
-const BOTTOM_TABS: { id: BottomTabId; label: string; icon: LucideIcon }[] = [
+type BottomTabDefinition = { id: BottomTabId; label: string; icon: LucideIcon };
+
+const BOTTOM_TABS: BottomTabDefinition[] = [
   { id: 'assets', label: 'Content Browser', icon: FolderOpen },
   { id: 'ui', label: 'UI Editor', icon: Layout },
   { id: 'timeline', label: 'Timeline', icon: Clock },
@@ -121,10 +92,42 @@ const BOTTOM_TABS: { id: BottomTabId; label: string; icon: LucideIcon }[] = [
   { id: 'store', label: 'Store', icon: ShoppingBag },
 ];
 
+export const getAvailableBottomTabs = (cloudEnabled = ENGINE_CLOUD_ENABLED): BottomTabDefinition[] => (
+  cloudEnabled ? BOTTOM_TABS : BOTTOM_TABS.filter((tab) => tab.id !== 'store')
+);
+
+export const normalizeBottomTabOrder = (
+  savedOrder: unknown,
+  availableTabs = getAvailableBottomTabs(),
+): BottomTabId[] => {
+  const validIds = new Set(availableTabs.map((tab) => tab.id));
+  const ordered = Array.isArray(savedOrder)
+    ? savedOrder.filter((id): id is BottomTabId => typeof id === 'string' && validIds.has(id as BottomTabId))
+    : [];
+  const missing = availableTabs
+    .map((tab) => tab.id)
+    .filter((id) => !ordered.includes(id));
+
+  return [...ordered, ...missing];
+};
+
+export const shouldRenderStorePane = (
+  activeTab: BottomTabId,
+  cloudEnabled = ENGINE_CLOUD_ENABLED,
+): boolean => cloudEnabled && activeTab === 'store';
+
+const LegacyCloudStorePane = ENGINE_CLOUD_ENABLED
+  ? lazy(() => import('@/legacy/cloud/components/CloudStorePane'))
+  : null;
+
 const getAssetIcon = (type: ProjectAsset['type']) => {
   switch (type) {
     case 'model': return FileBox;
     case 'texture': return Image;
+    case 'image': return Image;
+    case 'sprite': return Image;
+    case 'spritesheet': return Image;
+    case 'tilemap': return Grid;
     case 'audio': return Music;
     case 'script': return Code;
     default: return Package;
@@ -137,12 +140,53 @@ const clampContentBrowserSidebarWidth = (width: number) => Math.min(
 );
 
 const FOLDER_PREFIXES: Record<string, string[]> = {
-  assets: ['Assets/'],
-  '3d_models': ['Assets/3D_Models'],
-  sprites: ['Assets/Sprites'],
-  audio: ['Assets/Audio'],
-  vfx: ['Assets/VFX'],
+  assets: ['Assets/', 'assets/'],
+  '3d_models': ['Assets/3D_Models', 'assets/3d_models'],
+  sprites: ['Assets/Sprites', 'assets/sprites', 'assets/characters'],
+  tilemaps: ['Assets/Tilemaps', 'assets/tilemaps', 'assets/maps'],
+  audio: ['Assets/Audio', 'assets/audio'],
+  vfx: ['Assets/VFX', 'assets/vfx', 'assets/fx'],
   dev: ['Scripts/', 'Dev/'],
+};
+
+const FOLDER_ID_TO_PROJECT_PATH: Record<string, string> = {
+  project: 'Assets',
+  assets: 'Assets',
+  '3d_models': 'Assets/3D_Models',
+  sprites: 'Assets/Sprites',
+  tilemaps: 'Assets/Tilemaps',
+  audio: 'Assets/Audio',
+  vfx: 'Assets/VFX',
+  dev: 'Dev',
+};
+
+const normalizeFolderPath = (value: string) => value.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '') || 'Assets';
+
+const getProjectFolderPath = (folderId: string) => normalizeFolderPath(FOLDER_ID_TO_PROJECT_PATH[folderId] ?? folderId);
+
+const sanitizeFolderName = (value: string) => (
+  value
+    .replace(/[<>:"\\|?*\x00-\x1F]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || `Folder-${Date.now()}`
+);
+
+const getImportedAssetType = (fileName: string, folderPath: string): ProjectAsset['type'] => {
+  const lowerName = fileName.toLowerCase();
+  const ext = lowerName.split('.').pop() || '';
+  const lowerFolder = folderPath.toLowerCase();
+
+  if (lowerName.endsWith('.atlas.json')) return 'spritesheet';
+  if (lowerName.endsWith('.tilemap.json') || lowerName.endsWith('.tilemap') || (ext === 'json' && lowerFolder.includes('/tilemaps'))) return 'tilemap';
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) {
+    return lowerFolder.includes('/sprites') || lowerFolder.includes('/vfx') ? 'sprite' : 'image';
+  }
+  if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) return 'audio';
+  if (['js', 'ts', 'tsx'].includes(ext)) return 'script';
+  if (['glb', 'gltf', 'fbx', 'obj'].includes(ext)) return 'model';
+  return 'model';
 };
 
 const getAssetFileName = (asset: ProjectAsset) => {
@@ -171,7 +215,7 @@ const getAssetMetadataLabel = (asset: ProjectAsset) => {
 
 const getAssetPreviewStyle = (asset: ProjectAsset) => {
   const text = `${asset.name} ${getAssetFileName(asset)} ${getAssetMetadataLabel(asset)}`.toLowerCase();
-  if (asset.type === 'texture') return 'from-sky-500/35 via-cyan-300/20 to-slate-950';
+  if (['texture', 'image', 'sprite', 'spritesheet'].includes(asset.type)) return 'from-sky-500/35 via-cyan-300/20 to-slate-950';
   if (asset.type === 'audio') return 'from-emerald-500/35 via-lime-300/20 to-slate-950';
   if (asset.type === 'script') return 'from-violet-500/35 via-fuchsia-300/20 to-slate-950';
   if (text.includes('tractor') || text.includes('harvester')) return 'from-amber-500/35 via-lime-300/20 to-stone-950';
@@ -183,8 +227,13 @@ const getAssetPreviewStyle = (asset: ProjectAsset) => {
 const assetMatchesFolder = (asset: ProjectAsset, selectedFolder: string) => {
   if (selectedFolder === 'project') return true;
   const prefixes = FOLDER_PREFIXES[selectedFolder];
-  if (!prefixes) return asset.folder === selectedFolder;
-  return prefixes.some((prefix) => asset.folder === prefix || asset.folder.startsWith(`${prefix}/`));
+  const selectedPath = getProjectFolderPath(selectedFolder).toLowerCase();
+  const folder = asset.folder.toLowerCase();
+  if (!prefixes) return folder === selectedPath || folder.startsWith(`${selectedPath}/`);
+  return prefixes.some((prefix) => {
+    const normalized = prefix.toLowerCase().replace(/\/$/, '');
+    return folder === normalized || folder.startsWith(`${normalized}/`);
+  }) || folder === selectedPath || folder.startsWith(`${selectedPath}/`);
 };
 
 const AssetPreview = ({ asset, size = 'md' }: { asset: ProjectAsset; size?: 'sm' | 'md' }) => {
@@ -192,7 +241,7 @@ const AssetPreview = ({ asset, size = 'md' }: { asset: ProjectAsset; size?: 'sm'
   const format = getAssetFormat(asset);
   const label = getAssetMetadataLabel(asset);
 
-  if (asset.thumbnail || asset.type === 'texture') {
+  if (asset.thumbnail || ['texture', 'image', 'sprite', 'spritesheet'].includes(asset.type)) {
     const imageUrl = asset.thumbnail || asset.url;
     return (
       <div className={cn(
@@ -231,19 +280,18 @@ const AssetPreview = ({ asset, size = 'md' }: { asset: ProjectAsset; size?: 'sm'
 };
 
 export const BottomPanel = () => {
+  const availableBottomTabs = useMemo(() => getAvailableBottomTabs(), []);
   const [activeTab, setActiveTab] = useState<BottomTabId>('assets');
-  const [tabOrder, setTabOrder] = useState<BottomTabId[]>(() => BOTTOM_TABS.map((tab) => tab.id));
+  const [tabOrder, setTabOrder] = useState<BottomTabId[]>(() => availableBottomTabs.map((tab) => tab.id));
   const [draggedTab, setDraggedTab] = useState<BottomTabId | null>(null);
   const draggedTabRef = useRef<BottomTabId | null>(null);
-  const [consoleMessages] = useState<ConsoleMessage[]>(INITIAL_CONSOLE);
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
+  const [consoleSearch, setConsoleSearch] = useState('');
   const [consoleCommand, setConsoleCommand] = useState('');
   const [selectedFolder, setSelectedFolder] = useState('project');
-  const [storeCategory, setStoreCategory] = useState('all');
   const [assetSearch, setAssetSearch] = useState('');
-  const [storeSearch, setStoreSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [storeTab, setStoreTab] = useState<'library' | 'project'>('library');
+  const [customAssetFolders, setCustomAssetFolders] = useState<AssetFolder[]>([]);
   const [isResizingFolderTree, setIsResizingFolderTree] = useState(false);
   const [contentBrowserSidebarWidth, setContentBrowserSidebarWidth] = useState(() => {
     try {
@@ -260,92 +308,80 @@ export const BottomPanel = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderTreeResizeRef = useRef({ startX: 0, startWidth: CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH });
-  const { projectAssets, loadingAssets, addProjectAsset, removeProjectAsset } = useAssetStore();
-  const { 
-    isEmbedded, 
-    requestStoreAssets, 
-    importStoreAsset, 
-    openStore,
-    requestUserLibrary,
-    syncProjectAssets,
-    connectAccount 
-  } = usePixllandBridge();
-  
-  // Auth from unified Supabase
-  const { user, profile } = useAuthStore();
-  const [searchParams] = useSearchParams();
-  const currentProjectId = searchParams.get('project');
-  
-  // Fetch user inventory (assets purchased on Pixlland) - directly from Supabase
-  const { data: userInventory = [], isLoading: isLoadingInventory, refetch: refetchInventory } = useUserInventory();
-  
-  // Fetch project assets - directly from Supabase
-  const { data: supabaseProjectAssets = [], isLoading: isLoadingProjectAssets, refetch: refetchProjectAssets } = useProjectAssets(currentProjectId);
-  
-  // Mutations
-  const addAssetMutation = useAddAssetToProject();
-  const removeAssetMutation = useRemoveAssetFromProject();
-  
-  // Legacy Pixlland Asset Store (for embedded mode compatibility)
-  const { 
-    connection,
-    libraryAssets,
-    projectAssets: pixllandProjectAssets,
-    isLoadingLibrary,
-    isLoadingProject,
-    addToProject,
-    removeFromProject,
-    isInProject: isInProjectLegacy,
-  } = usePixllandAssetStore();
-  
-  // Determine if connected (user logged in via authStore)
-  const isConnected = !!user;
-  const username = profile?.displayName || user?.email?.split('@')[0] || null;
-  
-  // Check if asset is in current project
-  const isInProject = useCallback((assetId: string) => {
-    return supabaseProjectAssets.some(a => 
-      a.metadata?.original_asset_id === assetId || a.id === assetId
-    );
-  }, [supabaseProjectAssets]);
-  
-  const [storeLoading, setStoreLoading] = useState(false);
-
-  // No need to request library on mount - useUserInventory handles it automatically
-  useEffect(() => {
-    if (connection.isConnected && isEmbedded && libraryAssets.length === 0) {
-      requestUserLibrary();
-      syncProjectAssets();
+  const { projectAssets, loadingAssets, addProjectAsset, removeProjectAsset, updateProjectAsset } = useAssetStore();
+  const localProjectId = useProjectStore((s) => s.currentProjectId);
+  const localProject = useProjectStore((s) => s.projects.find((project) => project.id === localProjectId));
+  const currentTemplateId = useEditorStore((s) => s.currentTemplateId);
+  const activeSceneKind = useEditorStore((s) => s.activeSceneKind);
+  const objects = useEditorStore((s) => s.objects);
+  const gameScript = useEditorStore((s) => s.gameScript);
+  const transformSpace = useEditorStore((s) => s.transformSpace);
+  const snapEnabled = useEditorStore((s) => s.snapEnabled);
+  const snapTranslate = useEditorStore((s) => s.snapTranslate);
+  const snapRotate = useEditorStore((s) => s.snapRotate);
+  const snapScale = useEditorStore((s) => s.snapScale);
+  const projectName = localProject?.name || 'Untitled Project';
+  const diagnostics = useMemo(() => {
+    try {
+      return createActiveProjectDiagnosticsSnapshot(projectName).diagnostics;
+    } catch {
+      return null;
     }
-  }, [connection.isConnected, isEmbedded]);
-
+  }, [
+    activeSceneKind,
+    currentTemplateId,
+    gameScript,
+    objects,
+    projectAssets,
+    projectName,
+    snapEnabled,
+    snapRotate,
+    snapScale,
+    snapTranslate,
+    transformSpace,
+  ]);
+  const diagnosticMessages = useMemo<ProjectDiagnosticConsoleMessage[]>(
+    () => diagnostics ? createProjectDiagnosticConsoleMessages(diagnostics) : [],
+    [diagnostics],
+  );
+  const consoleMessages = useMemo<ConsoleMessage[]>(
+    () => [...INITIAL_CONSOLE, ...diagnosticMessages],
+    [diagnosticMessages],
+  );
   useEffect(() => {
     try {
       const savedOrder = JSON.parse(localStorage.getItem(BOTTOM_TAB_ORDER_KEY) || '[]') as BottomTabId[];
-      const validIds = new Set(BOTTOM_TABS.map((tab) => tab.id));
-      if (
-        Array.isArray(savedOrder) &&
-        savedOrder.length === BOTTOM_TABS.length &&
-        savedOrder.every((id) => validIds.has(id))
-      ) {
-        setTabOrder(savedOrder);
-      }
+      setTabOrder(normalizeBottomTabOrder(savedOrder, availableBottomTabs));
     } catch {
       localStorage.removeItem(BOTTOM_TAB_ORDER_KEY);
+      setTabOrder(availableBottomTabs.map((tab) => tab.id));
     }
-  }, []);
+  }, [availableBottomTabs]);
 
   useEffect(() => {
     localStorage.setItem(BOTTOM_TAB_ORDER_KEY, JSON.stringify(tabOrder));
   }, [tabOrder]);
 
   useEffect(() => {
+    if (tabOrder.includes(activeTab)) return;
+    setActiveTab(tabOrder[0] ?? 'assets');
+  }, [activeTab, tabOrder]);
+
+  useEffect(() => {
     localStorage.setItem(CONTENT_BROWSER_SIDEBAR_WIDTH_KEY, String(contentBrowserSidebarWidth));
   }, [contentBrowserSidebarWidth]);
 
   const tabs = tabOrder
-    .map((id) => BOTTOM_TABS.find((tab) => tab.id === id))
-    .filter((tab): tab is { id: BottomTabId; label: string; icon: LucideIcon } => Boolean(tab));
+    .map((id) => availableBottomTabs.find((tab) => tab.id === id))
+    .filter((tab): tab is BottomTabDefinition => Boolean(tab));
+
+  const assetFolders = useMemo(() => ASSET_FOLDERS.map((folder) => {
+    if (folder.id !== 'assets') return folder;
+    return {
+      ...folder,
+      children: [...(folder.children ?? []), ...customAssetFolders],
+    };
+  }), [customAssetFolders]);
 
   const handleFolderTreeResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -403,85 +439,44 @@ export const BottomPanel = () => {
     setDraggedTab(null);
   };
 
-  const filteredMessages = consoleMessages.filter(
-    m => consoleFilter === 'all' || m.type === consoleFilter
-  );
+  const consoleCounts = useMemo(() => ({
+    all: consoleMessages.length,
+    info: consoleMessages.filter((message) => message.type === 'info').length,
+    warn: consoleMessages.filter((message) => message.type === 'warn').length,
+    error: consoleMessages.filter((message) => message.type === 'error').length,
+  }), [consoleMessages]);
 
-  const filteredStoreAssets = STORE_ASSETS.filter(
-    a => (storeCategory === 'all' || a.category === storeCategory) &&
-         a.name.toLowerCase().includes(storeSearch.toLowerCase())
-  );
+  const filteredMessages = useMemo(() => {
+    const normalizedSearch = consoleSearch.trim().toLowerCase();
+    return consoleMessages.filter((message) => {
+      if (consoleFilter !== 'all' && message.type !== consoleFilter) return false;
+      if (!normalizedSearch) return true;
+      return [
+        message.message,
+        message.source ?? '',
+        message.path ?? '',
+      ].some((value) => value.toLowerCase().includes(normalizedSearch));
+    });
+  }, [consoleFilter, consoleMessages, consoleSearch]);
 
   const filteredProjectAssets = projectAssets.filter(
     a => a.name.toLowerCase().includes(assetSearch.toLowerCase()) &&
          assetMatchesFolder(a, selectedFolder)
   );
   
-  // Filter user inventory from Supabase (Minha Biblioteca)
-  const filteredInventoryAssets = userInventory.filter(
-    item => item.asset && 
-            item.asset.name.toLowerCase().includes(storeSearch.toLowerCase()) &&
-            (storeCategory === 'all' || item.asset.category === storeCategory)
-  );
-  
-  // Filter project assets from Supabase (No Projeto)
-  const filteredSupabaseProjectAssets = supabaseProjectAssets.filter(
-    a => a.name.toLowerCase().includes(storeSearch.toLowerCase())
-  );
-  
-  // Legacy: Filter Pixlland library assets (for embedded mode)
-  const filteredLibraryAssets = libraryAssets.filter(
-    a => a.name.toLowerCase().includes(storeSearch.toLowerCase()) &&
-         (storeCategory === 'all' || a.category === storeCategory)
-  );
-  
-  // Legacy: Filter Pixlland project assets
-  const filteredPixllandProjectAssets = pixllandProjectAssets.filter(
-    a => a.name.toLowerCase().includes(storeSearch.toLowerCase())
-  );
-  
-  // Handle adding inventory asset to project (saves to arcade_game_project_assets)
-  const handleAddInventoryToProject = async (inventoryItem: typeof userInventory[0]) => {
-    if (!currentProjectId) {
-      toast.error('Abra um projeto primeiro para adicionar assets');
-      return;
-    }
-    if (!inventoryItem.asset) return;
-    
-    try {
-      await addAssetMutation.mutateAsync({
-        projectId: currentProjectId,
-        asset: {
-          name: inventoryItem.asset.name,
-          asset_type: inventoryItem.asset.asset_type || undefined,
-          asset_url: inventoryItem.asset.asset_url || undefined,
-          category: inventoryItem.asset.category || undefined,
-          source: 'pixlland_store',
-          metadata: { original_asset_id: inventoryItem.asset_id },
-        }
-      });
-      toast.success(`${inventoryItem.asset.name} adicionado ao projeto`);
-    } catch (error) {
-      toast.error('Erro ao adicionar asset');
-    }
-  };
-  
-  // Handle removing asset from project
-  const handleRemoveAssetFromProject = async (assetId: string) => {
-    if (!currentProjectId) return;
-    
-    try {
-      await removeAssetMutation.mutateAsync({ assetId, projectId: currentProjectId });
-      toast.info('Asset removido do projeto');
-    } catch (error) {
-      toast.error('Erro ao remover asset');
-    }
-  };
-  
   // Editor store for adding to scene
-  const { addModelFromAsset } = useEditorStore();
+  const addModelFromAsset = useEditorStore((s) => s.addModelFromAsset);
+  const addSpriteFromAsset = useEditorStore((s) => s.addSpriteFromAsset);
+  const selectObject = useEditorStore((s) => s.selectObject);
   const { startDrag, endDrag } = useAssetDragStore();
-  
+
+  const is2DAssetType = (type?: string) => (
+    type === 'texture' ||
+    type === 'image' ||
+    type === 'sprite' ||
+    type === 'spritesheet'
+  );
+
   // Add asset to 3D scene (button click - adds at origin)
   const handleAddToScene = (name: string, url: string, type?: string) => {
     if (!url) {
@@ -489,17 +484,33 @@ export const BottomPanel = () => {
       return;
     }
     
-    addModelFromAsset({ 
-      name, 
-      url,
-      type: type || 'model'
-    }, [0, 0, 0]);
+    if (is2DAssetType(type)) {
+      addSpriteFromAsset({
+        name,
+        url,
+        type,
+      }, [0, 0, 0]);
+    } else {
+      addModelFromAsset({
+        name,
+        url,
+        type: type || 'model'
+      }, [0, 0, 0]);
+    }
     
     toast.success(`${name} adicionado à cena!`);
   };
   
   // Start dragging asset (for drag to scene)
-  const handleDragStart = (e: React.DragEvent, name: string, url: string, type?: string, thumbnailUrl?: string) => {
+  const handleDragStart = (
+    e: React.DragEvent,
+    name: string,
+    url: string,
+    type?: string,
+    thumbnailUrl?: string,
+    assetId?: string,
+    assetPath?: string,
+  ) => {
     if (!url) {
       e.preventDefault();
       return;
@@ -511,9 +522,12 @@ export const BottomPanel = () => {
       name,
       url,
       assetType: type || 'model',
-      thumbnailUrl
+      thumbnailUrl,
+      assetId,
+      assetPath,
+      source: assetId ? 'project' : 'library',
     }));
-    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.effectAllowed = assetId ? 'copyMove' : 'copy';
     
     // Update drag store for visual feedback
     startDrag({
@@ -528,50 +542,121 @@ export const BottomPanel = () => {
   const handleDragEnd = () => {
     endDrag();
   };
-  
-  // Legacy: Handle adding Pixlland asset to project
-  const handleAddToProject = (asset: PixllandAsset) => {
-    addToProject(asset);
-    toast.success(`${asset.name} adicionado ao projeto`);
-  };
-  
-  // Handle removing Pixlland asset from project
-  const handleRemoveFromProject = (assetId: string) => {
-    removeFromProject(assetId);
-    toast.info('Asset removido do projeto');
-  };
 
-  const handleFileImport = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-    
-    Array.from(files).forEach(file => {
-      const url = URL.createObjectURL(file);
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      
-      let type: ProjectAsset['type'] = 'model';
-      if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) type = 'texture';
-      else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) type = 'audio';
-      else if (['js', 'ts', 'tsx'].includes(ext)) type = 'script';
-      else if (['glb', 'gltf', 'fbx', 'obj'].includes(ext)) type = 'model';
-      
-      addProjectAsset({
-        name: file.name,
-        type,
-        url,
-        folder: selectedFolder,
-        metadata: { format: ext },
-      });
-    });
-    
+  const handleFileImport = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
     event.target.value = '';
+    if (!files.length) return;
+
+    const targetFolder = getProjectFolderPath(selectedFolder);
+
+    try {
+      const importedFiles = await importProjectAssetFiles(files, targetFolder);
+      importedFiles.forEach((importedFile, index) => {
+        const sourceFile = files[index];
+        const type = getImportedAssetType(importedFile.name, importedFile.folder);
+        addProjectAsset({
+          name: importedFile.name,
+          type,
+          url: importedFile.url,
+          path: importedFile.path,
+          folder: importedFile.folder,
+          metadata: {
+            ...importedFile.metadata,
+            format: sourceFile?.name.split('.').pop()?.toLowerCase()
+              || (typeof importedFile.metadata.format === 'string' ? importedFile.metadata.format : undefined),
+          },
+        });
+      });
+
+      const destination = hasActiveProjectWorkspace()
+        ? targetFolder
+        : `${targetFolder} (memoria)`;
+      toast.success(`${importedFiles.length} asset(s) importado(s) em ${destination}.`);
+    } catch (error) {
+      console.error('[BottomPanel] Failed to import project assets:', error);
+      toast.error(error instanceof Error ? error.message : 'Nao foi possivel importar assets.');
+    }
   }, [selectedFolder, addProjectAsset]);
+
+  const handleFolderDragOver = useCallback((event: React.DragEvent) => {
+    const raw = Array.from(event.dataTransfer.types).includes('application/json');
+    if (!raw) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleFolderDrop = useCallback(async (event: React.DragEvent, folderId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+      const raw = event.dataTransfer.getData('application/json');
+      if (!raw) return;
+      const payload = JSON.parse(raw) as { type?: string; assetId?: string };
+      if (payload.type !== 'pixlland-asset' || !payload.assetId) return;
+
+      const asset = projectAssets.find((item) => item.id === payload.assetId);
+      if (!asset) return;
+
+      const targetFolder = getProjectFolderPath(folderId);
+      const moved = await moveProjectAssetToFolder(asset, targetFolder);
+      updateProjectAsset(asset.id, moved);
+      setSelectedFolder(folderId);
+      toast.success(`${asset.name} movido para ${targetFolder}.`);
+    } catch (error) {
+      console.error('[BottomPanel] Failed to move project asset:', error);
+      toast.error(error instanceof Error ? error.message : 'Nao foi possivel mover asset.');
+    }
+  }, [projectAssets, updateProjectAsset]);
+
+  const handleCreateFolder = useCallback(async () => {
+    const folderName = window.prompt('Nome da nova pasta');
+    if (!folderName) return;
+
+    const parentFolder = getProjectFolderPath(selectedFolder);
+    const folderPath = `${parentFolder}/${sanitizeFolderName(folderName)}`;
+
+    try {
+      const createdFolder = await ensureProjectAssetFolder(folderPath);
+      setCustomAssetFolders((current) => {
+        if (current.some((folder) => folder.id === createdFolder)) return current;
+        return [
+          ...current,
+          {
+            id: createdFolder,
+            name: createdFolder.split('/').pop() || createdFolder,
+            icon: '',
+          },
+        ];
+      });
+      setSelectedFolder(createdFolder);
+      toast.success(
+        hasActiveProjectWorkspace()
+          ? `Pasta criada em ${createdFolder}.`
+          : `Pasta ${createdFolder} criada no projeto em memoria.`,
+      );
+    } catch (error) {
+      console.error('[BottomPanel] Failed to create asset folder:', error);
+      toast.error(error instanceof Error ? error.message : 'Nao foi possivel criar pasta.');
+    }
+  }, [selectedFolder]);
+
+  const handleConsoleMessageClick = useCallback((message: ConsoleMessage) => {
+    if (!message.targetObjectId) return;
+
+    selectObject(message.targetObjectId);
+    toast.success(`Selecionado: ${message.targetObjectName ?? message.targetObjectId}`, {
+      duration: 1200,
+    });
+  }, [selectObject]);
 
   const getMessageIcon = (type: ConsoleMessage['type']) => {
     switch (type) {
-      case 'error': return <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />;
-      case 'warn': return <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground" />;
-      default: return <Info className="w-3.5 h-3.5 text-muted-foreground" />;
+      case 'error': return <AlertCircle className="w-3.5 h-3.5 text-destructive" />;
+      case 'warn': return <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />;
+      default: return <Info className="w-3.5 h-3.5 text-primary" />;
     }
   };
 
@@ -629,12 +714,14 @@ export const BottomPanel = () => {
               </div>
               
               {/* Folder Structure */}
-              {ASSET_FOLDERS.map((folder) => {
+              {assetFolders.map((folder) => {
                 const FolderIcon = getFolderIcon(folder);
                 return (
                   <div key={folder.id}>
                   <button
                     onClick={() => setSelectedFolder(folder.id)}
+                    onDragOver={handleFolderDragOver}
+                    onDrop={(event) => handleFolderDrop(event, folder.id)}
                     className={cn(
                       'w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-[var(--editor-row-hover)] transition-colors',
                       selectedFolder === folder.id && 'bg-[var(--editor-row-selected)] text-foreground'
@@ -652,6 +739,8 @@ export const BottomPanel = () => {
                           <button
                           key={child.id}
                           onClick={() => setSelectedFolder(child.id)}
+                          onDragOver={handleFolderDragOver}
+                          onDrop={(event) => handleFolderDrop(event, child.id)}
                           className={cn(
                             'w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-[var(--editor-row-hover)] transition-colors',
                             selectedFolder === child.id && 'bg-[var(--editor-row-selected)] text-foreground'
@@ -702,7 +791,7 @@ export const BottomPanel = () => {
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".glb,.gltf,.fbx,.obj,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.ogg"
+                    accept=".glb,.gltf,.fbx,.obj,.png,.jpg,.jpeg,.webp,.gif,.svg,.json,.atlas,.tilemap,.mp3,.wav,.ogg"
                     onChange={handleFileImport}
                     className="hidden"
                   />
@@ -713,7 +802,11 @@ export const BottomPanel = () => {
                     <Upload className="w-3.5 h-3.5" />
                     Import
                   </button>
-                  <button className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground" title="Nova pasta">
+                  <button
+                    onClick={handleCreateFolder}
+                    className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground"
+                    title="Nova pasta"
+                  >
                     <FolderPlus className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -778,6 +871,10 @@ export const BottomPanel = () => {
                         return (
                           <div 
                             key={asset.id}
+                            draggable={!!asset.url}
+                            onDragStart={(event) => handleDragStart(event, asset.name, asset.url, asset.type, asset.thumbnail, asset.id, asset.path)}
+                            onDragEnd={handleDragEnd}
+                            data-asset-id={asset.id}
                             className="group relative flex h-[126px] min-w-0 cursor-pointer flex-col border border-border bg-[var(--editor-panel-raised)] p-2 transition-colors hover:border-primary/50 hover:bg-[var(--editor-row-hover)]"
                             title={`${asset.name}\n${asset.url}`}
                           >
@@ -822,6 +919,10 @@ export const BottomPanel = () => {
                           return (
                             <div
                               key={asset.id}
+                              draggable={!!asset.url}
+                              onDragStart={(event) => handleDragStart(event, asset.name, asset.url, asset.type, asset.thumbnail, asset.id, asset.path)}
+                              onDragEnd={handleDragEnd}
+                              data-asset-id={asset.id}
                               className="grid h-11 grid-cols-[56px_minmax(180px,1fr)_88px_minmax(150px,0.55fr)_minmax(140px,0.55fr)_36px] items-center border-b border-border px-2 text-xs transition-colors last:border-b-0 hover:bg-[var(--editor-row-hover)]"
                               title={`${asset.name}\n${asset.url}`}
                             >
@@ -880,7 +981,12 @@ export const BottomPanel = () => {
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
               <div className="flex items-center gap-1">
                 <Terminal className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-medium">Console</span>
+                <span className="text-xs font-medium">Engine Console</span>
+                {diagnostics && (
+                  <span className="ml-1 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {diagnostics.errors}E / {diagnostics.warnings}W
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
@@ -888,38 +994,50 @@ export const BottomPanel = () => {
                   <input
                     type="text"
                     placeholder="Filtrar..."
+                    value={consoleSearch}
+                    onChange={(event) => setConsoleSearch(event.target.value)}
                     className="w-32 bg-muted border-0 rounded pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
                 <button 
                   onClick={() => setConsoleFilter('all')}
-                  className={cn("p-1 rounded text-[10px]", consoleFilter === 'all' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-secondary')}
+                  className={cn("px-1.5 py-1 rounded text-[10px]", consoleFilter === 'all' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-secondary')}
                 >
-                  Todos
+                  Todos {consoleCounts.all}
                 </button>
                 <button 
                   onClick={() => setConsoleFilter('info')}
-                  className={cn("p-1 rounded", consoleFilter === 'info' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                  className={cn("flex items-center gap-1 p-1 rounded", consoleFilter === 'info' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
                 >
                   <Info className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">{consoleCounts.info}</span>
                 </button>
                 <button 
                   onClick={() => setConsoleFilter('warn')}
-                  className={cn("p-1 rounded", consoleFilter === 'warn' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                  className={cn("flex items-center gap-1 p-1 rounded", consoleFilter === 'warn' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
                 >
                   <AlertTriangle className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">{consoleCounts.warn}</span>
                 </button>
                 <button 
                   onClick={() => setConsoleFilter('error')}
-                  className={cn("p-1 rounded", consoleFilter === 'error' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                  className={cn("flex items-center gap-1 p-1 rounded", consoleFilter === 'error' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">{consoleCounts.error}</span>
                 </button>
                 <div className="w-px h-4 bg-border" />
                 <button className="p-1 rounded hover:bg-secondary text-muted-foreground" title="Pausar">
                   <Play className="w-3.5 h-3.5" />
                 </button>
-                <button className="p-1 rounded hover:bg-secondary text-muted-foreground" title="Limpar">
+                <button
+                  onClick={() => {
+                    setConsoleFilter('all');
+                    setConsoleSearch('');
+                  }}
+                  className="p-1 rounded hover:bg-secondary text-muted-foreground"
+                  title="Limpar filtro"
+                >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -927,20 +1045,39 @@ export const BottomPanel = () => {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto font-mono text-xs">
-              {filteredMessages.map((msg) => (
-                <div 
-                  key={msg.id} 
+              {filteredMessages.length ? filteredMessages.map((msg) => (
+                <button
+                  key={msg.id}
+                  type="button"
+                  onClick={() => handleConsoleMessageClick(msg)}
+                  aria-disabled={!msg.targetObjectId}
+                  title={msg.targetObjectId ? `Selecionar ${msg.targetObjectName ?? msg.targetObjectId}` : undefined}
                   className={cn(
-                    'flex items-start gap-2 px-3 py-1 hover:bg-secondary/30 border-b border-border/50',
-                    msg.type === 'error' && 'bg-secondary/30',
-                    msg.type === 'warn' && 'bg-secondary/30'
+                    'grid w-full grid-cols-[auto_minmax(96px,140px)_minmax(0,1fr)_auto] items-start gap-2 border-b border-border/50 px-3 py-1.5 text-left',
+                    msg.targetObjectId
+                      ? 'cursor-pointer hover:bg-secondary/30'
+                      : 'cursor-default',
+                    msg.type === 'error' && 'bg-destructive/10',
+                    msg.type === 'warn' && 'bg-amber-500/10',
                   )}
                 >
-                  {getMessageIcon(msg.type)}
-                  <span className="flex-1 text-foreground">{msg.message}</span>
+                  <div className="pt-0.5">{getMessageIcon(msg.type)}</div>
+                  <span className="truncate rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {msg.source ?? 'Console'}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-foreground">{msg.message}</div>
+                    {msg.path && (
+                      <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{msg.path}</div>
+                    )}
+                  </div>
                   <span className="text-muted-foreground text-[10px]">{msg.timestamp}</span>
+                </button>
+              )) : (
+                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                  Nenhuma mensagem encontrada.
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Command Input */}
@@ -960,355 +1097,14 @@ export const BottomPanel = () => {
           </div>
         )}
 
-        {/* Store */}
-        {activeTab === 'store' && (
-          <div className="h-full flex flex-col">
-            {/* Store Header with Connection Status */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-              <div className="flex items-center gap-2">
-                {/* Connection Status - Use authStore instead */}
-                {isConnected ? (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-secondary/30 border border-border rounded">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[10px] text-muted-foreground font-medium">
-                      {username || 'Conectado'}
-                    </span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={connectAccount}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
-                  >
-                    <LogIn className="w-3 h-3 text-primary" />
-                    <span className="text-[10px] text-primary font-medium">Conectar Pixlland</span>
-                  </button>
-                )}
-                
-                {/* Tabs: Minha Biblioteca / No Projeto */}
-                {isConnected && (
-                  <div className="flex items-center gap-1 ml-2">
-                    <button
-                      onClick={() => setStoreTab('library')}
-                      className={cn(
-                        'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors',
-                        storeTab === 'library'
-                          ? 'bg-primary/20 text-primary'
-                          : 'text-muted-foreground hover:bg-secondary'
-                      )}
-                    >
-                      <Library className="w-3 h-3" />
-                      Minha Biblioteca ({filteredInventoryAssets.length})
-                    </button>
-                    <button
-                      onClick={() => setStoreTab('project')}
-                      className={cn(
-                        'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors',
-                        storeTab === 'project'
-                          ? 'bg-primary/20 text-primary'
-                          : 'text-muted-foreground hover:bg-secondary'
-                      )}
-                    >
-                      <Link2 className="w-3 h-3" />
-                      No Projeto ({filteredSupabaseProjectAssets.length})
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Buscar assets..."
-                    value={storeSearch}
-                    onChange={(e) => setStoreSearch(e.target.value)}
-                    className="w-40 bg-muted border-0 rounded pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-                
-                {/* Refresh */}
-                {isConnected && (
-                  <button
-                    onClick={() => {
-                      refetchInventory();
-                      refetchProjectAssets();
-                    }}
-                    disabled={isLoadingInventory || isLoadingProjectAssets}
-                    className="p-1.5 rounded hover:bg-secondary text-muted-foreground disabled:opacity-50"
-                    title="Sincronizar"
-                  >
-                    <RefreshCw className={cn("w-3.5 h-3.5", (isLoadingInventory || isLoadingProjectAssets) && "animate-spin")} />
-                  </button>
-                )}
-                
-                {/* Pixlland Store Button */}
-                <button
-                  onClick={openStore}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-gradient-to-r from-muted to-muted text-white text-[10px] font-medium hover:opacity-90 transition-opacity"
-                >
-                  <Globe className="w-3 h-3" />
-                  Loja
-                  {!isEmbedded && <ExternalLink className="w-2.5 h-2.5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-3">
-              {!isConnected ? (
-                /* Not Connected State */
-                <div className="h-full flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-muted/20 to-muted/20 flex items-center justify-center mb-4">
-                    <User className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-sm font-medium mb-1">Conecte sua conta Pixlland</h3>
-                  <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-                    Acesse sua biblioteca de assets e adicione-os diretamente aos seus projetos
-                  </p>
-                  <button
-                    onClick={connectAccount}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-muted to-muted text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Conectar Conta
-                  </button>
-                  
-                  {/* Built-in assets below */}
-                  <div className="w-full mt-6 pt-6 border-t border-border">
-                    <p className="text-[10px] text-muted-foreground mb-3">{STORE_ASSETS.length} assets built-in</p>
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
-                      {STORE_ASSETS.slice(0, 6).map((asset) => (
-                        <div 
-                          key={asset.id} 
-                          className="flex flex-col items-center p-2 bg-secondary/30 rounded-lg"
-                        >
-                          <Package className="w-6 h-6 opacity-30 mb-1" />
-                          <span className="text-[9px] text-center truncate w-full text-muted-foreground">{asset.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : isLoadingInventory || isLoadingProjectAssets ? (
-                /* Loading State */
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : storeTab === 'library' ? (
-                /* Library Tab - User inventory from Supabase */
-                filteredInventoryAssets.length > 0 ? (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-3">
-                    {filteredInventoryAssets.map((item) => (
-                      <div 
-                        key={item.id} 
-                        className="group relative flex flex-col items-center p-2 bg-secondary/30 rounded-lg hover:bg-secondary/60 cursor-grab active:cursor-grabbing transition-colors"
-                        draggable={!!item.asset?.asset_url}
-                        onDragStart={(e) => handleDragStart(
-                          e, 
-                          item.asset?.name || 'Asset', 
-                          item.asset?.asset_url || '', 
-                          item.asset?.asset_type || 'model',
-                          item.asset?.thumbnail_url || undefined
-                        )}
-                        onDragEnd={handleDragEnd}
-                      >
-                        {/* In Project Badge */}
-                        {isInProject(item.asset_id) && (
-                          <span className="absolute top-1 right-1 text-[8px] px-1 py-0.5 bg-secondary/30 text-muted-foreground rounded flex items-center gap-0.5">
-                            <Check className="w-2 h-2" />
-                          </span>
-                        )}
-                        
-                        <span className="absolute top-1 left-1 text-[8px] px-1 py-0.5 bg-secondary/30 text-muted-foreground rounded">
-                          {item.asset?.category || 'Asset'}
-                        </span>
-                        
-                        {/* Thumbnail */}
-                        <div className="w-14 h-14 flex items-center justify-center text-muted-foreground mb-1 overflow-hidden rounded">
-                          {item.asset?.thumbnail_url ? (
-                            <img src={item.asset.thumbnail_url} alt={item.asset.name} className="w-full h-full object-cover pointer-events-none" />
-                          ) : (
-                            <Package className="w-8 h-8 opacity-30" />
-                          )}
-                        </div>
-                        
-                        <span className="text-[10px] text-center truncate w-full">{item.asset?.name || 'Asset'}</span>
-                        
-                        {/* Action buttons overlay */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity">
-                          {/* Add to Scene button */}
-                          {item.asset?.asset_url && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToScene(
-                                  item.asset?.name || 'Asset',
-                                  item.asset?.asset_url || '',
-                                  item.asset?.asset_type || 'model'
-                                );
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 bg-green-500 rounded text-white text-[9px] font-medium hover:bg-green-600"
-                              title="Adicionar à cena"
-                            >
-                              <Plus className="w-3 h-3" />
-                              Cena
-                            </button>
-                          )}
-                          
-                          {/* Add to Project button */}
-                          {!isInProject(item.asset_id) && currentProjectId && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddInventoryToProject(item);
-                              }}
-                              disabled={addAssetMutation.isPending}
-                              className="flex items-center gap-1 px-2 py-1 bg-primary rounded text-primary-foreground text-[9px] font-medium hover:bg-primary/90 disabled:opacity-50"
-                              title="Adicionar ao projeto"
-                            >
-                              <AddToProject className="w-3 h-3" />
-                              Projeto
-                            </button>
-                          )}
-                          
-                          {/* Drag hint */}
-                          {item.asset?.asset_url && (
-                            <span className="text-[8px] text-white/50 flex items-center gap-1 mt-1">
-                              <Move className="w-2.5 h-2.5" />
-                              Arraste para a cena
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                    <Library className="w-12 h-12 mb-3 opacity-20" />
-                    <p className="text-xs">Sua biblioteca está vazia</p>
-                    <p className="mb-2 text-[10px] opacity-70">Adquira assets na Pixlland Store</p>
-                    <button 
-                      onClick={openStore}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90"
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      Visitar Loja
-                    </button>
-                  </div>
-                )
-              ) : (
-                /* Project Tab - Assets linked to this project from Supabase */
-                filteredSupabaseProjectAssets.length > 0 ? (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-3">
-                    {filteredSupabaseProjectAssets.map((asset) => (
-                      <div 
-                        key={asset.id} 
-                        className="group relative flex flex-col items-center p-2 bg-secondary/30 rounded-lg hover:bg-secondary/60 cursor-grab active:cursor-grabbing transition-colors"
-                        draggable={!!asset.asset_url}
-                        onDragStart={(e) => handleDragStart(
-                          e, 
-                          asset.name, 
-                          asset.asset_url || '', 
-                          asset.asset_type || 'model',
-                          undefined
-                        )}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <span className="absolute top-1 left-1 text-[8px] px-1 py-0.5 bg-secondary/30 text-muted-foreground rounded">
-                          Vinculado
-                        </span>
-                        
-                        {/* Thumbnail */}
-                        <div className="w-14 h-14 flex items-center justify-center text-muted-foreground mb-1 overflow-hidden rounded">
-                          {asset.asset_url ? (
-                            <img src={asset.asset_url} alt={asset.name} className="w-full h-full object-cover pointer-events-none" />
-                          ) : (
-                            <Package className="w-8 h-8 opacity-30" />
-                          )}
-                        </div>
-                        
-                        <span className="text-[10px] text-center truncate w-full">{asset.name}</span>
-                        
-                        {/* Action buttons overlay */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity">
-                          {/* Add to Scene button */}
-                          {asset.asset_url && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToScene(asset.name, asset.asset_url || '', asset.asset_type || 'model');
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 bg-green-500 rounded text-white text-[9px] font-medium hover:bg-green-600"
-                              title="Adicionar à cena"
-                            >
-                              <Plus className="w-3 h-3" />
-                              Cena
-                            </button>
-                          )}
-                          
-                          {/* Remove from project */}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveAssetFromProject(asset.id);
-                            }}
-                            disabled={removeAssetMutation.isPending}
-                            className="flex items-center gap-1 px-2 py-1 bg-destructive rounded text-destructive-foreground text-[9px] font-medium hover:bg-destructive/90 disabled:opacity-50"
-                            title="Remover do projeto"
-                          >
-                            <X className="w-3 h-3" />
-                            Remover
-                          </button>
-                          
-                          {/* Drag hint */}
-                          {asset.asset_url && (
-                            <span className="text-[8px] text-white/50 flex items-center gap-1 mt-1">
-                              <Move className="w-2.5 h-2.5" />
-                              Arraste para a cena
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                    <Link2 className="w-12 h-12 mb-3 opacity-20" />
-                    <p className="text-xs">Nenhum asset vinculado</p>
-                    <p className="mb-2 text-[10px] opacity-70">Adicione assets da sua biblioteca</p>
-                    <button 
-                      onClick={() => setStoreTab('library')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-foreground rounded text-xs hover:bg-secondary/80"
-                    >
-                      <Library className="w-3.5 h-3.5" />
-                      Ver Biblioteca
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-3 py-1.5 border-t border-border text-[10px] text-muted-foreground flex items-center justify-between">
-              <span>
-                {isConnected 
-                  ? storeTab === 'library'
-                    ? `${filteredInventoryAssets.length} assets na biblioteca`
-                    : `${filteredSupabaseProjectAssets.length} assets no projeto`
-                  : `${STORE_ASSETS.length} assets built-in`
-                }
-              </span>
-              <button 
-                onClick={openStore}
-                className="text-primary hover:underline flex items-center gap-1"
-              >
-                Adquirir mais na Pixlland Store
-                <ExternalLink className="w-2.5 h-2.5" />
-              </button>
-            </div>
-          </div>
+        {shouldRenderStorePane(activeTab) && LegacyCloudStorePane && (
+          <Suspense fallback={null}>
+            <LegacyCloudStorePane
+              handleAddToScene={handleAddToScene}
+              handleDragStart={handleDragStart}
+              handleDragEnd={handleDragEnd}
+            />
+          </Suspense>
         )}
       </div>
     </div>

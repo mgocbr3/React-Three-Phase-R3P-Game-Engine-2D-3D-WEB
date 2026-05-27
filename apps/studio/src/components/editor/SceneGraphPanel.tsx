@@ -17,6 +17,24 @@ const hasMovementAttached = (object: SceneObject): boolean => {
 };
 
 const SEARCH_RESULT_LIMIT = 300;
+const SCENE_DRAG_ACTIVATION_PX = 6;
+const SCENE_REORDER_EDGE_RATIO = 0.28;
+
+type SceneDropPlacement = 'before' | 'inside' | 'after';
+
+interface ScenePointerDrag {
+  id: string;
+  startX: number;
+  startY: number;
+  active: boolean;
+}
+
+const getSceneDropPlacement = (clientY: number, rect: DOMRect): SceneDropPlacement => {
+  const ratio = (clientY - rect.top) / Math.max(rect.height, 1);
+  if (ratio <= SCENE_REORDER_EDGE_RATIO) return 'before';
+  if (ratio >= 1 - SCENE_REORDER_EDGE_RATIO) return 'after';
+  return 'inside';
+};
 
 const objectMatchesSearch = (object: SceneObject, query: string): boolean => {
   if (!query) return true;
@@ -66,11 +84,12 @@ interface ContextMenuProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onFocus: () => void;
+  onDetachFromParent: () => void;
   onToggleVisible: () => void;
   onToggleLock: () => void;
 }
 
-const ContextMenu = ({ x, y, object, onClose, onRename, onDuplicate, onDelete, onFocus, onToggleVisible, onToggleLock }: ContextMenuProps) => {
+const ContextMenu = ({ x, y, object, onClose, onRename, onDuplicate, onDelete, onFocus, onDetachFromParent, onToggleVisible, onToggleLock }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -125,6 +144,15 @@ const ContextMenu = ({ x, y, object, onClose, onRename, onDuplicate, onDelete, o
         <Focus className="w-4 h-4 text-muted-foreground" />
         <span className="text-foreground">Focar Câmera</span>
       </button>
+      {object.parentId && (
+        <button
+          onClick={() => { onDetachFromParent(); onClose(); }}
+          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        >
+          <Unlink className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground">Desanexar</span>
+        </button>
+      )}
       <div className="h-px bg-border my-1.5 mx-2" />
       <button
         onClick={() => { onToggleVisible(); onClose(); }}
@@ -195,9 +223,14 @@ interface SceneObjectItemProps {
   selectObject: (id: string | null) => void;
   focusOnObject: (id: string) => void;
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
+  reparentObject: (id: string, parentId: string | null) => boolean;
+  reorderObject: (id: string, targetId: string, position: 'before' | 'after') => boolean;
   deleteObject: (id: string) => void;
   childrenByParent: Map<string, SceneObject[]>;
   descendantCountByParent: Map<string, number>;
+  draggedObjectId: string | null;
+  onSceneObjectDragStart: (id: string, event: React.PointerEvent<HTMLDivElement>) => void;
+  onSceneObjectDragEnd: () => void;
   childrenHidden?: boolean;
   pathLabel?: string;
 }
@@ -209,9 +242,14 @@ const SceneObjectItem = ({
   selectObject,
   focusOnObject,
   updateObject,
+  reparentObject,
+  reorderObject,
   deleteObject,
   childrenByParent,
   descendantCountByParent,
+  draggedObjectId,
+  onSceneObjectDragStart,
+  onSceneObjectDragEnd,
   childrenHidden = false,
   pathLabel,
 }: SceneObjectItemProps) => {
@@ -220,6 +258,7 @@ const SceneObjectItem = ({
   const [editName, setEditName] = useState(object.name);
   const [lastClickTime, setLastClickTime] = useState(0);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [dropPlacement, setDropPlacement] = useState<SceneDropPlacement | null>(null);
   const { duplicateObject } = useEditorStore();
   const Icon = getObjectIcon(object.type);
   const isSelected = object.id === selectedObjectId;
@@ -229,6 +268,12 @@ const SceneObjectItem = ({
   const children = childrenByParent.get(object.id) ?? [];
   const hasChildren = children.length > 0;
   const descendantCount = descendantCountByParent.get(object.id) ?? children.length;
+
+  useEffect(() => {
+    if (!draggedObjectId) {
+      setDropPlacement(null);
+    }
+  }, [draggedObjectId]);
 
   const handleRename = () => {
     if (editName.trim() && editName !== object.name) {
@@ -269,6 +314,47 @@ const SceneObjectItem = ({
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
+  const updateDropPlacement = (event: React.PointerEvent<HTMLDivElement>) => {
+    const draggedId = draggedObjectId;
+    if (!draggedId || draggedId === object.id) {
+      setDropPlacement(null);
+      return;
+    }
+
+    setDropPlacement(getSceneDropPlacement(event.clientY, event.currentTarget.getBoundingClientRect()));
+  };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || isEditing) return;
+    if ((event.target as HTMLElement).closest('button,input,textarea,select')) return;
+
+    onSceneObjectDragStart(object.id, event);
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const draggedId = draggedObjectId;
+    if (!draggedId) {
+      onSceneObjectDragEnd();
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    const placement = dropPlacement ?? getSceneDropPlacement(event.clientY, event.currentTarget.getBoundingClientRect());
+    setDropPlacement(null);
+
+    if (draggedId !== object.id) {
+      if (placement === 'inside') {
+        if (reparentObject(draggedId, object.id)) {
+          setIsExpanded(true);
+        }
+      } else {
+        reorderObject(draggedId, object.id, placement);
+      }
+    }
+    onSceneObjectDragEnd();
+  };
+
   return (
     <div>
       {/* Context Menu */}
@@ -282,15 +368,20 @@ const SceneObjectItem = ({
           onDuplicate={() => duplicateObject(object.id)}
           onDelete={() => deleteObject(object.id)}
           onFocus={() => focusOnObject(object.id)}
+          onDetachFromParent={() => reparentObject(object.id, null)}
           onToggleVisible={() => updateObject(object.id, { visible: object.visible === false ? true : false })}
           onToggleLock={() => updateObject(object.id, { locked: !object.locked })}
         />
       )}
       
       <div
+        data-testid={`scene-object-${object.id}`}
+        data-drop-placement={dropPlacement ?? undefined}
         className={cn(
-          'group scene-item',
-          isSelected && 'selected'
+          'group scene-item relative',
+          isSelected && 'selected',
+          draggedObjectId === object.id && 'opacity-70',
+          dropPlacement === 'inside' && 'bg-primary/15 outline outline-1 outline-primary/70'
         )}
         style={{ paddingLeft: `${8 + depth * 12}px` }}
         onClick={(e) => {
@@ -302,7 +393,19 @@ const SceneObjectItem = ({
           focusOnObject(object.id);
         }}
         onContextMenu={handleContextMenu}
+        onPointerDown={handlePointerDown}
+        onPointerEnter={updateDropPlacement}
+        onPointerMove={updateDropPlacement}
+        onPointerLeave={() => setDropPlacement(null)}
+        onPointerUp={handlePointerUp}
       >
+        {dropPlacement === 'before' && (
+          <span className="pointer-events-none absolute left-1 right-1 top-0 h-0.5 rounded-full bg-primary shadow-[0_0_0_1px_rgba(255,255,255,0.18)]" />
+        )}
+        {dropPlacement === 'after' && (
+          <span className="pointer-events-none absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-primary shadow-[0_0_0_1px_rgba(255,255,255,0.18)]" />
+        )}
+
         {/* Expand/Collapse */}
         {hasChildren ? (
           <button 
@@ -432,9 +535,14 @@ const SceneObjectItem = ({
               selectObject={selectObject}
               focusOnObject={focusOnObject}
               updateObject={updateObject}
+              reparentObject={reparentObject}
+              reorderObject={reorderObject}
               deleteObject={deleteObject}
               childrenByParent={childrenByParent}
               descendantCountByParent={descendantCountByParent}
+              draggedObjectId={draggedObjectId}
+              onSceneObjectDragStart={onSceneObjectDragStart}
+              onSceneObjectDragEnd={onSceneObjectDragEnd}
             />
           ))}
         </div>
@@ -444,9 +552,12 @@ const SceneObjectItem = ({
 };
 
 export const SceneGraphPanel = () => {
-  const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, deleteObject } = useEditorStore();
+  const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, reparentObject, reorderObject, deleteObject } = useEditorStore();
   const [expanded, setExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRootDropTarget, setIsRootDropTarget] = useState(false);
+  const [pointerDrag, setPointerDrag] = useState<ScenePointerDrag | null>(null);
+  const suppressNextRootClickRef = useRef(false);
   const query = searchQuery.trim().toLowerCase();
 
   const childrenByParent = useMemo(() => {
@@ -508,6 +619,53 @@ export const SceneGraphPanel = () => {
   }, [objects, query]);
 
   const isSearching = query.length > 0;
+  const activeDraggedObjectId = pointerDrag?.active ? pointerDrag.id : null;
+
+  const handleSceneObjectDragStart = (id: string, event: React.PointerEvent<HTMLDivElement>) => {
+    setPointerDrag({
+      id,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+    });
+    selectObject(id);
+  };
+
+  const handleSceneObjectDragMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    setPointerDrag((current) => {
+      if (!current || current.active) return current;
+
+      const deltaX = event.clientX - current.startX;
+      const deltaY = event.clientY - current.startY;
+      if (Math.hypot(deltaX, deltaY) < SCENE_DRAG_ACTIVATION_PX) {
+        return current;
+      }
+
+      return { ...current, active: true };
+    });
+  };
+
+  const handleRootPointerMove = () => {
+    if (!activeDraggedObjectId) return;
+    setIsRootDropTarget(true);
+  };
+
+  const handleRootPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const draggedId = activeDraggedObjectId;
+    if (!draggedId) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    suppressNextRootClickRef.current = true;
+    setIsRootDropTarget(false);
+    reparentObject(draggedId, null);
+    setPointerDrag(null);
+  };
+
+  const handleSceneObjectDragEnd = () => {
+    setPointerDrag(null);
+    setIsRootDropTarget(false);
+  };
 
   return (
     <div className="editor-dock editor-dock-outline w-full h-full border-r flex flex-col overflow-hidden">
@@ -537,12 +695,30 @@ export const SceneGraphPanel = () => {
       </div>
 
       {/* Scene Tree */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div
+        className="flex-1 overflow-y-auto py-1"
+        onPointerMove={handleSceneObjectDragMove}
+        onPointerCancel={handleSceneObjectDragEnd}
+      >
         {/* Scene Root */}
         <div>
           <button
-            onClick={() => setExpanded(!expanded)}
-            className="scene-item w-full font-medium text-foreground"
+            onClick={(event) => {
+              if (suppressNextRootClickRef.current) {
+                suppressNextRootClickRef.current = false;
+                event.preventDefault();
+                return;
+              }
+              setExpanded(!expanded);
+            }}
+            data-testid="scene-root-drop-target"
+            className={cn(
+              'scene-item w-full font-medium text-foreground',
+              isRootDropTarget && 'bg-primary/15 outline outline-1 outline-primary/70',
+            )}
+            onPointerMove={handleRootPointerMove}
+            onPointerLeave={() => setIsRootDropTarget(false)}
+            onPointerUp={handleRootPointerUp}
           >
             {expanded ? (
               <ChevronDown className="w-3 h-3 text-muted-foreground" />
@@ -572,9 +748,14 @@ export const SceneGraphPanel = () => {
                       selectObject={selectObject}
                       focusOnObject={focusOnObject}
                       updateObject={updateObject}
+                      reparentObject={reparentObject}
+                      reorderObject={reorderObject}
                       deleteObject={deleteObject}
                       childrenByParent={childrenByParent}
                       descendantCountByParent={descendantCountByParent}
+                      draggedObjectId={activeDraggedObjectId}
+                      onSceneObjectDragStart={handleSceneObjectDragStart}
+                      onSceneObjectDragEnd={handleSceneObjectDragEnd}
                       childrenHidden
                       pathLabel={getObjectPath(obj, objectsById)}
                     />
@@ -590,9 +771,14 @@ export const SceneGraphPanel = () => {
                     selectObject={selectObject}
                     focusOnObject={focusOnObject}
                     updateObject={updateObject}
+                    reparentObject={reparentObject}
+                    reorderObject={reorderObject}
                     deleteObject={deleteObject}
                     childrenByParent={childrenByParent}
                     descendantCountByParent={descendantCountByParent}
+                    draggedObjectId={activeDraggedObjectId}
+                    onSceneObjectDragStart={handleSceneObjectDragStart}
+                    onSceneObjectDragEnd={handleSceneObjectDragEnd}
                   />
                 ))
               )}
