@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Box,
+  Check,
   ChevronDown,
   CheckCircle2,
   Circle,
@@ -90,6 +91,7 @@ interface MenuItem {
   action?: () => void;
   divider?: boolean;
   disabled?: boolean;
+  checked?: boolean;
 }
 
 interface MenuConfig {
@@ -424,6 +426,13 @@ export const EditorHeader = () => {
     { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
     { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
   ];
+  const viewportPanelLabel = activeSceneKind === '2d' ? 'Preview 2D' : 'Scene View';
+  const windowPanelItems: MenuItem[] = [
+    { label: 'Hierarchy', checked: panels.scene, action: () => togglePanel('scene') },
+    { label: viewportPanelLabel, checked: panels.viewport, action: () => togglePanel('viewport') },
+    { label: 'Inspector', checked: panels.inspector, action: () => togglePanel('inspector') },
+    { label: 'Project', checked: panels.bottom, action: () => togglePanel('bottom') },
+  ];
   const sceneCreateMenuItems: MenuItem[] = getEditorAddMenuSections(activeSceneKind).flatMap((section, sectionIndex) => [
     ...(sectionIndex ? [{ label: '', divider: true }] : []),
     ...section.items.map((item): MenuItem => {
@@ -491,13 +500,10 @@ export const EditorHeader = () => {
       },
     ],
     Window: [
-      { label: panels.scene ? 'Hide Hierarchy' : 'Show Hierarchy', icon: PanelLeft, action: () => togglePanel('scene') },
-      { label: panels.viewport ? 'Hide Scene View' : 'Show Scene View', icon: Monitor, action: () => togglePanel('viewport') },
-      { label: panels.inspector ? 'Hide Inspector' : 'Show Inspector', icon: PanelLeft, action: () => togglePanel('inspector') },
-      { label: panels.bottom ? 'Hide Project' : 'Show Project', icon: PanelBottom, action: () => togglePanel('bottom') },
+      ...windowPanelItems,
       { label: '', divider: true },
       { label: 'Dock Hierarchy Left', icon: PanelLeft, action: () => restorePanel('scene') },
-      { label: 'Dock Scene View Center', icon: Monitor, action: () => restorePanel('viewport') },
+      { label: `Dock ${viewportPanelLabel} Center`, icon: Monitor, action: () => restorePanel('viewport') },
       { label: 'Dock Inspector Right', icon: PanelLeft, action: () => restorePanel('inspector') },
       { label: 'Dock Project Below', icon: PanelBottom, action: () => restorePanel('bottom') },
       { label: '', divider: true },
@@ -719,12 +725,15 @@ interface MenuItemsProps {
 
 const MenuItems = ({ items, onSelect, showShortcut }: MenuItemsProps) => (
   <>
-    {items.map((item, index) => (
-      item.divider ? (
+    {items.map((item, index) => {
+      const isCheckedItem = item.checked !== undefined;
+      return item.divider ? (
         <div key={index} className="my-1 h-px bg-border" />
       ) : (
         <button
           key={index}
+          role={isCheckedItem ? 'menuitemcheckbox' : undefined}
+          aria-checked={isCheckedItem ? item.checked : undefined}
           onClick={() => {
             item.action?.();
             onSelect();
@@ -735,14 +744,19 @@ const MenuItems = ({ items, onSelect, showShortcut }: MenuItemsProps) => (
             item.disabled ? 'cursor-not-allowed text-muted-foreground/45' : 'text-foreground',
           )}
         >
-          {item.icon && <item.icon className="h-3.5 w-3.5 text-muted-foreground" />}
+          {isCheckedItem && (
+            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-primary">
+              {item.checked && <Check className="h-3.5 w-3.5" />}
+            </span>
+          )}
+          {!isCheckedItem && item.icon && <item.icon className="h-3.5 w-3.5 text-muted-foreground" />}
           <span className="flex-1 truncate">{item.label}</span>
           {showShortcut && item.shortcut && (
             <span className="font-mono text-[10px] text-muted-foreground">{item.shortcut}</span>
           )}
         </button>
-      )
-    ))}
+      );
+    })}
   </>
 );
 

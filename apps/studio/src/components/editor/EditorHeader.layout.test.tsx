@@ -47,4 +47,27 @@ describe('EditorHeader layout selector', () => {
     expect(screen.queryByRole('button', { name: 'Cube' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Terrain' })).not.toBeInTheDocument();
   });
+
+  it('uses fixed checked Window entries and names the 2D viewport Preview 2D', () => {
+    useEditorStore.setState({ activeSceneKind: '2d' });
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Window' }));
+
+    const previewItem = screen.getByRole('menuitemcheckbox', { name: 'Preview 2D' });
+    expect(previewItem).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('button', { name: 'Hide Scene View' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show Scene View' })).not.toBeInTheDocument();
+
+    fireEvent.click(previewItem);
+    expect(useEditorLayoutStore.getState().panels.viewport).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Window' }));
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Preview 2D' })).toHaveAttribute('aria-checked', 'false');
+  });
 });
