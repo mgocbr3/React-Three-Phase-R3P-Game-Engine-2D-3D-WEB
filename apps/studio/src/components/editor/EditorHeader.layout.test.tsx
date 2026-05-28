@@ -6,13 +6,15 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
 import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
 import { useViewportStore } from '@/stores/viewportStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { EditorHeader } from './EditorHeader';
 
 describe('EditorHeader layout selector', () => {
   beforeEach(() => {
     useEditorLayoutStore.getState().resetLayout();
     useBottomPanelTabsStore.getState().resetTabs();
-    useEditorStore.setState({ activeSceneKind: '3d' });
+    useRuntimeGameStore.getState().stopPreview();
+    useEditorStore.setState({ activeSceneKind: '3d', isEditMode: true });
     useViewportStore.setState({ viewportMode: '3d', lockedKind: null });
   });
 
@@ -50,6 +52,21 @@ describe('EditorHeader layout selector', () => {
     expect(screen.getByRole('button', { name: 'Sprite' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Cube' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Terrain' })).not.toBeInTheDocument();
+  });
+
+  it('locks Scene creation commands while Play Mode is active', () => {
+    useEditorStore.setState({ activeSceneKind: '2d', isEditMode: false });
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scene' }));
+
+    expect(screen.getByRole('button', { name: 'Square' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sprite' })).toBeDisabled();
   });
 
   it('uses the locked viewport kind for Scene creation entries', () => {

@@ -7,7 +7,7 @@ import { EditorToolbar } from './EditorToolbar';
 
 describe('EditorToolbar scene-aware tools', () => {
   beforeEach(() => {
-    useEditorStore.setState({ activeSceneKind: '3d', transformMode: 'translate' });
+    useEditorStore.setState({ activeSceneKind: '3d', transformMode: 'translate', isEditMode: true });
     useViewportStore.setState({ viewportMode: '3d', lockedKind: null });
   });
 
@@ -31,5 +31,13 @@ describe('EditorToolbar scene-aware tools', () => {
     expect(screen.getByTitle('Rotate 3D (E)')).toBeVisible();
     expect(screen.getByTitle('Scale 3D (R)')).toBeVisible();
     expect(screen.queryByTitle('Select 2D (Q)')).not.toBeInTheDocument();
+  });
+
+  it('locks Add while Play Mode is active', () => {
+    useEditorStore.setState({ activeSceneKind: '2d', isEditMode: false });
+
+    render(<EditorToolbar variant="inline" />);
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
   });
 });

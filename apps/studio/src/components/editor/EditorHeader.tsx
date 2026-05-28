@@ -189,6 +189,7 @@ export const EditorHeader = () => {
 
   const projectName = localProject?.name || 'Untitled Project';
   const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
+  const editorMutationsLocked = isRuntimePreviewActive;
   const isRuntimeFullscreen = previewDisplayMode === 'fullscreen';
   const runtimeLabel = previewSession?.launchTarget.kind === 'web-runtime'
     ? 'Runtime real'
@@ -460,7 +461,9 @@ export const EditorHeader = () => {
       return {
         label: item.label,
         icon: sceneAddIcons[action],
+        disabled: editorMutationsLocked,
         action: () => {
+          if (editorMutationsLocked) return;
           if (item.kind === 'terrain') setTerrainModalOpen(true);
           else addObject(item.objectType, getEditorAddObjectPosition(editorToolKind));
         },
@@ -481,20 +484,20 @@ export const EditorHeader = () => {
       { label: 'Exit to Hub', action: () => navigate('/') },
     ],
     Edit: [
-      { label: 'Undo', shortcut: 'Ctrl+Z', icon: Undo, action: undo, disabled: !canUndo() },
-      { label: 'Redo', shortcut: 'Ctrl+Y', icon: Redo, action: redo, disabled: !canRedo() },
+      { label: 'Undo', shortcut: 'Ctrl+Z', icon: Undo, action: undo, disabled: editorMutationsLocked || !canUndo() },
+      { label: 'Redo', shortcut: 'Ctrl+Y', icon: Redo, action: redo, disabled: editorMutationsLocked || !canRedo() },
       { label: '', divider: true },
-      { label: 'Cut', shortcut: 'Ctrl+X', icon: Copy, action: () => selectedObjectId && cutObject(selectedObjectId), disabled: !selectedObjectId },
-      { label: 'Copy', shortcut: 'Ctrl+C', icon: Copy, action: () => selectedObjectId && copyObject(selectedObjectId), disabled: !selectedObjectId },
-      { label: 'Paste', shortcut: 'Ctrl+V', icon: Clipboard, action: () => pasteObject(), disabled: !canPasteObject },
-      { label: 'Duplicate', shortcut: 'Ctrl+D', icon: Copy, action: () => selectedObjectId && duplicateObject(selectedObjectId), disabled: !selectedObjectId },
+      { label: 'Cut', shortcut: 'Ctrl+X', icon: Copy, action: () => selectedObjectId && cutObject(selectedObjectId), disabled: editorMutationsLocked || !selectedObjectId },
+      { label: 'Copy', shortcut: 'Ctrl+C', icon: Copy, action: () => selectedObjectId && copyObject(selectedObjectId), disabled: editorMutationsLocked || !selectedObjectId },
+      { label: 'Paste', shortcut: 'Ctrl+V', icon: Clipboard, action: () => pasteObject(), disabled: editorMutationsLocked || !canPasteObject },
+      { label: 'Duplicate', shortcut: 'Ctrl+D', icon: Copy, action: () => selectedObjectId && duplicateObject(selectedObjectId), disabled: editorMutationsLocked || !selectedObjectId },
       { label: '', divider: true },
-      { label: 'Delete', shortcut: 'Del', icon: Trash2, action: () => selectedObjectId && deleteObject(selectedObjectId), disabled: !selectedObjectId },
+      { label: 'Delete', shortcut: 'Del', icon: Trash2, action: () => selectedObjectId && deleteObject(selectedObjectId), disabled: editorMutationsLocked || !selectedObjectId },
     ],
     Scene: sceneCreateMenuItems,
     Tools: [
-      { label: showGrid ? 'Hide Grid' : 'Show Grid', shortcut: 'G', icon: Grid3X3, action: toggleGrid },
-      { label: showStats ? 'Hide Stats' : 'Show Stats', icon: Eye, action: toggleStats },
+      { label: showGrid ? 'Hide Grid' : 'Show Grid', shortcut: 'G', icon: Grid3X3, action: toggleGrid, disabled: editorMutationsLocked },
+      { label: showStats ? 'Hide Stats' : 'Show Stats', icon: Eye, action: toggleStats, disabled: editorMutationsLocked },
       { label: '', divider: true },
       { label: 'Desktop Layout Only', icon: Monitor, disabled: true },
       { label: 'Engine Settings', icon: Wrench, action: () => setIsSettingsOpen(true) },
@@ -675,7 +678,7 @@ export const EditorHeader = () => {
             <CommandButton icon={FolderOpen} label="Open" onClick={handleOpenProjectFolder} />
             <CommandButton icon={Save} label="Save" onClick={handleSaveToDisk} />
             <HeaderSeparator />
-            <EditorToolbar variant="inline" />
+            <EditorToolbar variant="inline" disabled={editorMutationsLocked} />
           </div>
         </div>
       </header>

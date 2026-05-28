@@ -55,9 +55,10 @@ const addIcons: Partial<Record<ObjectType | 'terrain', typeof Box>> = {
 interface EditorToolbarProps {
   variant?: 'floating' | 'inline';
   className?: string;
+  disabled?: boolean;
 }
 
-export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbarProps) => {
+export const EditorToolbar = ({ variant = 'floating', className, disabled = false }: EditorToolbarProps) => {
   const { 
     isEditMode, 
     activeSceneKind,
@@ -81,10 +82,19 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
   
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const isInline = variant === 'inline';
+  const editorLocked = disabled || !isEditMode;
+  const addMenuKind = getEditorToolKind(lockedKind, viewportMode, activeSceneKind);
+  const addMenuSections = getEditorAddMenuSections(addMenuKind);
+
+  useEffect(() => {
+    if (editorLocked) setShowAddMenu(false);
+  }, [editorLocked]);
 
   // Keyboard shortcuts for undo/redo and transform tools
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (editorLocked) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -125,11 +135,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace]);
-
-  const isInline = variant === 'inline';
-  const addMenuKind = getEditorToolKind(lockedKind, viewportMode, activeSceneKind);
-  const addMenuSections = getEditorAddMenuSections(addMenuKind);
+  }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace, editorLocked]);
 
   return (
     <div
@@ -169,12 +175,14 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
                     label="2D"
                     active={viewportMode === '2d'}
                     onClick={() => setViewportMode('2d')}
+                    disabled={editorLocked}
                   />
                   <ModeButton
                     icon={Box}
                     label="3D"
                     active={viewportMode === '3d'}
                     onClick={() => setViewportMode('3d')}
+                    disabled={editorLocked}
                   />
                 </>
               ) : (
@@ -205,6 +213,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
             icon={tool.icon}
             active={transformMode === tool.mode && isEditMode}
             onClick={() => setTransformMode(tool.mode)}
+            disabled={editorLocked}
             tooltip={`${tool.label} (${tool.shortcut})`}
           />
         ))}
@@ -216,6 +225,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
           icon={Grid3X3}
           active={showGrid}
           onClick={toggleGrid}
+          disabled={editorLocked}
           tooltip="Toggle Grid (G)"
         />
 
@@ -224,6 +234,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
           icon={transformSpace === 'world' ? Globe : Crosshair}
           active={transformSpace === 'local'}
           onClick={toggleTransformSpace}
+          disabled={editorLocked}
           tooltip={`Space: ${transformSpace === 'world' ? 'World' : 'Local'} (X)`}
         />
 
@@ -232,6 +243,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
           icon={Magnet}
           active={snapEnabled}
           onClick={toggleSnapEnabled}
+          disabled={editorLocked}
           tooltip="Snap (Shift hold)"
         />
 
@@ -240,8 +252,13 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
         {/* Add Object Dropdown */}
         <div className="relative">
           <button
-            onClick={() => setShowAddMenu(!showAddMenu)}
-            className="editor-command-chip flex h-7 items-center gap-1.5 border border-border bg-[var(--editor-toolbar)] px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-[var(--editor-panel-raised)]"
+            aria-label="Add"
+            disabled={editorLocked}
+            onClick={() => !editorLocked && setShowAddMenu(!showAddMenu)}
+            className={cn(
+              'editor-command-chip flex h-7 items-center gap-1.5 border border-border bg-[var(--editor-toolbar)] px-2.5 text-xs font-semibold text-foreground transition-colors',
+              editorLocked ? 'cursor-not-allowed opacity-35' : 'hover:bg-[var(--editor-panel-raised)]',
+            )}
           >
             <span className="text-sm font-semibold leading-none">+</span>
             Add
@@ -270,11 +287,16 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
                         <button
                           key={`${section.label}-${item.label}`}
                           onClick={() => {
+                            if (editorLocked) return;
                             if (item.kind === 'terrain') setTerrainModalOpen(true);
                             else addObject(item.objectType, getEditorAddObjectPosition(addMenuKind));
                             setShowAddMenu(false);
                           }}
-                          className="group flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
+                          disabled={editorLocked}
+                          className={cn(
+                            'group flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-colors',
+                            editorLocked ? 'cursor-not-allowed text-muted-foreground/45' : 'text-foreground hover:bg-secondary',
+                          )}
                         >
                           <Icon className="w-4 h-4 text-muted-foreground" />
                           <span className="flex-1 text-left">{item.label}</span>
@@ -294,13 +316,13 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
         <ToolButton
           icon={Undo}
           onClick={() => canUndo() && undo()}
-          disabled={!canUndo()}
+          disabled={editorLocked || !canUndo()}
           tooltip="Undo (Ctrl+Z)"
         />
         <ToolButton
           icon={Redo}
           onClick={() => canRedo() && redo()}
-          disabled={!canRedo()}
+          disabled={editorLocked || !canRedo()}
           tooltip="Redo (Ctrl+Y)"
         />
       </div>
@@ -316,14 +338,18 @@ interface ModeButtonProps {
   label: string;
   active: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }
 
-const ModeButton = ({ icon: Icon, label, active, onClick }: ModeButtonProps) => (
+const ModeButton = ({ icon: Icon, label, active, onClick, disabled }: ModeButtonProps) => (
   <button
     onClick={onClick}
+    disabled={disabled}
     className={cn(
       'engine-view-tab flex h-[26px] items-center gap-1 px-2 text-xs font-semibold transition-colors',
-      active
+      disabled
+        ? 'cursor-not-allowed opacity-35'
+        : active
         ? 'active'
         : 'text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground'
     )}
