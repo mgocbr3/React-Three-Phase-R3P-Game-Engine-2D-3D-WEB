@@ -106,7 +106,6 @@ export const InspectorPanel = () => {
                 aria-pressed={isActive}
                 disabled={isRuntimePreviewActive && tab.id !== 'inspector'}
                 onClick={() => setMainTab(tab.id)}
-                onPointerDown={(event) => event.stopPropagation()}
                 title={tab.label}
                 className={cn(
                   'editor-panel-tab flex h-6 flex-1 min-w-0 items-center justify-center gap-1 px-1.5 text-[11px] transition-colors',

@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEditorStore, type SceneObject } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
+import { DockFrame } from './DockFrame';
 import { InspectorPanel } from './InspectorPanel';
 
 const sprite: SceneObject = {
@@ -58,5 +59,32 @@ describe('InspectorPanel object icons', () => {
     expect(vibeTab).toHaveTextContent('Vibe');
     expect(vibeTab).not.toHaveTextContent('Vibe Code');
     expect(vibeTab.querySelector('span')).toHaveClass('whitespace-nowrap');
+  });
+
+  it('lets the unified inspector tab strip start a dock drag', () => {
+    const onPointerDown = vi.fn();
+
+    render(
+      <DockFrame
+        id="inspector"
+        zone="main"
+        label="Inspector"
+        onClose={vi.fn()}
+        onDockMain={vi.fn()}
+        onDockBottom={vi.fn()}
+        onResetDock={vi.fn()}
+        dragging={false}
+        draggingAny={false}
+        dropActive={false}
+        onPointerDown={onPointerDown}
+        customChrome
+      >
+        <InspectorPanel />
+      </DockFrame>,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Inspector' }));
+
+    expect(onPointerDown).toHaveBeenCalledTimes(1);
   });
 });
