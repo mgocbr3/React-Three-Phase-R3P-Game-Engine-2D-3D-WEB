@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 // ============ TYPES ============
 
-export type InputType = 'keyboard' | 'gamepad' | 'touch';
+export type InputType = 'keyboard' | 'gamepad';
 
 export interface KeyboardBinding {
   type: 'keyboard';
@@ -19,14 +19,7 @@ export interface GamepadBinding {
   label: string;
 }
 
-export interface TouchBinding {
-  type: 'touch';
-  gesture: 'joystick_up' | 'joystick_down' | 'joystick_left' | 'joystick_right' | 
-           'button_jump' | 'button_action1' | 'button_action2' | 'swipe_up' | 'swipe_down';
-  label: string;
-}
-
-export type InputBinding = KeyboardBinding | GamepadBinding | TouchBinding;
+export type InputBinding = KeyboardBinding | GamepadBinding;
 
 export interface InputAction {
   id: string;
@@ -48,7 +41,6 @@ const DEFAULT_ACTIONS: InputAction[] = [
       { type: 'keyboard', code: 'KeyW', label: 'W' },
       { type: 'keyboard', code: 'ArrowUp', label: '↑' },
       { type: 'gamepad', axis: 1, axisDirection: 'negative', label: 'L-Stick ↑' },
-      { type: 'touch', gesture: 'joystick_up', label: 'Joystick ↑' },
     ],
   },
   {
@@ -60,7 +52,6 @@ const DEFAULT_ACTIONS: InputAction[] = [
       { type: 'keyboard', code: 'KeyS', label: 'S' },
       { type: 'keyboard', code: 'ArrowDown', label: '↓' },
       { type: 'gamepad', axis: 1, axisDirection: 'positive', label: 'L-Stick ↓' },
-      { type: 'touch', gesture: 'joystick_down', label: 'Joystick ↓' },
     ],
   },
   {
@@ -72,7 +63,6 @@ const DEFAULT_ACTIONS: InputAction[] = [
       { type: 'keyboard', code: 'KeyA', label: 'A' },
       { type: 'keyboard', code: 'ArrowLeft', label: '←' },
       { type: 'gamepad', axis: 0, axisDirection: 'negative', label: 'L-Stick ←' },
-      { type: 'touch', gesture: 'joystick_left', label: 'Joystick ←' },
     ],
   },
   {
@@ -84,7 +74,6 @@ const DEFAULT_ACTIONS: InputAction[] = [
       { type: 'keyboard', code: 'KeyD', label: 'D' },
       { type: 'keyboard', code: 'ArrowRight', label: '→' },
       { type: 'gamepad', axis: 0, axisDirection: 'positive', label: 'L-Stick →' },
-      { type: 'touch', gesture: 'joystick_right', label: 'Joystick →' },
     ],
   },
   {
@@ -95,7 +84,6 @@ const DEFAULT_ACTIONS: InputAction[] = [
     bindings: [
       { type: 'keyboard', code: 'Space', label: 'Espaço' },
       { type: 'gamepad', button: 0, label: 'A / X' },
-      { type: 'touch', gesture: 'button_jump', label: 'Botão Pulo' },
     ],
   },
   {
@@ -107,7 +95,6 @@ const DEFAULT_ACTIONS: InputAction[] = [
       { type: 'keyboard', code: 'KeyE', label: 'E' },
       { type: 'keyboard', code: 'Mouse0', label: 'Clique Esquerdo' },
       { type: 'gamepad', button: 2, label: 'X / □' },
-      { type: 'touch', gesture: 'button_action1', label: 'Botão A' },
     ],
   },
   {
@@ -118,7 +105,6 @@ const DEFAULT_ACTIONS: InputAction[] = [
     bindings: [
       { type: 'keyboard', code: 'KeyF', label: 'F' },
       { type: 'gamepad', button: 3, label: 'Y / △' },
-      { type: 'touch', gesture: 'button_action2', label: 'Botão B' },
     ],
   },
   {
@@ -154,6 +140,19 @@ const DEFAULT_ACTIONS: InputAction[] = [
   },
 ];
 
+const isDesktopBinding = (binding: unknown): binding is InputBinding => (
+  Boolean(binding)
+  && typeof binding === 'object'
+  && (((binding as { type?: unknown }).type === 'keyboard') || ((binding as { type?: unknown }).type === 'gamepad'))
+);
+const stripTouchBindings = (bindings: unknown): InputBinding[] => (
+  Array.isArray(bindings) ? bindings.filter(isDesktopBinding) : []
+);
+const toDesktopActions = (actions: InputAction[]) => actions.map((action) => ({
+  ...action,
+  bindings: stripTouchBindings(action.bindings),
+}));
+
 // ============ STORE ============
 
 interface InputMapStore {
@@ -178,19 +177,19 @@ interface InputMapStore {
 export const useInputMapStore = create<InputMapStore>()(
   persist(
     (set, get) => ({
-      actions: DEFAULT_ACTIONS,
+      actions: toDesktopActions(DEFAULT_ACTIONS),
       
       addAction: (action) => {
         const id = `action_${Date.now()}`;
         set((state) => ({
-          actions: [...state.actions, { ...action, id }],
+          actions: [...state.actions, { ...action, id, bindings: stripTouchBindings(action.bindings) }],
         }));
       },
       
       updateAction: (id, updates) => {
         set((state) => ({
-          actions: state.actions.map((a) => 
-            a.id === id ? { ...a, ...updates } : a
+          actions: state.actions.map((a) =>
+            a.id === id ? toDesktopActions([{ ...a, ...updates }])[0] : a
           ),
         }));
       },
@@ -202,6 +201,7 @@ export const useInputMapStore = create<InputMapStore>()(
       },
       
       addBinding: (actionId, binding) => {
+        if (!isDesktopBinding(binding)) return;
         set((state) => ({
           actions: state.actions.map((a) => 
             a.id === actionId 
@@ -222,6 +222,7 @@ export const useInputMapStore = create<InputMapStore>()(
       },
       
       updateBinding: (actionId, bindingIndex, binding) => {
+        if (!isDesktopBinding(binding)) return;
         set((state) => ({
           actions: state.actions.map((a) => 
             a.id === actionId 
@@ -247,11 +248,15 @@ export const useInputMapStore = create<InputMapStore>()(
         return null;
       },
       
-      resetToDefaults: () => set({ actions: DEFAULT_ACTIONS }),
+      resetToDefaults: () => set({ actions: toDesktopActions(DEFAULT_ACTIONS) }),
     }),
     {
       name: 'pixl-input-map',
       version: 1,
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<InputMapStore> | undefined;
+        return { ...current, actions: toDesktopActions((saved?.actions as InputAction[] | undefined) ?? current.actions) };
+      },
     }
   )
 );
@@ -298,18 +303,6 @@ export const GAMEPAD_BUTTON_LABELS: Record<number, string> = {
   17: 'Touchpad',
 };
 
-export const TOUCH_GESTURE_LABELS: Record<string, string> = {
-  joystick_up: 'Joystick ↑',
-  joystick_down: 'Joystick ↓',
-  joystick_left: 'Joystick ←',
-  joystick_right: 'Joystick →',
-  button_jump: 'Botão Pulo',
-  button_action1: 'Botão A',
-  button_action2: 'Botão B',
-  swipe_up: 'Deslizar ↑',
-  swipe_down: 'Deslizar ↓',
-};
-
 export const getBindingLabel = (binding: InputBinding): string => {
   if (binding.type === 'keyboard') {
     return KEYBOARD_LABELS[binding.code] || binding.code;
@@ -322,9 +315,6 @@ export const getBindingLabel = (binding: InputBinding): string => {
       const dir = binding.axisDirection === 'positive' ? '+' : '-';
       return `Eixo ${binding.axis} ${dir}`;
     }
-  }
-  if (binding.type === 'touch') {
-    return TOUCH_GESTURE_LABELS[binding.gesture] || binding.gesture;
   }
   return 'Desconhecido';
 };

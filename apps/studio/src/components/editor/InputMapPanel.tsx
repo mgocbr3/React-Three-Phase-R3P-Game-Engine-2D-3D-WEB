@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Plus, Trash2, Keyboard, Gamepad2, Smartphone, ChevronDown, ChevronRight,
-  AlertCircle, Edit2, Check, X
+  Plus, Trash2, Keyboard, Gamepad2, ChevronDown, ChevronRight,
+  AlertCircle, Check, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -10,23 +10,25 @@ import {
   InputBinding, 
   KeyboardBinding,
   GamepadBinding,
-  TouchBinding,
   KEYBOARD_LABELS,
   GAMEPAD_BUTTON_LABELS,
-  TOUCH_GESTURE_LABELS,
   getBindingLabel
 } from '@/stores/inputMapStore';
 
+type DesktopBinding = KeyboardBinding | GamepadBinding;
+
+const desktopBindings = (bindings: InputBinding[]): DesktopBinding[] => (
+  bindings
+);
+
 // ============ BINDING ICON ============
 
-const BindingTypeIcon = ({ type }: { type: InputBinding['type'] }) => {
+const BindingTypeIcon = ({ type }: { type: DesktopBinding['type'] }) => {
   switch (type) {
     case 'keyboard':
       return <Keyboard className="w-3.5 h-3.5 text-muted-foreground" />;
     case 'gamepad':
       return <Gamepad2 className="w-3.5 h-3.5 text-muted-foreground" />;
-    case 'touch':
-      return <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />;
   }
 };
 
@@ -34,15 +36,14 @@ const BindingTypeIcon = ({ type }: { type: InputBinding['type'] }) => {
 
 interface KeyCaptureModalProps {
   isOpen: boolean;
-  bindingType: 'keyboard' | 'gamepad' | 'touch';
-  onCapture: (binding: InputBinding) => void;
+  bindingType: DesktopBinding['type'];
+  onCapture: (binding: DesktopBinding) => void;
   onClose: () => void;
 }
 
 const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCaptureModalProps) => {
   const [capturedKey, setCapturedKey] = useState<string | null>(null);
   const [capturedGamepad, setCapturedGamepad] = useState<{ button?: number; axis?: number; dir?: 'positive' | 'negative' } | null>(null);
-  const [selectedTouch, setSelectedTouch] = useState<string | null>(null);
   const { isKeyBound } = useInputMapStore();
   
   // Keyboard capture
@@ -124,13 +125,6 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
           : `Eixo ${capturedGamepad.axis} ${capturedGamepad.dir === 'positive' ? '+' : '-'}`,
       };
       onCapture(binding);
-    } else if (bindingType === 'touch' && selectedTouch) {
-      const binding: TouchBinding = {
-        type: 'touch',
-        gesture: selectedTouch as TouchBinding['gesture'],
-        label: TOUCH_GESTURE_LABELS[selectedTouch] || selectedTouch,
-      };
-      onCapture(binding);
     }
     onClose();
   };
@@ -154,7 +148,6 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
           <h3 className="text-sm font-semibold">
             {bindingType === 'keyboard' && 'Capturar Tecla'}
             {bindingType === 'gamepad' && 'Capturar Botão do Controle'}
-            {bindingType === 'touch' && 'Selecionar Gesto Touch'}
           </h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-white/10">
             <X className="w-4 h-4 text-muted-foreground" />
@@ -208,26 +201,6 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
           </div>
         )}
         
-        {bindingType === 'touch' && (
-          <div className="grid grid-cols-2 gap-2 py-4">
-            {Object.entries(TOUCH_GESTURE_LABELS).map(([gesture, label]) => (
-              <button
-                key={gesture}
-                onClick={() => setSelectedTouch(gesture)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all',
-                  selectedTouch === gesture
-                    ? 'bg-secondary/30 border border-border text-muted-foreground'
-                    : 'bg-white/5 border border-white/10 text-muted-foreground hover:bg-white/10'
-                )}
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-        
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-white/10">
           <button
             onClick={onClose}
@@ -239,8 +212,7 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
             onClick={handleConfirm}
             disabled={
               (bindingType === 'keyboard' && !capturedKey) ||
-              (bindingType === 'gamepad' && !capturedGamepad) ||
-              (bindingType === 'touch' && !selectedTouch)
+              (bindingType === 'gamepad' && !capturedGamepad)
             }
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium',
@@ -267,9 +239,10 @@ interface ActionRowProps {
 
 const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
   const { removeAction, addBinding, removeBinding } = useInputMapStore();
-  const [captureType, setCaptureType] = useState<'keyboard' | 'gamepad' | 'touch' | null>(null);
+  const [captureType, setCaptureType] = useState<DesktopBinding['type'] | null>(null);
+  const bindings = desktopBindings(action.bindings);
   
-  const handleAddBinding = (binding: InputBinding) => {
+  const handleAddBinding = (binding: DesktopBinding) => {
     addBinding(action.id, binding);
   };
   
@@ -293,7 +266,7 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
         )}
         <span className="text-sm font-medium flex-1">{action.name}</span>
         <div className="flex items-center gap-1">
-          {action.bindings.slice(0, 3).map((b, i) => (
+          {bindings.slice(0, 3).map((b, i) => (
             <span 
               key={i}
               className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-white/10"
@@ -301,9 +274,9 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
               {getBindingLabel(b)}
             </span>
           ))}
-          {action.bindings.length > 3 && (
+          {bindings.length > 3 && (
             <span className="text-[10px] text-muted-foreground">
-              +{action.bindings.length - 3}
+              +{bindings.length - 3}
             </span>
           )}
         </div>
@@ -326,7 +299,7 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
           
           {/* Bindings List */}
           <div className="space-y-1.5 mb-3">
-            {action.bindings.map((binding, index) => (
+            {bindings.map((binding, index) => (
               <div 
                 key={index}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-white/5"
@@ -358,13 +331,6 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
             >
               <Gamepad2 className="w-3 h-3" />
               Controle
-            </button>
-            <button
-              onClick={() => setCaptureType('touch')}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] bg-secondary/30 text-muted-foreground hover:bg-secondary/30"
-            >
-              <Smartphone className="w-3 h-3" />
-              Touch
             </button>
           </div>
         </div>
@@ -473,7 +439,7 @@ const AddActionModal = ({ isOpen, onClose }: AddActionModalProps) => {
 // ============ MAIN PANEL ============
 
 export const InputMapPanel = () => {
-  const { actions, resetToDefaults } = useInputMapStore();
+  const { actions } = useInputMapStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   
@@ -486,7 +452,7 @@ export const InputMapPanel = () => {
             Mapa de Inputs
           </h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Configure teclas, botões do controle e gestos touch
+            Configure teclas, mouse e botões de controle
           </p>
         </div>
         <button
