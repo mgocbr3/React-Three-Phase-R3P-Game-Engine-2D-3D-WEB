@@ -7,7 +7,14 @@ import { EditorToolbar } from './EditorToolbar';
 
 describe('EditorToolbar scene-aware tools', () => {
   beforeEach(() => {
-    useEditorStore.setState({ activeSceneKind: '3d', transformMode: 'translate', isEditMode: true });
+    useEditorStore.setState({
+      activeSceneKind: '3d',
+      transformMode: 'translate',
+      isEditMode: true,
+      objects: [],
+      selectedObjectId: null,
+      focusTarget: null,
+    });
     useViewportStore.setState({ viewportMode: '3d', lockedKind: null });
   });
 
@@ -61,6 +68,30 @@ describe('EditorToolbar scene-aware tools', () => {
     render(<EditorToolbar variant="inline" />);
 
     fireEvent.keyDown(window, { key: 'f' });
+
+    expect(useEditorStore.getState().focusTarget?.position).toEqual([3, 4, 5]);
+  });
+
+  it('frames the selected object from the toolbar control', () => {
+    useEditorStore.setState({
+      objects: [{
+        id: 'crate',
+        name: 'Crate',
+        type: 'box',
+        position: [3, 4, 5],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        color: '#ffffff',
+        visible: true,
+        locked: false,
+      }],
+      selectedObjectId: 'crate',
+      focusTarget: null,
+    });
+
+    render(<EditorToolbar variant="inline" />);
+
+    fireEvent.click(screen.getByTitle('Frame Selected (F)'));
 
     expect(useEditorStore.getState().focusTarget?.position).toEqual([3, 4, 5]);
   });

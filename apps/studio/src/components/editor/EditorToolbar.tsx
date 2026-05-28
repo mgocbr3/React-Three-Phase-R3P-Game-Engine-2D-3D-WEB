@@ -21,6 +21,7 @@ import {
   Square,
   Type,
   Image as ImageIcon,
+  Focus,
 } from 'lucide-react';
 import { useEditorStore, TransformMode, ObjectType } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
@@ -222,6 +223,12 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
             tooltip={`${tool.label} (${tool.shortcut})`}
           />
         ))}
+        <ToolButton
+          icon={Focus}
+          onClick={() => selectedObjectId && focusOnObject(selectedObjectId)}
+          disabled={editorLocked || !selectedObjectId}
+          tooltip="Frame Selected (F)"
+        />
 
         <Separator />
 
