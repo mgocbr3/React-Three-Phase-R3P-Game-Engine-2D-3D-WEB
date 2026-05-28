@@ -178,6 +178,38 @@ export const shouldAutoFit2DEditorCamera = ({
   hasAutoFit: boolean;
 }) => !isPlaying && hasAutoFit;
 
+type Snap2DSettings = {
+  snapEnabled: boolean;
+  snapTranslate: number;
+  snapRotate?: number;
+  snapScale?: number;
+};
+
+const snapStep = (value: number, enabled: boolean, step = 0): number => (
+  enabled && Number.isFinite(step) && step > 0 ? Number((Math.round(value / step) * step).toFixed(4)) : value
+);
+
+export const getSnapped2DTransformValue = (value: number, settings: Snap2DSettings): number => (
+  snapStep(value, settings.snapEnabled, settings.snapTranslate)
+);
+
+const getSnapped2DRotationDegrees = (value: number, settings: Snap2DSettings): number => (
+  snapStep(value, settings.snapEnabled, settings.snapRotate)
+);
+
+const getSnapped2DScaleValue = (value: number, settings: Snap2DSettings): number => (
+  snapStep(value, settings.snapEnabled, settings.snapScale)
+);
+
+export const shouldCommit2DDragHistory = (
+  before: readonly number[] | null | undefined,
+  after: readonly number[] | null | undefined,
+): boolean => (
+  Boolean(before && after) &&
+  before!.length === after!.length &&
+  before!.some((value, index) => Math.abs(value - after![index]) > 0.0001)
+);
+
 const mergeBounds = (a: ViewportWorldBounds, b: ViewportWorldBounds): ViewportWorldBounds => ({
   minX: Math.min(a.minX, b.minX),
   minY: Math.min(a.minY, b.minY),
@@ -653,6 +685,21 @@ export function PhaserRuntimeMount({
 
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const sceneAny = this as any;
+              const getDragHistoryTarget = (go: import('phaser').GameObjects.GameObject) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const name = (go as any).name as string | undefined;
+                return name === ROTATE_HANDLE_NAME || (HANDLE_NAMES as readonly string[]).includes(name ?? '')
+                  ? sceneAny.__pixlSelectedTarget
+                  : go;
+              };
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const getDragHistorySnapshot = (target: any): number[] => [
+                target?.x ?? 0,
+                target?.y ?? 0,
+                target?.angle ?? 0,
+                target?.scaleX ?? 1,
+                target?.scaleY ?? 1,
+              ];
               // Cache of the active transformMode + which handles are
               // appropriate for each. The React-side useEffect mutates
               // this when the toolbar toggles, and the redraw helper
@@ -810,6 +857,7 @@ export function PhaserRuntimeMount({
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const target = (this as any).__pixlSelectedTarget;
                     if (!target) return;
+                    target.setData('__pixl_drag_history_start', getDragHistorySnapshot(target));
                     target.setData('__pixl_rotate_init', {
                       initCursorX: pointer.worldX,
                       initCursorY: pointer.worldY,
@@ -822,6 +870,8 @@ export function PhaserRuntimeMount({
                   }
 
                   if (!name || !(HANDLE_NAMES as readonly string[]).includes(name)) {
+                    const target = getDragHistoryTarget(go);
+                    target?.setData?.('__pixl_drag_history_start', getDragHistorySnapshot(target));
                     return;
                   }
                   // Stash init state on the SELECTED target so onDrag can
@@ -830,6 +880,7 @@ export function PhaserRuntimeMount({
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const target = (this as any).__pixlSelectedTarget;
                   if (!target?.getWorldTransformMatrix) return;
+                  target.setData('__pixl_drag_history_start', getDragHistorySnapshot(target));
                   const worldTx = new Phaser.GameObjects.Components.TransformMatrix();
                   target.getWorldTransformMatrix(worldTx);
                   const initLocalPos = new Phaser.Math.Vector2();
@@ -852,6 +903,22 @@ export function PhaserRuntimeMount({
                     initHeight: Math.max(1, Math.abs(h0)),
                     handleName: name,
                   });
+                  return;
+                },
+              );
+              this.input.on(
+                'dragend',
+                (
+                  _pointer: import('phaser').Input.Pointer,
+                  gameObject: import('phaser').GameObjects.GameObject,
+                ) => {
+                  if (useRuntimeGameStore.getState().isPlaying) return;
+                  const target = getDragHistoryTarget(gameObject);
+                  const start = target?.getData?.('__pixl_drag_history_start') as number[] | undefined;
+                  if (shouldCommit2DDragHistory(start, getDragHistorySnapshot(target))) {
+                    useEditorStore.getState().saveToHistory();
+                  }
+                  target?.removeData?.('__pixl_drag_history_start');
                 },
               );
               this.input.on(
@@ -896,14 +963,14 @@ export function PhaserRuntimeMount({
                     const angle2 = Math.atan2(init.initCursorY - cy, init.initCursorX - cx);
                     const deltaRadians = angle1 - angle2;
                     const deltaAngle = Phaser.Math.RadToDeg(deltaRadians);
-                    const newAngle = init.initAngle + deltaAngle;
+                    const store = useEditorStore.getState();
+                    const newAngle = getSnapped2DRotationDegrees(init.initAngle + deltaAngle, store);
                     target.angle = newAngle;
                     // Redraw outline + propagate to store. Use rotation
                     // tuple [x, y, z] where z is radians (matches the
                     // editorStore's 3D-shaped rotation type).
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (this as any).__pixlRedrawOutline?.(pixlId);
-                    const store = useEditorStore.getState();
                     store.updateObject(pixlId, {
                       rotation: [0, 0, Phaser.Math.DegToRad(newAngle)],
                     } as Parameters<typeof store.updateObject>[1]);
@@ -976,13 +1043,15 @@ export function PhaserRuntimeMount({
                       newScaleX = Math.sign(newScaleX || 1) * u;
                       newScaleY = Math.sign(newScaleY || 1) * u;
                     }
+                    const store = useEditorStore.getState();
+                    newScaleX = getSnapped2DScaleValue(newScaleX, store);
+                    newScaleY = getSnapped2DScaleValue(newScaleY, store);
 
                     if (typeof target.setScale === 'function') {
                       target.setScale(newScaleX, newScaleY);
                     }
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (this as any).__pixlRedrawOutline?.(pixlId);
-                    const store = useEditorStore.getState();
                     store.updateObject(pixlId, {
                       scale: [newScaleX, newScaleY, 1],
                     } as Parameters<typeof store.updateObject>[1]);
@@ -990,20 +1059,22 @@ export function PhaserRuntimeMount({
                   }
 
                   // Body translate (the original path).
+                  const store = useEditorStore.getState();
+                  const nextX = getSnapped2DTransformValue(dragX, store);
+                  const nextY = getSnapped2DTransformValue(dragY, store);
                   if (typeof go.setPosition === 'function') {
-                    go.setPosition(dragX, dragY);
+                    go.setPosition(nextX, nextY);
                   } else {
-                    go.x = dragX;
-                    go.y = dragY;
+                    go.x = nextX;
+                    go.y = nextY;
                   }
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const pixlId = go.getData?.('pixlId') as string | undefined;
                   if (pixlId) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (this as any).__pixlRedrawOutline?.(pixlId);
-                    const store = useEditorStore.getState();
                     store.updateObject(pixlId, {
-                      position: [dragX, dragY, 0],
+                      position: [nextX, nextY, 0],
                     } as Parameters<typeof store.updateObject>[1]);
                   }
                 },

@@ -5,8 +5,10 @@ import {
   clearPixlPhaserGameGlobal,
   getPhaserRuntimeChromeState,
   getRuntimeCameraView,
+  getSnapped2DTransformValue,
   readEditorViewportPointer,
   readPhaserViewportSize,
+  shouldCommit2DDragHistory,
   shouldAutoFit2DEditorCamera,
 } from './PhaserRuntimeMount';
 
@@ -57,6 +59,17 @@ describe('PhaserRuntimeMount', () => {
   it('keeps editor auto-fit out of 2D play mode', () => {
     expect(shouldAutoFit2DEditorCamera({ isPlaying: true, hasAutoFit: true })).toBe(false);
     expect(shouldAutoFit2DEditorCamera({ isPlaying: false, hasAutoFit: true })).toBe(true);
+  });
+
+  it('snaps 2D transform values to the editor translate grid', () => {
+    expect(getSnapped2DTransformValue(127, { snapEnabled: true, snapTranslate: 32 })).toBe(128);
+    expect(getSnapped2DTransformValue(127, { snapEnabled: false, snapTranslate: 32 })).toBe(127);
+    expect(getSnapped2DTransformValue(127, { snapEnabled: true, snapTranslate: 0 })).toBe(127);
+  });
+
+  it('commits one 2D drag history entry only after a real transform change', () => {
+    expect(shouldCommit2DDragHistory([10, 20, 0], [42, 20, 0])).toBe(true);
+    expect(shouldCommit2DDragHistory([10, 20, 0], [10, 20, 0])).toBe(false);
   });
 
   it('skips async runtime script setup after the Phaser scene is destroyed', () => {
