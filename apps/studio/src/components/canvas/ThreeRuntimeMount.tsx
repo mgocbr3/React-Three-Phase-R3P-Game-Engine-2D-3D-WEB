@@ -114,6 +114,10 @@ export const findThreeObjectForEditorSelection = (
   return resolveSelectableObject(match, threeScene);
 };
 
+export const getEditorObjectIdForNativeSelection = (
+  object: THREE.Object3D | null,
+): string | null => getPixlObjectIdFromThreeObject(object);
+
 const getFrameForObject = (
   object: THREE.Object3D | null,
   fallbackPosition: [number, number, number],
@@ -273,6 +277,12 @@ export function ThreeRuntimeMount({
     store.saveToHistory();
   }, [selectedObjectId]);
 
+  const handleNativeSelectionChange = useCallback((object: THREE.Object3D | null) => {
+    const objectId = getEditorObjectIdForNativeSelection(object);
+    const store = useEditorStore.getState();
+    if (store.selectedObjectId !== objectId) store.selectObject(objectId);
+  }, []);
+
   useSelectionGizmo({
     canvas: canvasEl,
     camera,
@@ -282,6 +292,7 @@ export function ThreeRuntimeMount({
     space: transformSpace,
     enabled: editorToolsEnabled,
     externalSelected: externalSelectedThree,
+    onSelectionChange: handleNativeSelectionChange,
     onTransformCommit: commitNativeGizmoTransform,
     snapSettings: { snapEnabled, snapTranslate, snapRotate, snapScale },
   });
