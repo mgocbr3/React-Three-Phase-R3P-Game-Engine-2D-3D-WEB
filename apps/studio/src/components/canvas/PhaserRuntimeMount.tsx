@@ -15,6 +15,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
+import { Viewport2DOverlay } from './Viewport2DOverlay';
 
 export interface PhaserRuntimeMountProps {
   visible: boolean;
@@ -1301,6 +1302,7 @@ export function PhaserRuntimeMount({
           )}
         </div>
       )}
+      <Viewport2DOverlay gameRef={gameRef} visible={visible && load.status === 'ready'} />
     </div>
   );
 }

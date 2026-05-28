@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, useEffect, useCallback, useRef, useState } from 'react';
+import { Fragment, type DragEvent, type PointerEvent, type ReactNode, useEffect, useCallback, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { X } from 'lucide-react';
@@ -11,6 +11,7 @@ import { InspectorPanel } from '@/components/editor/InspectorPanel';
 import { BottomPanel } from '@/components/editor/BottomPanel';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
+import { getDockPanelSize } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -25,49 +26,83 @@ import {
   saveActiveProjectDocumentToDirectory,
 } from '@/services/localProjectFiles';
 import { FilePickerBusyError } from '@/services/filePickerLock';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+const DOCK_MIME = 'application/x-pixl-dock';
 
 const isPanelId = (id: string): id is EditorPanelId => (
   (defaultDockOrder as string[]).includes(id)
 );
-
-const panelSize = (id: EditorPanelId) => ({
-  defaultSize: id === 'viewport' ? 46 : 18,
-  minSize: id === 'viewport' ? 30 : 12,
-  maxSize: id === 'viewport' ? 80 : 45,
-});
 
 const DockFrame = ({
   id,
   label,
   children,
   onClose,
-  onMoveBefore,
+  dragging,
+  dropActive,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onPointerDown,
 }: {
   id: EditorPanelId;
   label: string;
   children: ReactNode;
   onClose: () => void;
-  onMoveBefore: (panel: EditorPanelId, target: EditorPanelId) => void;
+  dragging: boolean;
+  dropActive: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragOver: (event: DragEvent<HTMLDivElement>) => void;
+  onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
+  onDrop: (event: DragEvent<HTMLDivElement>) => void;
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
 }) => (
-  <div data-testid={`dock-panel-${id}`} className="editor-dock editor-dock-outline flex h-full min-w-0 flex-col overflow-hidden">
+  <div
+    data-testid={`dock-panel-${id}`}
+    data-dock-drop-target={id}
+    onDragOver={onDragOver}
+    onDragLeave={onDragLeave}
+    onDrop={onDrop}
+    className={cn(
+      'editor-dock editor-dock-outline relative flex h-full min-w-0 flex-col overflow-hidden transition-[border-color,box-shadow,opacity,transform] duration-150',
+      dragging && 'scale-[0.995] opacity-60',
+      dropActive && 'border-primary/70 shadow-[inset_4px_0_0_hsl(var(--primary))]'
+    )}
+  >
+    {dropActive && (
+      <div
+        data-testid={`dock-drop-before-${id}`}
+        className="pointer-events-none absolute inset-y-0 left-0 z-30 w-1 bg-primary shadow-[0_0_16px_rgba(75,160,255,0.75)]"
+      />
+    )}
     <div
       data-testid={`dock-tab-${id}`}
       draggable
       onDragStart={(event) => {
-        event.dataTransfer.setData('application/x-pixl-dock', id);
+        event.dataTransfer.setData(DOCK_MIME, id);
         event.dataTransfer.effectAllowed = 'move';
+        onDragStart();
       }}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        const source = event.dataTransfer.getData('application/x-pixl-dock');
-        if (isPanelId(source)) onMoveBefore(source, id);
-      }}
-      className="panel-header h-8 cursor-grab select-none justify-between px-2 active:cursor-grabbing"
+      onDragEnd={onDragEnd}
+      onPointerDown={onPointerDown}
+      className={cn(
+        'panel-header h-8 cursor-grab select-none justify-between px-2 active:cursor-grabbing',
+        dragging && 'bg-[var(--editor-row-selected)]'
+      )}
       title="Arraste para reorganizar"
     >
       <span className="truncate text-xs font-medium text-foreground">{label}</span>
-      <button className="p-1 text-muted-foreground hover:text-foreground" onClick={onClose} title="Fechar painel">
+      <button
+        className="p-1 text-muted-foreground hover:text-foreground"
+        onClick={onClose}
+        onPointerDown={(event) => event.stopPropagation()}
+        title="Fechar painel"
+      >
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -75,17 +110,34 @@ const DockFrame = ({
   </div>
 );
 
-const DockEndDrop = ({ onMoveToEnd }: { onMoveToEnd: (panel: EditorPanelId) => void }) => (
+const DockEndDrop = ({
+  dragging,
+  active,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: {
+  dragging: boolean;
+  active: boolean;
+  onDragOver: (event: DragEvent<HTMLDivElement>) => void;
+  onDragLeave: () => void;
+  onDrop: (event: DragEvent<HTMLDivElement>) => void;
+}) => (
   <div
     data-testid="dock-end-drop"
-    onDragOver={(event) => event.preventDefault()}
-    onDrop={(event) => {
-      const source = event.dataTransfer.getData('application/x-pixl-dock');
-      if (isPanelId(source)) onMoveToEnd(source);
-    }}
-    className="h-full w-3 shrink-0 border-l border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]/70"
+    data-dock-drop-target="end"
+    onDragOver={onDragOver}
+    onDragLeave={onDragLeave}
+    onDrop={onDrop}
+    className={cn(
+      'relative h-full shrink-0 border-l transition-[width,background,opacity] duration-150',
+      dragging ? 'w-8 border-primary/50 bg-primary/10 opacity-100' : 'w-2 border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]/70 opacity-40',
+      active && 'bg-primary/25'
+    )}
     title="Solte aqui para mover o painel ao fim"
-  />
+  >
+    {active && <div className="absolute inset-y-0 right-0 w-1 bg-primary shadow-[0_0_16px_rgba(75,160,255,0.75)]" />}
+  </div>
 );
 
 const EditorPage = () => {
@@ -100,6 +152,15 @@ const EditorPage = () => {
   const movePanelBefore = useEditorLayoutStore((s) => s.movePanelBefore);
   const movePanelToEnd = useEditorLayoutStore((s) => s.movePanelToEnd);
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
+  const [draggedDock, setDraggedDock] = useState<EditorPanelId | null>(null);
+  const [dockDropTarget, setDockDropTarget] = useState<EditorPanelId | 'end' | null>(null);
+  const pointerDockRef = useRef<{
+    source: EditorPanelId;
+    startX: number;
+    startY: number;
+    target: EditorPanelId | 'end' | null;
+    dragging: boolean;
+  } | null>(null);
 
   // Local autosave — writes `pixl-project-document` + per-id snapshot after
   // any editor mutation. Without this, Inspector edits / drags / gizmo moves
@@ -250,6 +311,69 @@ const EditorPage = () => {
     }
   }, [templateId, loadTemplate, hasSavedProject, loadSavedProject, sampleProjectSlug, localProjectId]);
 
+  const clearDockDrag = () => {
+    setDraggedDock(null);
+    setDockDropTarget(null);
+  };
+  const readDockSource = (event: DragEvent<HTMLDivElement>) => {
+    const source = event.dataTransfer.getData(DOCK_MIME) || draggedDock || '';
+    return isPanelId(source) ? source : null;
+  };
+  const markDockDrop = (event: DragEvent<HTMLDivElement>, target: EditorPanelId | 'end') => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    if (draggedDock) setDockDropTarget(target);
+  };
+  const dropDockBefore = (event: DragEvent<HTMLDivElement>, target: EditorPanelId) => {
+    event.preventDefault();
+    const source = readDockSource(event);
+    if (source && source !== target) movePanelBefore(source, target);
+    clearDockDrag();
+  };
+  const dropDockToEnd = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const source = readDockSource(event);
+    if (source) movePanelToEnd(source);
+    clearDockDrag();
+  };
+
+  useEffect(() => {
+    const resolveTarget = (x: number, y: number) => {
+      const raw = document.elementFromPoint(x, y)
+        ?.closest<HTMLElement>('[data-dock-drop-target]')
+        ?.dataset.dockDropTarget;
+      return raw === 'end' || isPanelId(raw ?? '') ? raw as EditorPanelId | 'end' : null;
+    };
+    const finish = (event: globalThis.PointerEvent) => {
+      const drag = pointerDockRef.current;
+      if (!drag) return;
+      const target = drag.target ?? resolveTarget(event.clientX, event.clientY);
+      pointerDockRef.current = null;
+      if (drag.dragging && target && target !== drag.source) {
+        target === 'end' ? movePanelToEnd(drag.source) : movePanelBefore(drag.source, target);
+      }
+      clearDockDrag();
+    };
+    const move = (event: globalThis.PointerEvent) => {
+      const drag = pointerDockRef.current;
+      if (!drag) return;
+      if (!drag.dragging && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return;
+      drag.dragging = true;
+      drag.target = resolveTarget(event.clientX, event.clientY);
+      setDraggedDock(drag.source);
+      setDockDropTarget(drag.target && drag.target !== drag.source ? drag.target : null);
+      event.preventDefault();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+  }, [movePanelBefore, movePanelToEnd]);
+
   if (isOpeningDiskProject) {
     return (
       <div className="editor-shell fixed inset-0 flex items-center justify-center bg-[var(--editor-bg)] text-[var(--editor-text)]">
@@ -292,16 +416,33 @@ const EditorPage = () => {
           visibleDockIds.length ? (
             <ResizablePanelGroup direction="horizontal" className="flex-1">
               {visibleDockIds.map((id, index) => {
-                const size = panelSize(id);
+                const size = getDockPanelSize(id, visibleDockIds);
                 return (
                   <Fragment key={id}>
                     {index > 0 && <ResizableHandle withHandle />}
-                    <ResizablePanel {...size}>
+                    <ResizablePanel id={id} order={index} {...size}>
                       <DockFrame
                         id={id}
                         label={dockContent[id].label}
                         onClose={() => setPanelVisible(id, false)}
-                        onMoveBefore={movePanelBefore}
+                        dragging={draggedDock === id}
+                        dropActive={dockDropTarget === id && draggedDock !== id}
+                        onDragStart={() => setDraggedDock(id)}
+                        onDragEnd={clearDockDrag}
+                        onDragOver={(event) => markDockDrop(event, id)}
+                        onDragLeave={(event) => {
+                          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDockDropTarget(null);
+                        }}
+                        onDrop={(event) => dropDockBefore(event, id)}
+                        onPointerDown={(event) => {
+                          pointerDockRef.current = {
+                            source: id,
+                            startX: event.clientX,
+                            startY: event.clientY,
+                            target: null,
+                            dragging: false,
+                          };
+                        }}
                       >
                         {dockContent[id].content}
                       </DockFrame>
@@ -309,7 +450,13 @@ const EditorPage = () => {
                   </Fragment>
                 );
               })}
-              <DockEndDrop onMoveToEnd={movePanelToEnd} />
+              <DockEndDrop
+                dragging={Boolean(draggedDock)}
+                active={dockDropTarget === 'end'}
+                onDragOver={(event) => markDockDrop(event, 'end')}
+                onDragLeave={() => setDockDropTarget(null)}
+                onDrop={dropDockToEnd}
+              />
             </ResizablePanelGroup>
           ) : (
             <div className="flex h-full items-center justify-center bg-[var(--editor-bg)] text-xs text-muted-foreground">

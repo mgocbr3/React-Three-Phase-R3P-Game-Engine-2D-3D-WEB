@@ -14,6 +14,7 @@ interface EditorLayoutState {
   togglePanel: (panel: EditorPanelId) => void;
   movePanelBefore: (panel: EditorPanelId, target: EditorPanelId) => void;
   movePanelToEnd: (panel: EditorPanelId) => void;
+  showAllPanels: () => void;
   applyPreset: (preset: EditorLayoutPreset) => void;
   resetLayout: () => void;
 }
@@ -81,15 +82,21 @@ export const useEditorLayoutStore = create<EditorLayoutState>()(
           dockOrder: [...normalizeDockOrder(state.dockOrder).filter((id) => id !== panel), panel],
           preset: 'default',
         })),
+      showAllPanels: () =>
+        set((state) => ({
+          panels: { ...defaultPanels },
+          dockOrder: normalizeDockOrder(state.dockOrder),
+          preset: 'default',
+        })),
       applyPreset: (preset) =>
         set(() => ({
-          panels: presets[preset],
+          panels: { ...presets[preset] },
           dockOrder: defaultDockOrder,
           preset,
         })),
       resetLayout: () =>
         set(() => ({
-          panels: defaultPanels,
+          panels: { ...defaultPanels },
           dockOrder: defaultDockOrder,
           preset: 'default',
         })),

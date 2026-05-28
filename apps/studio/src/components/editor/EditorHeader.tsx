@@ -145,6 +145,7 @@ export const EditorHeader = () => {
   const togglePreviewFullscreen = useRuntimeGameStore((s) => s.togglePreviewFullscreen);
   const panels = useEditorLayoutStore((s) => s.panels);
   const togglePanel = useEditorLayoutStore((s) => s.togglePanel);
+  const showAllPanels = useEditorLayoutStore((s) => s.showAllPanels);
   const resetLayout = useEditorLayoutStore((s) => s.resetLayout);
   const applyLayoutPreset = useEditorLayoutStore((s) => s.applyPreset);
 
@@ -430,11 +431,12 @@ export const EditorHeader = () => {
       },
     ],
     Window: [
-      { label: panels.scene ? 'Hide Scene Dock' : 'Show Scene Dock', icon: PanelLeft, action: () => togglePanel('scene') },
-      { label: panels.viewport ? 'Hide Preview Dock' : 'Show Preview Dock', icon: Monitor, action: () => togglePanel('viewport') },
-      { label: panels.inspector ? 'Hide Inspector Dock' : 'Show Inspector Dock', icon: PanelLeft, action: () => togglePanel('inspector') },
-      { label: panels.bottom ? 'Hide Bottom Dock' : 'Show Bottom Dock', icon: PanelBottom, action: () => togglePanel('bottom') },
+      { label: panels.scene ? 'Hide Hierarchy' : 'Show Hierarchy', icon: PanelLeft, action: () => togglePanel('scene') },
+      { label: panels.viewport ? 'Hide Scene View' : 'Show Scene View', icon: Monitor, action: () => togglePanel('viewport') },
+      { label: panels.inspector ? 'Hide Inspector' : 'Show Inspector', icon: PanelLeft, action: () => togglePanel('inspector') },
+      { label: panels.bottom ? 'Hide Project' : 'Show Project', icon: PanelBottom, action: () => togglePanel('bottom') },
       { label: '', divider: true },
+      { label: 'Show All Panels', icon: LayoutGrid, action: showAllPanels },
       { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },
       { label: 'Viewport Focus', icon: Maximize2, action: () => applyLayoutPreset('viewport-focus') },
       { label: 'Inspect Layout', icon: PanelLeft, action: () => applyLayoutPreset('inspect') },

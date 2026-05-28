@@ -39,6 +39,21 @@ describe('editorLayoutStore dock layout', () => {
     expect(state.dockOrder).toEqual(['bottom', 'scene', 'viewport', 'inspector']);
   });
 
+  it('shows every panel from Window without resetting the custom dock order', () => {
+    useEditorLayoutStore.getState().movePanelToEnd('scene');
+    useEditorLayoutStore.getState().setPanelVisible('viewport', false);
+    useEditorLayoutStore.getState().showAllPanels();
+
+    const state = useEditorLayoutStore.getState();
+    expect(state.panels).toEqual({
+      scene: true,
+      viewport: true,
+      inspector: true,
+      bottom: true,
+    });
+    expect(state.dockOrder).toEqual(['viewport', 'inspector', 'bottom', 'scene']);
+  });
+
   it('normalizes old saved layouts with missing or duplicated panel ids', () => {
     expect(normalizeDockOrder(['bottom', 'scene', 'scene'] as EditorPanelId[])).toEqual([
       'bottom',
