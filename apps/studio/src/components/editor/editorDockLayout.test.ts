@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDockDragGhostPosition, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects } from './editorDockLayout';
+import {
+  getDockDragGhostPosition,
+  getDockPanelLabels,
+  getDockPanelSize,
+  getDockZoneLayout,
+  resolveDockTargetFromRects,
+} from './editorDockLayout';
 import { defaultDockOrder, type EditorPanelId } from '@/stores/editorLayoutStore';
 
 const totalDefaultSize = (ids: EditorPanelId[]) => (
@@ -8,6 +14,16 @@ const totalDefaultSize = (ids: EditorPanelId[]) => (
 );
 
 describe('editorDockLayout', () => {
+  it('keeps dock panel labels consistent across 2D and 3D layouts', () => {
+    expect(getDockPanelLabels('2d')).toEqual({
+      scene: 'Hierarchy',
+      viewport: 'Preview 2D',
+      inspector: 'Inspector',
+      bottom: 'Project',
+    });
+    expect(getDockPanelLabels('3d').viewport).toBe('Scene 3D');
+  });
+
   it('keeps visible dock panel default sizes normalized to 100%', () => {
     expect(totalDefaultSize(defaultDockOrder)).toBeCloseTo(100);
     expect(totalDefaultSize(['viewport', 'inspector', 'bottom'])).toBeCloseTo(100);

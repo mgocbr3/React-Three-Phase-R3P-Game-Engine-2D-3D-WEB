@@ -11,7 +11,7 @@ import { BottomPanel } from '@/components/editor/BottomPanel';
 import { DockFrame } from '@/components/editor/DockFrame';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockDragGhostPosition, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockPanelLabels, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -368,12 +368,7 @@ const EditorPage = () => {
   const mainDockIds = idsInZone('main');
   const bottomDockIds = idsInZone('bottom');
   const dockZoneLayout = getDockZoneLayout(mainDockIds, bottomDockIds);
-  const dockPanelLabels: Record<EditorPanelId, string> = {
-    scene: 'Hierarchy',
-    viewport: activeSceneKind === '2d' ? 'Preview 2D' : 'Scene 3D',
-    inspector: 'Inspector',
-    bottom: 'Project',
-  };
+  const dockPanelLabels = getDockPanelLabels(activeSceneKind);
   const dockContent: Record<EditorPanelId, { label: string; content: ReactNode }> = {
     scene: { label: dockPanelLabels.scene, content: <SceneGraphPanel /> },
     viewport: {

@@ -70,4 +70,18 @@ describe('EditorHeader layout selector', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Window' }));
     expect(screen.getByRole('menuitemcheckbox', { name: 'Preview 2D' })).toHaveAttribute('aria-checked', 'false');
   });
+
+  it('uses the dock viewport name in the 3D Window menu', () => {
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Window' }));
+
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Scene 3D' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'Scene View' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dock Scene 3D Center' })).toBeVisible();
+  });
 });

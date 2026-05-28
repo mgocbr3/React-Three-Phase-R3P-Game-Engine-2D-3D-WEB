@@ -80,6 +80,7 @@ import {
 } from '@/services/pixlPackageIO';
 import { FilePickerBusyError } from '@/services/filePickerLock';
 import { EditorToolbar } from './EditorToolbar';
+import { getDockPanelLabels } from './editorDockLayout';
 import { getEditorAddMenuSections } from './editorAddMenu';
 import { toggleRuntimePreviewFromEditor } from '@/engine/runtime/runtimePreviewControls';
 import { getRuntimeAdapterLabel } from '@/engine/runtime/runtimePreview';
@@ -426,12 +427,13 @@ export const EditorHeader = () => {
     { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
     { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
   ];
-  const viewportPanelLabel = activeSceneKind === '2d' ? 'Preview 2D' : 'Scene View';
+  const dockPanelLabels = getDockPanelLabels(activeSceneKind);
+  const viewportPanelLabel = dockPanelLabels.viewport;
   const windowPanelItems: MenuItem[] = [
-    { label: 'Hierarchy', checked: panels.scene, action: () => togglePanel('scene') },
+    { label: dockPanelLabels.scene, checked: panels.scene, action: () => togglePanel('scene') },
     { label: viewportPanelLabel, checked: panels.viewport, action: () => togglePanel('viewport') },
-    { label: 'Inspector', checked: panels.inspector, action: () => togglePanel('inspector') },
-    { label: 'Project', checked: panels.bottom, action: () => togglePanel('bottom') },
+    { label: dockPanelLabels.inspector, checked: panels.inspector, action: () => togglePanel('inspector') },
+    { label: dockPanelLabels.bottom, checked: panels.bottom, action: () => togglePanel('bottom') },
   ];
   const sceneCreateMenuItems: MenuItem[] = getEditorAddMenuSections(activeSceneKind).flatMap((section, sectionIndex) => [
     ...(sectionIndex ? [{ label: '', divider: true }] : []),
@@ -502,10 +504,10 @@ export const EditorHeader = () => {
     Window: [
       ...windowPanelItems,
       { label: '', divider: true },
-      { label: 'Dock Hierarchy Left', icon: PanelLeft, action: () => restorePanel('scene') },
+      { label: `Dock ${dockPanelLabels.scene} Left`, icon: PanelLeft, action: () => restorePanel('scene') },
       { label: `Dock ${viewportPanelLabel} Center`, icon: Monitor, action: () => restorePanel('viewport') },
-      { label: 'Dock Inspector Right', icon: PanelLeft, action: () => restorePanel('inspector') },
-      { label: 'Dock Project Below', icon: PanelBottom, action: () => restorePanel('bottom') },
+      { label: `Dock ${dockPanelLabels.inspector} Right`, icon: PanelLeft, action: () => restorePanel('inspector') },
+      { label: `Dock ${dockPanelLabels.bottom} Below`, icon: PanelBottom, action: () => restorePanel('bottom') },
       { label: '', divider: true },
       { label: 'Open Content Browser', icon: FolderOpen, action: () => openBottomTab('assets') },
       { label: 'Open UI Editor', icon: LayoutGrid, action: () => openBottomTab('ui') },

@@ -1,4 +1,5 @@
 import type { EditorDockTarget, EditorDockZone, EditorPanelId } from '@/stores/editorLayoutStore';
+import type { SceneKind } from '@/stores/editorStore';
 
 export type DockPanelRect = {
   id: EditorPanelId;
@@ -22,6 +23,13 @@ export type DockDragGhostPositionInput = {
 
 const weight = (id: EditorPanelId) => (id === 'viewport' ? 46 : 18);
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+export const getDockPanelLabels = (sceneKind: SceneKind): Record<EditorPanelId, string> => ({
+  scene: 'Hierarchy',
+  viewport: sceneKind === '2d' ? 'Preview 2D' : 'Scene 3D',
+  inspector: 'Inspector',
+  bottom: 'Project',
+});
 
 export const getDockPanelSize = (id: EditorPanelId, visibleIds: EditorPanelId[]) => {
   const total = visibleIds.reduce((sum, panel) => sum + weight(panel), 0) || weight(id);
