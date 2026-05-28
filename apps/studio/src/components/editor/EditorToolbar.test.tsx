@@ -101,8 +101,25 @@ describe('EditorToolbar scene-aware tools', () => {
   it('toggles the 3D scene axes from the toolbar', () => {
     render(<EditorToolbar variant="inline" />);
 
-    fireEvent.click(screen.getByTitle('Scene Axes (3D)'));
+    fireEvent.click(screen.getByTitle('Scene Axes (Shift+G)'));
 
     expect(useEngineSettings.getState().showGizmo).toBe(false);
+  });
+
+  it('toggles the scene grid with the Unity-like G shortcut', () => {
+    render(<EditorToolbar variant="inline" />);
+
+    fireEvent.keyDown(window, { key: 'g' });
+
+    expect(useEngineSettings.getState().showGrid).toBe(false);
+  });
+
+  it('toggles the 3D scene axes with Shift+G', () => {
+    render(<EditorToolbar variant="inline" />);
+
+    fireEvent.keyDown(window, { key: 'G', shiftKey: true });
+
+    expect(useEngineSettings.getState().showGizmo).toBe(false);
+    expect(useEngineSettings.getState().showGrid).toBe(true);
   });
 });

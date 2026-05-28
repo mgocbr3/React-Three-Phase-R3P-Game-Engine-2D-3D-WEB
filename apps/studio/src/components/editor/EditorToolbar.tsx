@@ -137,13 +137,17 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
           case 'f':
             if (selectedObjectId) focusOnObject(selectedObjectId);
             break;
+          case 'g':
+            if (e.shiftKey && addMenuKind === '3d') toggleGizmo();
+            else toggleGrid();
+            break;
         }
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace, selectedObjectId, focusOnObject, editorLocked]);
+  }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace, selectedObjectId, focusOnObject, addMenuKind, toggleGrid, toggleGizmo, editorLocked]);
 
   return (
     <div
@@ -248,7 +252,7 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
             active={showGizmo}
             onClick={toggleGizmo}
             disabled={editorLocked}
-            tooltip="Scene Axes (3D)"
+            tooltip="Scene Axes (Shift+G)"
           />
         )}
 
