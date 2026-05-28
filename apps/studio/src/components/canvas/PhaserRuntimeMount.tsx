@@ -15,7 +15,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
-import { getEditorZoom, getZoomedScroll, setFittedViewportCamera, type ViewportWorldBounds } from './phaserRuler';
+import { getWheelZoomCamera, setFittedViewportCamera, type ViewportWorldBounds } from './phaserRuler';
 import { Viewport2DOverlay } from './Viewport2DOverlay';
 
 export interface PhaserRuntimeMountProps {
@@ -1392,12 +1392,9 @@ export function PhaserRuntimeMount({
     event.preventDefault();
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
-    const nextZoom = getEditorZoom(camera.zoom, event.deltaY);
-    camera.setScroll(
-      getZoomedScroll(camera.scrollX, event.clientX - rect.left, camera.zoom, nextZoom),
-      getZoomedScroll(camera.scrollY, event.clientY - rect.top, camera.zoom, nextZoom),
-    );
-    camera.setZoom(nextZoom);
+    const next = getWheelZoomCamera(camera, { x: event.clientX - rect.left, y: event.clientY - rect.top }, event.deltaY);
+    camera.setScroll(next.scrollX, next.scrollY);
+    camera.setZoom(next.zoom);
   }, [isPlaying, load.status, visible]);
 
   return (

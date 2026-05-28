@@ -105,6 +105,19 @@ export const getZoomedScroll = (
   nextZoom: number,
 ): number => scroll + pointerScreen / currentZoom - pointerScreen / nextZoom;
 
+export const getWheelZoomCamera = (
+  camera: { scrollX: number; scrollY: number; zoom: number },
+  pointer: { x: number; y: number },
+  deltaY: number,
+) => {
+  const zoom = getEditorZoom(camera.zoom, deltaY);
+  return {
+    scrollX: Number(getZoomedScroll(camera.scrollX, pointer.x, camera.zoom, zoom).toFixed(2)),
+    scrollY: Number(getZoomedScroll(camera.scrollY, pointer.y, camera.zoom, zoom).toFixed(2)),
+    zoom,
+  };
+};
+
 export const getFittedViewportCamera = (
   bounds: ViewportWorldBounds,
   viewport: { width: number; height: number },

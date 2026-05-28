@@ -10,6 +10,7 @@ import {
   getViewportGridLines,
   getRulerMarks,
   getViewportRulerTicks,
+  getWheelZoomCamera,
   getZoomedScroll,
 } from './phaserRuler';
 
@@ -52,6 +53,11 @@ describe('phaserRuler', () => {
     expect(getEditorZoom(1, -120)).toBe(1.1);
     expect(getEditorZoom(0.26, 120)).toBe(0.25);
     expect(getZoomedScroll(100, 200, 1, 2)).toBe(200);
+    expect(getWheelZoomCamera({ scrollX: 100, scrollY: 50, zoom: 1 }, { x: 200, y: 120 }, -120)).toEqual({
+      scrollX: 118.18,
+      scrollY: 60.91,
+      zoom: 1.1,
+    });
   });
 
   it('centers scene bounds inside the 2D editor viewport', () => {

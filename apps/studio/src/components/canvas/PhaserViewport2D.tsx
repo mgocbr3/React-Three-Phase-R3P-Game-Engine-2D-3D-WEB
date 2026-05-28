@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { useEditorStore, SceneObject } from '@/stores/editorStore';
 import { useAssetDragStore } from '@/stores/assetDragStore';
 import { toast } from 'sonner';
-import { formatRulerMark, getEditorSceneFit, getRulerMarks } from './phaserRuler';
+import { formatRulerMark, getEditorSceneFit, getRulerMarks, getWheelZoomCamera } from './phaserRuler';
 
 type SceneSnapshot = {
   objects: SceneObject[];
@@ -504,7 +504,9 @@ class PixlPhaserEditorScene extends Phaser.Scene {
 
   private handleWheel(_pointer: any, _gameObjects: any, _deltaX: number, deltaY: number) {
     const camera = this.cameras.main;
-    camera.setZoom(Phaser.Math.Clamp(camera.zoom - deltaY * 0.001, 0.25, 3));
+    const next = getWheelZoomCamera(camera, { x: _pointer.x, y: _pointer.y }, deltaY);
+    camera.setZoom(next.zoom);
+    camera.setScroll(next.scrollX, next.scrollY);
   }
 }
 
