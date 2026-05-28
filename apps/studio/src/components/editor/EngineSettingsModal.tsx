@@ -408,16 +408,16 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
                         label="Raio"
                         value={settings.ssaoRadius}
                         min={0.1}
-                        max={2}
+                        max={12}
                         step={0.1}
                         onChange={(v) => updateSettings({ ssaoRadius: v })}
                       />
                       <SliderSetting
-                        label="Bias"
+                        label="Falloff"
                         value={settings.ssaoBias}
-                        min={0}
-                        max={0.1}
-                        step={0.005}
+                        min={0.05}
+                        max={4}
+                        step={0.05}
                         onChange={(v) => updateSettings({ ssaoBias: v })}
                       />
                     </>

@@ -10,4 +10,11 @@ describe('sample projects', () => {
     expect(listSampleProjects().map((sample) => sample.slug)).not.toContain('magic-battleground-mvp');
     expect(listSampleProjects().map((sample) => sample.slug)).not.toContain('sample-2d');
   });
+
+  it('uses the packaged Harvest Rush runtime instead of a missing external games-src checkout', () => {
+    const harvest = listSampleProjects().find((sample) => sample.slug === 'harvest-rush-3d');
+    expect(harvest?.runtimeBaseUrl).toBe('/sample-projects/harvest-rush-3d/runtime/');
+    expect(harvest?.documentBaseUrl).toBe('/sample-projects/harvest-rush-3d/');
+    expect(harvest?.assetBaseUrl).not.toContain('games-src');
+  });
 });

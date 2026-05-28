@@ -15,6 +15,10 @@ export interface SampleProjectMeta {
   projectUrl: string;
   /** Optional asset base used when binaries live outside the project dir. */
   assetBaseUrl?: string;
+  /** Optional packaged runtime root used by Play Mode. */
+  runtimeBaseUrl?: string;
+  /** Optional document base used by runtime relative assets. */
+  documentBaseUrl?: string;
   /** Whether the Hub should open this sample through the native runtime viewport. */
   useNativeViewport?: boolean;
   /** Human-friendly title for Hub cards / page titles. */
@@ -32,7 +36,9 @@ export interface SampleProjectMeta {
 const SAMPLE_PROJECTS: Record<string, SampleProjectMeta> = {
   'harvest-rush-3d': {
     projectUrl: '/sample-projects/harvest-rush-3d/project.pixlproject.json',
-    assetBaseUrl: import.meta.env.DEV && REPO_FS_ROOT ? `/@fs/${REPO_FS_ROOT}/apps/portal/games-src/harvest-rush-3d/` : undefined,
+    assetBaseUrl: '/sample-projects/harvest-rush-3d/',
+    runtimeBaseUrl: '/sample-projects/harvest-rush-3d/runtime/',
+    documentBaseUrl: '/sample-projects/harvest-rush-3d/',
     displayName: 'Harvest Rush 3D',
     description: 'Farming sandbox 3D — Farm.glb completo, 11k+ objetos da cena decomposta',
     kind: '3d',
@@ -78,6 +84,29 @@ const getSampleDocumentBaseUrl = (sample: SampleProjectMeta): string => (
   sample.projectUrl.replace(/\/project\.pixlproject\.json$/i, '')
 );
 
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const applySampleRuntimeBases = (
+  document: PixlProjectDocument,
+  sample: SampleProjectMeta,
+): PixlProjectDocument => {
+  if (!sample.runtimeBaseUrl && !sample.documentBaseUrl) return document;
+  const source = isRecord(document.game.source) ? document.game.source : {};
+  return {
+    ...document,
+    game: {
+      ...document.game,
+      source: {
+        ...source,
+        ...(sample.runtimeBaseUrl ? { runtimeBaseUrl: sample.runtimeBaseUrl } : {}),
+        ...(sample.documentBaseUrl ? { documentBaseUrl: sample.documentBaseUrl } : {}),
+      },
+    },
+  };
+};
+
 export interface SampleProjectEntry extends SampleProjectMeta {
   slug: string;
 }
@@ -113,9 +142,10 @@ export const loadSampleProjectDocument = async (slug: string): Promise<PixlProje
   }
 
   const document = normalizeProjectDocument(await response.json() as AnyPixlProjectDocument);
-  return resolveProjectDocumentAssetUrls(document, {
+  const resolved = await resolveProjectDocumentAssetUrls(document, {
     assetBaseUrl: sample.assetBaseUrl ?? getSampleDocumentBaseUrl(sample),
   });
+  return applySampleRuntimeBases(resolved, sample);
 };
 
 export const openSampleProject = async (slug: string): Promise<PixlProjectDocument> => {

@@ -293,6 +293,14 @@ export const getThreeCameraTarget = (value: unknown): ThreeCameraTarget => {
   };
 };
 
+export const hasThreeNativeSky = (scene: THREE.Scene | null): boolean => {
+  let found = false;
+  scene?.traverse((child) => {
+    if (child.userData.pixlSky) found = true;
+  });
+  return found;
+};
+
 export const createThreeEditorSceneHelpers = ({
   showGrid,
   showAxes,
@@ -401,6 +409,7 @@ export function ThreeRuntimeMount({
   // Three scene reference for raycasting; captured from game.scene.threeJSScene
   // when the load resolves.
   const [threeScene, setThreeScene] = useState<THREE.Scene | null>(null);
+  const hasNativeSky = hasThreeNativeSky(threeScene);
   const showGrid = useEngineSettings((state) => state.showGrid);
   const showAxes = useEngineSettings((state) => state.showGizmo);
   const gridSize = useEngineSettings((state) => state.gridSize);
@@ -698,6 +707,7 @@ export function ThreeRuntimeMount({
       data-three-editor-rendering={editorToolsEnabled && !runSimulation ? 'ondemand' : 'continuous'}
       data-three-postprocessing={nativePostProcessing.enabled ? 'filmic-realism' : 'off'}
       data-three-postprocessing-effects={nativePostProcessingEffects}
+      data-three-sky={hasNativeSky ? 'procedural' : 'off'}
       style={{
         display: visible ? 'block' : 'none',
         width: '100%',

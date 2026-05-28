@@ -217,8 +217,8 @@ const defaultSettings: EngineSettings = {
   // Post-Processing - Advanced — HBAO on by default
   ssao: true,
   ssaoIntensity: 0.8,
-  ssaoRadius: 5,
-  ssaoBias: 35,
+  ssaoRadius: 1.2,
+  ssaoBias: 1,
 
   // Depth of Field
   depthOfField: false,
@@ -315,6 +315,8 @@ const sanitizePersistedSettings = (persistedState: unknown): Partial<EngineSetti
     bloomIntensity: Math.min(finite(settings.bloomIntensity, 0.18), 0.25),
     bloomThreshold: Math.max(finite(settings.bloomThreshold, 0.9), 0.88),
     bloomRadius: Math.min(finite(settings.bloomRadius, 0.24), 0.35),
+    ssaoRadius: Math.min(Math.max(finite(settings.ssaoRadius, 1.2), 0.05), 12),
+    ssaoBias: Math.min(Math.max(finite(settings.ssaoBias, 1), 0.05), 4),
     vignette: false,
     vignetteIntensity: 0,
     vignetteOffset: 0.5,

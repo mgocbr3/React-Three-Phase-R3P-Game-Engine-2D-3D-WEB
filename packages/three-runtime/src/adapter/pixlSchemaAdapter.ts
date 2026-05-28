@@ -376,6 +376,12 @@ export const pixlSceneToWesScene = (scene: PixlSceneDocument): SceneJSON => {
 
   return {
     background: scene.environment?.background,
+    sky: scene.kind === '3d' ? {
+      enabled: true,
+      horizonColor: scene.environment?.background ?? '#bfe0f4',
+      zenithColor: '#6ea8dc',
+      groundColor: '#6f855d',
+    } : { enabled: false },
     gravity: triplet(scene.physics?.gravity),
     gameObjects,
     lights: synthesizeEnvironmentLights(scene.environment),

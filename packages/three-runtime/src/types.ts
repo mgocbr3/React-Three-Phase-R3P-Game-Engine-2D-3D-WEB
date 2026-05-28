@@ -15,6 +15,7 @@ export interface GameJSON {
 
 export interface SceneJSON {
   background?: string | null;
+  sky?: SceneSkyJSON | null;
   fog?: FogJSON | null;
   lights?: SceneLightJSON[];
   sounds?: SceneSoundJSON[];
@@ -24,6 +25,15 @@ export interface SceneJSON {
    *  camera at Scene.load() time. Wes' original Game.json doesn't carry
    *  this; scene-authored cameras are a Pixl-only convention. */
   camera?: SceneCameraJSON;
+}
+
+export interface SceneSkyJSON {
+  enabled?: boolean;
+  zenithColor?: string;
+  horizonColor?: string;
+  groundColor?: string;
+  radius?: number;
+  exponent?: number;
 }
 
 export interface SceneCameraJSON {

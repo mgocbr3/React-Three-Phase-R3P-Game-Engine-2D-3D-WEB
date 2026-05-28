@@ -38,6 +38,11 @@ describe('pixlSceneToWesScene', () => {
   it('maps transform components 1:1', () => {
     const scene = makeScene([makeObject()]);
     const out = pixlSceneToWesScene(scene);
+    expect(out.sky).toMatchObject({
+      enabled: true,
+      horizonColor: '#9fd5df',
+      zenithColor: '#6ea8dc',
+    });
     expect(out.gameObjects).toHaveLength(1);
     const obj = out.gameObjects![0];
     expect(obj.position).toEqual({ x: 1, y: 2, z: 3 });

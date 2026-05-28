@@ -15,6 +15,7 @@ import type {
   FogJSON,
   GameObjectJSON,
   SceneJSON,
+  SceneSkyJSON,
   SceneLightJSON,
   SceneSoundJSON,
 } from './types.js';
@@ -24,6 +25,62 @@ const initRapier = async (): Promise<void> => {
   if (rapierInitialized) return;
   await RAPIER.init();
   rapierInitialized = true;
+};
+
+const SKY_VERTEX_SHADER = `
+  varying vec3 vLocalPosition;
+  void main() {
+    vLocalPosition = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const SKY_FRAGMENT_SHADER = `
+  uniform vec3 zenithColor;
+  uniform vec3 horizonColor;
+  uniform vec3 groundColor;
+  uniform float exponent;
+  varying vec3 vLocalPosition;
+  void main() {
+    float h = normalize(vLocalPosition).y;
+    vec3 sky = mix(horizonColor, zenithColor, pow(max(h, 0.0), exponent));
+    vec3 ground = mix(horizonColor, groundColor, pow(max(-h, 0.0), 0.65));
+    gl_FragColor = vec4(h >= 0.0 ? sky : ground, 1.0);
+  }
+`;
+
+const safeColor = (value: string | undefined | null, fallback: string): THREE.Color => {
+  try {
+    return new THREE.Color(value ?? fallback);
+  } catch {
+    return new THREE.Color(fallback);
+  }
+};
+
+export const createSkyDome = (sky: SceneSkyJSON | null | undefined, background?: string | null): THREE.Mesh => {
+  const radius = Math.max(100, Math.min(5000, sky?.radius ?? 950));
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      zenithColor: { value: safeColor(sky?.zenithColor, '#6ea8dc') },
+      horizonColor: { value: safeColor(sky?.horizonColor ?? background, '#bfe0f4') },
+      groundColor: { value: safeColor(sky?.groundColor, '#6f855d') },
+      exponent: { value: Math.max(0.2, Math.min(4, sky?.exponent ?? 1.4)) },
+    },
+    vertexShader: SKY_VERTEX_SHADER,
+    fragmentShader: SKY_FRAGMENT_SHADER,
+    side: THREE.BackSide,
+    depthWrite: false,
+    depthTest: false,
+    fog: false,
+  });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 16), material);
+  dome.name = 'Pixl Sky';
+  dome.frustumCulled = false;
+  dome.renderOrder = -1000;
+  dome.userData.pixlSky = true;
+  dome.raycast = () => undefined;
+  dome.onBeforeRender = (_renderer, _scene, camera) => dome.position.copy(camera.position);
+  return dome;
 };
 
 class Scene {
@@ -60,9 +117,7 @@ class Scene {
 
     const data: SceneJSON = this.sceneJSONAsset?.data ?? {};
 
-    this.threeJSScene.background = data.background
-      ? new THREE.Color(data.background)
-      : new THREE.Color('lightblue');
+    this.setBackground(data);
 
     this.setFog(data.fog ?? null);
     this.setLights(data.lights ?? []);
@@ -104,6 +159,13 @@ class Scene {
     if (typeof camera.near === 'number') cam.near = camera.near;
     if (typeof camera.far === 'number') cam.far = camera.far;
     cam.updateProjectionMatrix();
+  }
+
+  setBackground(data: SceneJSON): void {
+    const background = data.background ?? '#9fd5df';
+    this.threeJSScene.background = safeColor(background, '#9fd5df');
+    if (data.sky?.enabled === false) return;
+    this.threeJSScene.add(createSkyDome(data.sky, background));
   }
 
   setFog(fog: FogJSON | THREE.Fog | null): void {

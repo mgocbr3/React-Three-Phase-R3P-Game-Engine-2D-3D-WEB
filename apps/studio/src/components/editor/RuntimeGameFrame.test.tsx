@@ -31,4 +31,10 @@ describe('RuntimeGameFrame', () => {
     expect(html).toContain('"three": "/node_modules/three/build/three.module.js"');
     expect(html).toContain('"three/": "/node_modules/three/"');
   });
+
+  it('loads sibling runtime CSS without relying on non-standard CSS module imports', () => {
+    const html = buildRuntimeHtml(session);
+
+    expect(html).toContain('<link rel="stylesheet" href="/sample-projects/sample-3d-runtime/runtime/src/styles.css" />');
+  });
 });

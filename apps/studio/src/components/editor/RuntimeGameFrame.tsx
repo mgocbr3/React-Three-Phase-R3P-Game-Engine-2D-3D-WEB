@@ -38,6 +38,10 @@ const buildImportMap = () => `{
         }
       }`;
 
+const getSiblingRuntimeStylesheetUrl = (scriptUrl: string) => (
+  scriptUrl.replace(/[?#].*$/, '').replace(/[^/]+$/, 'styles.css')
+);
+
 export const buildRuntimeHtml = (session: RuntimePreviewSession) => {
   const target = session.launchTarget;
   if (target.kind !== 'web-runtime') return '';
@@ -45,6 +49,7 @@ export const buildRuntimeHtml = (session: RuntimePreviewSession) => {
   const title = escapeHtmlAttribute(session.projectName);
   const baseHref = escapeHtmlAttribute(target.documentBaseUrl);
   const scriptUrl = `${target.scriptUrl}${target.scriptUrl.includes('?') ? '&' : '?'}pixlRuntimePreview=${encodeURIComponent(session.id)}`;
+  const stylesheetUrl = escapeHtmlAttribute(getSiblingRuntimeStylesheetUrl(target.scriptUrl));
   const sdkScript = target.sdkUrl
     ? `<script src="${escapeHtmlAttribute(target.sdkUrl)}" defer></script>`
     : '';
@@ -58,6 +63,7 @@ export const buildRuntimeHtml = (session: RuntimePreviewSession) => {
     <base href="${baseHref}" />
     <title>${title}</title>
     ${sdkScript}
+    <link rel="stylesheet" href="${stylesheetUrl}" />
     <script type="importmap">${buildImportMap()}</script>
     <style>
       html,

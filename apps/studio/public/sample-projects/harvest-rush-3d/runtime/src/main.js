@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import './styles.css';
 
 const STORAGE_KEY = 'pixlland:harvest-rush-3d:save:v2';
 const FIELD_COLS = 60;
