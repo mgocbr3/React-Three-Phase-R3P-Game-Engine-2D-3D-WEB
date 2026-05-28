@@ -19,6 +19,7 @@ interface EditorLayoutState {
   movePanelBefore: (panel: EditorPanelId, target: EditorPanelId) => void;
   movePanelToEnd: (panel: EditorPanelId) => void;
   movePanelToZone: (panel: EditorPanelId, zone: EditorDockZone) => void;
+  restorePanel: (panel: EditorPanelId) => void;
   showAllPanels: () => void;
   applyPreset: (preset: EditorLayoutPreset) => void;
   resetLayout: () => void;
@@ -136,6 +137,12 @@ export const useEditorLayoutStore = create<EditorLayoutState>()(
         set((state) => ({
           panels: { ...state.panels, [panel]: true },
           ...previewDockMove(state.dockOrder, state.panelZones, panel, zone === 'bottom' ? 'bottom-end' : 'main-end'),
+          preset: 'default',
+        })),
+      restorePanel: (panel) =>
+        set((state) => ({
+          panels: { ...state.panels, [panel]: true },
+          ...restoreDockPanel(state.dockOrder, state.panelZones, panel),
           preset: 'default',
         })),
       showAllPanels: () =>

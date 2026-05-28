@@ -145,7 +145,7 @@ export const EditorHeader = () => {
   const togglePreviewFullscreen = useRuntimeGameStore((s) => s.togglePreviewFullscreen);
   const panels = useEditorLayoutStore((s) => s.panels);
   const togglePanel = useEditorLayoutStore((s) => s.togglePanel);
-  const movePanelToZone = useEditorLayoutStore((s) => s.movePanelToZone);
+  const restorePanel = useEditorLayoutStore((s) => s.restorePanel);
   const showAllPanels = useEditorLayoutStore((s) => s.showAllPanels);
   const resetLayout = useEditorLayoutStore((s) => s.resetLayout);
   const applyLayoutPreset = useEditorLayoutStore((s) => s.applyPreset);
@@ -437,7 +437,10 @@ export const EditorHeader = () => {
       { label: panels.inspector ? 'Hide Inspector' : 'Show Inspector', icon: PanelLeft, action: () => togglePanel('inspector') },
       { label: panels.bottom ? 'Hide Project' : 'Show Project', icon: PanelBottom, action: () => togglePanel('bottom') },
       { label: '', divider: true },
-      { label: 'Dock Project Below', icon: PanelBottom, action: () => movePanelToZone('bottom', 'bottom') },
+      { label: 'Dock Hierarchy Left', icon: PanelLeft, action: () => restorePanel('scene') },
+      { label: 'Dock Scene View Center', icon: Monitor, action: () => restorePanel('viewport') },
+      { label: 'Dock Inspector Right', icon: PanelLeft, action: () => restorePanel('inspector') },
+      { label: 'Dock Project Below', icon: PanelBottom, action: () => restorePanel('bottom') },
       { label: '', divider: true },
       { label: 'Show All Panels', icon: LayoutGrid, action: showAllPanels },
       { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },

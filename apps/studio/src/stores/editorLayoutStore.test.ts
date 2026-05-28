@@ -71,6 +71,21 @@ describe('editorLayoutStore dock layout', () => {
     expect(state.dockOrder).toEqual(['scene', 'viewport', 'inspector', 'bottom']);
   });
 
+  it('restores visible panels to their default Unity-like slots from Window', () => {
+    useEditorLayoutStore.getState().movePanelToEnd('scene');
+    useEditorLayoutStore.getState().movePanelBefore('inspector', 'scene');
+
+    useEditorLayoutStore.getState().restorePanel('scene');
+    useEditorLayoutStore.getState().restorePanel('inspector');
+
+    const state = useEditorLayoutStore.getState();
+    expect(state.panels.scene).toBe(true);
+    expect(state.panels.inspector).toBe(true);
+    expect(state.panelZones.scene).toBe('main');
+    expect(state.panelZones.inspector).toBe('main');
+    expect(state.dockOrder).toEqual(['scene', 'viewport', 'inspector', 'bottom']);
+  });
+
   it('shows every panel from Window without resetting the custom dock order', () => {
     useEditorLayoutStore.getState().movePanelToEnd('scene');
     useEditorLayoutStore.getState().setPanelVisible('viewport', false);
