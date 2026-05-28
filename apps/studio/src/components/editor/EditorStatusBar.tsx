@@ -1,4 +1,4 @@
-import { Activity, Box, Triangle } from 'lucide-react';
+import { Activity, Box, Layers, Triangle } from 'lucide-react';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
@@ -56,11 +56,12 @@ const getFpsColor = (fps: number) => {
 };
 
 export const EditorStatusBar = () => {
-  const { objects } = useEditorStore();
+  const { activeSceneKind, objects } = useEditorStore();
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const { showStats } = useEngineSettings();
   const { fps, avgFps } = useFPS(showStats);
   const fpsColor = getFpsColor(fps);
+  const is2DScene = activeSceneKind === '2d';
   const runtimeLabel = previewSession?.launchTarget.kind === 'web-runtime'
     ? 'Runtime real'
     : previewSession
@@ -83,6 +84,8 @@ export const EditorStatusBar = () => {
     if (tris >= 1000) return `${(tris / 1000).toFixed(1)}K`;
     return tris.toString();
   };
+
+  const twoDItems = objects.filter((obj) => ['image', 'sprite', 'rectangle', 'circle', 'text'].includes(obj.type)).length;
   
   return (
     <footer
@@ -104,18 +107,16 @@ export const EditorStatusBar = () => {
           </span>
         )}
         
-        {/* Mesh count */}
         <span className="flex items-center gap-1.5">
           <Box className="w-3 h-3" />
           <span className="font-mono">{objects.length}</span>
-          <span className="text-muted-foreground/70">meshes</span>
+          <span className="text-muted-foreground/70">{is2DScene ? 'objects' : 'meshes'}</span>
         </span>
         
-        {/* Triangle count */}
         <span className="flex items-center gap-1.5">
-          <Triangle className="w-3 h-3" />
-          <span className="font-mono">{formatTris(estimatedTris)}</span>
-          <span className="text-muted-foreground/70">tris</span>
+          {is2DScene ? <Layers className="w-3 h-3" /> : <Triangle className="w-3 h-3" />}
+          <span className="font-mono">{is2DScene ? twoDItems : formatTris(estimatedTris)}</span>
+          <span className="text-muted-foreground/70">{is2DScene ? '2D items' : 'tris'}</span>
         </span>
       </div>
 
