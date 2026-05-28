@@ -143,12 +143,11 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
                   />
                   <SelectSetting
                     label="Tipo de Shadow Map"
-                    value={settings.shadowMapType}
+                    value={settings.shadowMapType === 'variance' ? 'soft' : settings.shadowMapType}
                     options={[
                       { value: 'basic', label: 'Basic' },
                       { value: 'percentage', label: 'PCF (Percentage Closer)' },
-                      { value: 'soft', label: 'PCF Soft' },
-                      { value: 'variance', label: 'Variance (VSM)' },
+                      { value: 'soft', label: 'Soft (PCF compatible)' },
                     ]}
                     onChange={(v) => updateSettings({ shadowMapType: v as ShadowMapType })}
                   />

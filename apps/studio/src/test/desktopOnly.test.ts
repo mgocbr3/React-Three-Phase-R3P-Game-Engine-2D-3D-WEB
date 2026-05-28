@@ -59,10 +59,13 @@ describe('desktop-only studio build', () => {
 
   it('keeps editor shadow maps compatible with point lights', () => {
     const editorCanvas = readFileSync(src('components/canvas/EditorCanvas.tsx'), 'utf8');
+    const settingsModal = readFileSync(src('components/editor/EngineSettingsModal.tsx'), 'utf8');
 
     expect(editorCanvas).toContain('THREE.PCFShadowMap');
     expect(editorCanvas).not.toContain('THREE.PCFSoftShadowMap');
     expect(editorCanvas).not.toContain('THREE.VSMShadowMap');
+    expect(settingsModal).not.toContain('VSM');
+    expect(settingsModal).not.toContain("value: 'variance'");
   });
 
   it('defaults to keyboard and gamepad bindings only', () => {
