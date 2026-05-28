@@ -8,6 +8,7 @@ import {
   getDockRowKey,
   getDockZoneLayout,
   resolveDockTargetFromRects,
+  shouldShowEditorOverlays,
   shouldUseNativeRuntimeViewport,
 } from './editorDockLayout';
 import { defaultDockOrder, type EditorPanelId } from '@/stores/editorLayoutStore';
@@ -32,6 +33,8 @@ describe('editorDockLayout', () => {
     expect(getDockPanelLabels('3d', true).viewport).toBe('Game 3D');
     expect(shouldUseNativeRuntimeViewport(false, true)).toBe(true);
     expect(shouldUseNativeRuntimeViewport(false, false)).toBe(false);
+    expect(shouldShowEditorOverlays(true)).toBe(false);
+    expect(shouldShowEditorOverlays(false)).toBe(true);
   });
 
   it('keeps visible dock panel default sizes normalized to 100%', () => {

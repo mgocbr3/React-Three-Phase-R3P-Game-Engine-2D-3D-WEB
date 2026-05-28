@@ -11,7 +11,7 @@ import { BottomPanel } from '@/components/editor/BottomPanel';
 import { DockFrame } from '@/components/editor/DockFrame';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockRowKey, getDockZoneLayout, resolveDockTargetFromRects, shouldUseNativeRuntimeViewport, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockRowKey, getDockZoneLayout, resolveDockTargetFromRects, shouldShowEditorOverlays, shouldUseNativeRuntimeViewport, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -364,10 +364,11 @@ const EditorPage = () => {
   const isRuntimePreview = Boolean(previewSession);
   const shouldRenderEditorViewport = previewSession?.launchTarget.kind !== 'web-runtime';
   const useRuntimeViewport = shouldUseNativeRuntimeViewport(useNativeViewport, isRuntimePreview);
+  const showEditorOverlays = shouldShowEditorOverlays(isRuntimePreview);
   const editorRuntimeSurface = (
     <>
       {shouldRenderEditorViewport && (useRuntimeViewport ? <Viewport /> : <EditorCanvas />)}
-      {shouldRenderEditorViewport && <CameraSpeedIndicator />}
+      {shouldRenderEditorViewport && showEditorOverlays && <CameraSpeedIndicator />}
       {previewSession && <RuntimeGameFrame session={previewSession} />}
     </>
   );
@@ -516,7 +517,7 @@ const EditorPage = () => {
       <EditorStatusBar />
 
       {/* Motion Control Overlay - renders on top of everything when enabled */}
-      <MotionControlOverlay />
+      {showEditorOverlays && <MotionControlOverlay />}
     </div>
   );
 };
