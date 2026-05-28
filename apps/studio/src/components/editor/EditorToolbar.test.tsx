@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useEditorStore } from '@/stores/editorStore';
@@ -39,5 +39,29 @@ describe('EditorToolbar scene-aware tools', () => {
     render(<EditorToolbar variant="inline" />);
 
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+  });
+
+  it('frames the selected object with the Unity-like F shortcut', () => {
+    useEditorStore.setState({
+      objects: [{
+        id: 'crate',
+        name: 'Crate',
+        type: 'box',
+        position: [3, 4, 5],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        color: '#ffffff',
+        visible: true,
+        locked: false,
+      }],
+      selectedObjectId: 'crate',
+      focusTarget: null,
+    });
+
+    render(<EditorToolbar variant="inline" />);
+
+    fireEvent.keyDown(window, { key: 'f' });
+
+    expect(useEditorStore.getState().focusTarget?.position).toEqual([3, 4, 5]);
   });
 });

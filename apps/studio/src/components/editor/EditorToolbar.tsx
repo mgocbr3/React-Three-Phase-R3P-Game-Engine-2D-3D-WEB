@@ -69,6 +69,8 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
     snapEnabled,
     toggleSnapEnabled,
     addObject,
+    selectedObjectId,
+    focusOnObject,
     undo,
     redo,
     canUndo,
@@ -129,13 +131,16 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
           case 'x':
             toggleTransformSpace();
             break;
+          case 'f':
+            if (selectedObjectId) focusOnObject(selectedObjectId);
+            break;
         }
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace, editorLocked]);
+  }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace, selectedObjectId, focusOnObject, editorLocked]);
 
   return (
     <div
