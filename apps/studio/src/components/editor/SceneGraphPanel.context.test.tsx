@@ -64,4 +64,23 @@ describe('SceneGraphPanel context menu', () => {
     expect(pastedChild?.parentId).toBeNull();
     expect(useEditorStore.getState().selectedObjectId).toBe(pastedChild?.id);
   });
+
+  it('uses 2D object icons instead of cube icons in the hierarchy', () => {
+    useEditorStore.setState({
+      activeSceneKind: '2d',
+      objects: [
+        { ...makeObject('sprite'), type: 'sprite' },
+        { ...makeObject('rect'), type: 'rectangle' },
+        { ...makeObject('label'), type: 'text' },
+      ],
+      selectedObjectId: null,
+    });
+
+    render(<SceneGraphPanel />);
+
+    expect(screen.getByTestId('scene-object-sprite').querySelector('.lucide-image')).not.toBeNull();
+    expect(screen.getByTestId('scene-object-rect').querySelector('.lucide-square')).not.toBeNull();
+    expect(screen.getByTestId('scene-object-label').querySelector('.lucide-type')).not.toBeNull();
+    expect(screen.getByTestId('scene-object-sprite').querySelector('.lucide-box')).toBeNull();
+  });
 });

@@ -46,6 +46,7 @@ import {
   updateComponentDataField,
   type ComponentDataScalar,
 } from '@/services/componentCatalog';
+import { getEditorObjectIcon } from './editorObjectIcon';
 
 // Tabs as icon-based navigation
 const mainTabs = [
@@ -179,14 +180,7 @@ const PropertiesPanel = ({
   const is2DShape = object.type === 'rectangle' || object.type === 'circle';
   const is2DText = object.type === 'text';
   
-  const getObjectIcon = () => {
-    if (isCamera) return <Camera className="w-4 h-4 text-muted-foreground" />;
-    if (isPlayer) return <User className="w-4 h-4 text-muted-foreground" />;
-    if (object.type === 'sunlight') return <Sun className="w-4 h-4 text-muted-foreground" />;
-    if (isLight) return <Lightbulb className="w-4 h-4 text-muted-foreground" />;
-    if (isTerrain) return <Mountain className="w-4 h-4 text-muted-foreground" />;
-    return <Box className="w-4 h-4 text-muted-foreground" />;
-  };
+  const ObjectIcon = getEditorObjectIcon(object.type);
   
   return (
     <div className="flex flex-col h-full">
@@ -207,7 +201,7 @@ const PropertiesPanel = ({
       <div className="glass-object-header">
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center border border-border bg-[var(--editor-panel-sunken)]">
-            {getObjectIcon()}
+            <ObjectIcon className="w-4 h-4 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
             <input

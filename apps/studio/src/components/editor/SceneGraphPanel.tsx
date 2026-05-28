@@ -1,7 +1,8 @@
-import { ChevronDown, ChevronRight, Box, Circle, Layers, Eye, EyeOff, Lock, Unlock, Trash2, Camera, User, Lightbulb, Search, MoreHorizontal, Link, Unlink, Sun, Cone, Mountain, Cylinder, Copy, Edit3, Focus, Play, Clipboard, Scissors } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, Unlock, Trash2, Search, MoreHorizontal, Link, Unlink, Layers, Copy, Edit3, Focus, Play, Clipboard, Scissors } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useEditorStore, ObjectType, SceneObject } from '@/stores/editorStore';
 import { cn } from '@/lib/utils';
+import { getEditorObjectIcon } from './editorObjectIcon';
 
 // Helper to check if an object has movement/scripts attached
 const hasMovementAttached = (object: SceneObject): boolean => {
@@ -271,33 +272,6 @@ const getTypeColor = (type: ObjectType): string => {
   return 'text-muted-foreground';
 };
 
-const getObjectIcon = (type: ObjectType) => {
-  switch (type) {
-    case 'box':
-      return Box;
-    case 'sphere':
-      return Circle;
-    case 'cylinder':
-      return Cylinder;
-    case 'light':
-      return Lightbulb;
-    case 'sunlight':
-      return Sun;
-    case 'spotlight':
-      return Cone;
-    case 'plane':
-      return Layers;
-    case 'camera':
-      return Camera;
-    case 'player':
-      return User;
-    case 'terrain':
-      return Mountain;
-    default:
-      return Box;
-  }
-};
-
 // Recursive component for rendering objects with children
 interface SceneObjectItemProps {
   object: SceneObject;
@@ -343,7 +317,7 @@ const SceneObjectItem = ({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dropPlacement, setDropPlacement] = useState<SceneDropPlacement | null>(null);
   const { duplicateObject, copyObject, cutObject, pasteObject, hasObjectClipboard } = useEditorStore();
-  const Icon = getObjectIcon(object.type);
+  const Icon = getEditorObjectIcon(object.type);
   const isSelected = object.id === selectedObjectId;
   const typeColor = getTypeColor(object.type);
   const canPasteObject = hasObjectClipboard();
