@@ -38,7 +38,7 @@ describe('editorDockLayout', () => {
     expect(shouldShowEditorOverlays(false)).toBe(true);
   });
 
-  it('focuses the game viewport without mutating the saved dock layout during runtime preview', () => {
+  it('focuses the game viewport without mutating the saved dock layout during fullscreen preview', () => {
     const panels = { scene: true, viewport: true, inspector: true, bottom: true };
 
     expect(getVisibleDockPanelIds(defaultDockOrder, panels, false)).toEqual(defaultDockOrder);

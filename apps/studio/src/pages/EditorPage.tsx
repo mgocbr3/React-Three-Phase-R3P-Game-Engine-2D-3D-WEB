@@ -372,7 +372,7 @@ const EditorPage = () => {
       {previewSession && <RuntimeGameFrame session={previewSession} />}
     </>
   );
-  const visibleDockIds = getVisibleDockPanelIds(previewDock.dockOrder, panels, isRuntimePreview);
+  const visibleDockIds = getVisibleDockPanelIds(previewDock.dockOrder, panels, isRuntimeFullscreen);
   const idsInZone = (zone: EditorDockZone) => visibleDockIds.filter((id) => (
     (previewDock.panelZones[id] ?? (id === 'bottom' ? 'bottom' : 'main')) === zone
   ));

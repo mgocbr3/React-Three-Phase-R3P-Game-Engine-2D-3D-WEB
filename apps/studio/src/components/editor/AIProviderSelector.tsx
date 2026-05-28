@@ -1,4 +1,4 @@
-// AI Provider Selector - Organized into FREE (Local), PREMIUM (Lovable), and BYOK (Bring Your Own Key)
+// AI Provider Selector - Organized into FREE (Local) and BYOK (Bring Your Own Key)
 import { useState, useRef, useEffect } from 'react';
 import { 
   Cpu, 
@@ -8,15 +8,13 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
-  Wifi,
   WifiOff,
   Key,
-  Crown,
   ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAIStore } from '@/stores/aiStore';
-import { LOCAL_MODELS, CLOUD_PROVIDERS, LOVABLE_AI_MODELS, type AIProviderType } from '@/services/ai/types';
+import { LOCAL_MODELS, CLOUD_PROVIDERS, type AIProviderType } from '@/services/ai/types';
 import {
   Dialog,
   DialogContent,
@@ -69,14 +67,6 @@ export const AIProviderSelector = () => {
     setIsOpen(false);
     setExpandedSection(null);
     await setProvider('webllm');
-    await initializeProvider();
-  };
-
-  const handleSelectLovableModel = async (modelId: string) => {
-    setCloudModel('lovable', modelId);
-    setIsOpen(false);
-    setExpandedSection(null);
-    await setProvider('lovable');
     await initializeProvider();
   };
 
@@ -150,9 +140,9 @@ export const AIProviderSelector = () => {
         <button 
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded text-[13px] transition-colors",
+            "ai-service-trigger flex items-center gap-1.5 px-2 py-1 rounded text-[13px] transition-colors",
             isOpen 
-              ? "bg-secondary text-foreground" 
+              ? "is-open bg-secondary text-foreground" 
               : "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
             status.isLoading && "animate-pulse"
           )}
@@ -164,7 +154,8 @@ export const AIProviderSelector = () => {
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute top-full right-0 mt-1.5 w-72 bg-[#1e1e2e] border border-[#3a3a4a] rounded-xl shadow-2xl shadow-black/50 py-1.5 z-50 max-h-[70vh] overflow-y-auto">
+          <div className="ai-service-card absolute top-full right-0 mt-1.5 w-72 rounded-xl z-50 max-h-[70vh]">
+            <div className="ai-service-card-content bg-[#1e1e2e] border border-[#3a3a4a] rounded-xl shadow-2xl shadow-black/50 py-1.5 max-h-[70vh] overflow-y-auto">
             {/* Header */}
             <div className="px-3 py-1.5 text-[11px] font-medium text-[#6a6a7a]">
               Provedor de IA
@@ -245,51 +236,6 @@ export const AIProviderSelector = () => {
                       <div className="text-[10px] text-[#6a6a7a] pl-5">
                         ~{model.size} • {model.description}
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="h-px bg-[#3a3a4a] my-1.5 mx-3" />
-
-            {/* ========== PREMIUM SECTION ========== */}
-            <button
-              onClick={() => toggleSection('premium')}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[#2a2a3a] transition-colors"
-            >
-              <Crown className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="flex-1 text-[11px] font-medium text-muted-foreground">
-                Premium (Assinantes)
-              </span>
-              <ChevronRight className={cn("w-3.5 h-3.5 text-[#6a6a7a] transition-transform", expandedSection === 'premium' && "rotate-90")} />
-            </button>
-
-            {expandedSection === 'premium' && (
-              <div className="bg-[#16161e] mx-2 mb-1 rounded-lg overflow-hidden">
-                <div className="px-3 py-1.5 text-[10px] text-[#6a6a7a] bg-[#1a1a24] flex items-center gap-1.5">
-                  <Wifi className="w-3 h-3" />
-                  Lovable AI • Gemini & GPT
-                </div>
-                
-                {LOVABLE_AI_MODELS.map(model => {
-                  const isActive = currentProviderId === 'lovable' && cloudModels['lovable'] === model.id && status.isReady;
-                  
-                  return (
-                    <button
-                      key={model.id}
-                      onClick={() => handleSelectLovableModel(model.id)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-[#e0e0e8] hover:bg-[#2a2a3a] transition-colors"
-                    >
-                      {isActive ? (
-                        <Check className="w-3.5 h-3.5 text-muted-foreground" />
-                      ) : (
-                        <div className="w-3.5 h-3.5" />
-                      )}
-                      <span className="flex-1 text-[12px]">{model.name}</span>
-                      {isActive && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-secondary/30 text-muted-foreground">Ativo</span>
-                      )}
                     </button>
                   );
                 })}
@@ -384,6 +330,7 @@ export const AIProviderSelector = () => {
                 </div>
               </>
             )}
+            </div>
           </div>
         )}
       </div>

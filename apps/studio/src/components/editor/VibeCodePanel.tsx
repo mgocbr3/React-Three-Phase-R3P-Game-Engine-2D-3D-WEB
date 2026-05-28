@@ -32,7 +32,7 @@ export const VibeCodePanel = () => {
     {
       id: '1',
       role: 'assistant',
-      content: ' Olá! Sou o **Vibe Code AI**, seu agente especialista em jogos 3D!\n\nPosso:\n• Criar e modificar objetos na cena\n• Configurar física, scripts e comportamentos\n• Ajustar player, câmera e gameplay\n\nDescreva o que você quer e eu executo! ',
+      content: 'Olá! Sou o Vibe Code AI. Posso te ajudar com jogos 2D (Phaser) e 3D (Three.js/R3F). Me diga o que você quer construir.',
       timestamp: new Date(),
     }
   ]);
@@ -154,10 +154,15 @@ export const VibeCodePanel = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
   };
 
   const handleSuggestion = (suggestion: string) => {
@@ -293,6 +298,7 @@ export const VibeCodePanel = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
             placeholder="Descreva o que quer fazer..."
             rows={1}
             className="flex-1 bg-muted border-0 rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none min-h-[36px] max-h-[100px]"

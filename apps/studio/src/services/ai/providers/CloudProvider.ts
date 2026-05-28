@@ -1,5 +1,5 @@
 // Cloud AI Provider - Supports multiple cloud APIs
-// Ready for: Lovable AI, OpenAI, Anthropic, Google, Mistral, Groq, Cohere, Together, Perplexity, DeepSeek, xAI
+// Ready for: OpenAI, Anthropic, Google, Mistral, Groq, Cohere, Together, Perplexity, DeepSeek, xAI
 
 import type { AIProvider, AIProviderStatus, AICompletionOptions, AICompletionResult, AIMessage, AIProviderType, CLOUD_PROVIDERS } from '../types';
 
@@ -15,13 +15,6 @@ interface CloudProviderConfig {
 
 // Provider configurations with their API endpoints
 const PROVIDER_CONFIGS: Record<string, Omit<CloudProviderConfig, 'apiKey' | 'model'>> = {
-  lovable: {
-    type: 'lovable',
-    name: 'Lovable AI',
-    description: 'Lovable AI Gateway - Google Gemini & OpenAI models',
-    icon: '',
-    baseUrl: 'https://ai.gateway.lovable.dev/v1/chat/completions',
-  },
   openai: {
     type: 'openai',
     name: 'OpenAI',
@@ -135,8 +128,6 @@ export class CloudProvider implements AIProvider {
 
   private getDefaultModel(type: string): string {
     switch (type) {
-      case 'lovable':
-        return 'google/gemini-3-flash-preview';
       case 'openai':
         return 'gpt-4o';
       case 'anthropic':
@@ -164,7 +155,7 @@ export class CloudProvider implements AIProvider {
 
   async initialize(): Promise<void> {
     // Cloud providers just validate API key exists
-    if (this.config.type !== 'lovable' && !this.config.apiKey) {
+    if (!this.config.apiKey) {
       this.status = {
         isReady: false,
         isLoading: false,
@@ -397,10 +388,6 @@ export class CloudProvider implements AIProvider {
   }
 
   // Static factory methods
-  static lovable(): CloudProvider {
-    return new CloudProvider('lovable');
-  }
-
   static openai(apiKey: string, model?: string): CloudProvider {
     return new CloudProvider('openai', apiKey, model);
   }

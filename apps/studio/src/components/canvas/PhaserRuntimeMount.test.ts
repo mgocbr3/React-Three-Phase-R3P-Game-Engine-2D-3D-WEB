@@ -6,6 +6,7 @@ import {
   getRenderBounds,
   getPhaserRuntimeChromeState,
   getRuntimeCameraView,
+  getRuntimePlaySurfaceLayout,
   getSpriteOrigin2D,
   getSnapped2DTransformValue,
   readEditorViewportPointer,
@@ -55,6 +56,25 @@ describe('PhaserRuntimeMount', () => {
       scrollX: 140,
       scrollY: 80,
       zoom: 1.5,
+    });
+  });
+
+  it('letterboxes the exported 2D game surface inside fullscreen play frames', () => {
+    expect(getRuntimePlaySurfaceLayout({ width: 1600, height: 600 })).toEqual({
+      width: 800,
+      height: 600,
+      displayWidth: 800,
+      displayHeight: 600,
+      offsetX: 400,
+      offsetY: 0,
+    });
+    expect(getRuntimePlaySurfaceLayout({ width: 1600, height: 1200 })).toEqual({
+      width: 800,
+      height: 600,
+      displayWidth: 1600,
+      displayHeight: 1200,
+      offsetX: 0,
+      offsetY: 0,
     });
   });
 

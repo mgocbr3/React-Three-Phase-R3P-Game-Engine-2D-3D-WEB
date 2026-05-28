@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AIProvider, AIProviderStatus, AIProviderType, AIMessage } from '@/services/ai/types';
-import { DEFAULT_LOCAL_MODEL } from '@/services/ai/types';
+import { DEFAULT_LOCAL_MODEL, CLOUD_PROVIDERS } from '@/services/ai/types';
 
 interface AIStore {
   // Current provider
@@ -79,6 +79,13 @@ export const useAIStore = create<AIStore>()(
 
       initializeProvider: async () => {
         const { currentProviderId, selectedLocalModel, cloudApiKeys, cloudModels, provider: existingProvider } = get();
+
+        // Safety fallback for users hydrated from old persisted states.
+        if (currentProviderId !== 'webllm' && !CLOUD_PROVIDERS.some((p) => p.id === currentProviderId)) {
+          set({ currentProviderId: 'webllm' });
+          await get().initializeProvider();
+          return;
+        }
         
         // Dispose existing provider first
         if (existingProvider) {

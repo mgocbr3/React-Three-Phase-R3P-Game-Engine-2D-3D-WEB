@@ -80,7 +80,6 @@ export interface AIProvider {
 
 export type AIProviderType = 
   | 'webllm'      // Local - WebLLM (browser)
-  | 'lovable'     // Cloud - Lovable AI Gateway (Premium)
   | 'openai'      // Cloud - OpenAI API
   | 'anthropic'   // Cloud - Anthropic API
   | 'google'      // Cloud - Google Gemini API
@@ -103,47 +102,53 @@ export interface AIProviderConfig {
 // Available local models for WebLLM (FREE)
 export const LOCAL_MODELS = [
   {
-    id: 'Qwen3-4B-q4f16_1-MLC',
-    name: 'Qwen 3 (4B)',
-    size: '2.5 GB',
-    description: 'Alibaba\'s newest model, excellent for code',
+    id: 'Qwen3.5-4B-q4f16_1-MLC',
+    name: 'Qwen 3.5 (4B)',
+    size: '2.7 GB',
+    description: 'Mais atual e forte para codigo e agentes',
     recommended: true,
   },
   {
-    id: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
-    name: 'Phi 3.5 Mini (3.8B)',
-    size: '2.3 GB',
-    description: 'Fast, lightweight model ideal for code assistance',
+    id: 'Phi-4-mini-instruct-q4f16_1-MLC',
+    name: 'Phi 4 Mini',
+    size: '2.5 GB',
+    description: 'Boa qualidade para coding com baixa latencia',
   },
   {
-    id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
-    name: 'Llama 3.2 (3B)',
-    size: '1.8 GB',
-    description: 'Meta\'s efficient instruction-tuned model',
+    id: 'Qwen3.5-2B-q4f16_1-MLC',
+    name: 'Qwen 3.5 (2B)',
+    size: '1.4 GB',
+    description: 'Equilibrio entre qualidade e consumo de memoria',
   },
   {
-    id: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC',
-    name: 'SmolLM2 (1.7B)',
-    size: '1.1 GB',
-    description: 'Fast option for most devices',
+    id: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+    name: 'Qwen 2.5 Coder (3B)',
+    size: '1.9 GB',
+    description: 'Especialista em codigo para tarefas de engine',
   },
   {
-    id: 'Qwen3-0.6B-q4f16_1-MLC',
-    name: 'Qwen 3 (0.6B)',
-    size: '0.4 GB',
-    description: 'Ultra-leve! Roda em PCs fracos',
+    id: 'gemma3-1b-it-q4f16_1-MLC',
+    name: 'Gemma 3 (1B)',
+    size: '0.8 GB',
+    description: 'Google Gemma 3 em perfil compacto para uso local',
+  },
+  {
+    id: 'Qwen3.5-0.8B-q4f16_1-MLC',
+    name: 'Qwen 3.5 (0.8B)',
+    size: '0.6 GB',
+    description: 'Opcao leve moderna para maquinas de entrada',
     lightweight: true,
   },
   {
-    id: 'SmolLM2-360M-Instruct-q4f32_1-MLC',
-    name: 'SmolLM2 (360M) ',
+    id: 'SmolLM2-360M-Instruct-q4f16_1-MLC',
+    name: 'SmolLM2 (360M)',
     size: '0.2 GB',
-    description: 'Mais leve! Ideal para PCs fracos',
+    description: 'Mais leve para fallback em PCs fracos',
     lightweight: true,
   },
 ] as const;
 
-export const DEFAULT_LOCAL_MODEL = 'Qwen3-4B-q4f16_1-MLC';
+export const DEFAULT_LOCAL_MODEL = 'Qwen3.5-4B-q4f16_1-MLC';
 
 // Cloud providers with their models (Bring Your Own Key)
 export interface CloudProviderInfo {
@@ -284,11 +289,4 @@ export const CLOUD_PROVIDERS: CloudProviderInfo[] = [
       { id: 'grok-2-mini', name: 'Grok 2 Mini', description: 'Rápido' },
     ],
   },
-];
-
-// Lovable AI (Premium)
-export const LOVABLE_AI_MODELS = [
-  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Rápido e capaz', default: true },
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Balanceado' },
-  { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', description: 'OpenAI eficiente' },
 ];

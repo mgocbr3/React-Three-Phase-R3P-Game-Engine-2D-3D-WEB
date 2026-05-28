@@ -155,11 +155,59 @@ const num = (value: unknown, fallback: number): number => (
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
 );
 
-export const getRuntimeCameraView = (camera: SceneJSON['camera'] | null | undefined) => ({
+export type RuntimeCameraView = { scrollX: number; scrollY: number; zoom: number };
+
+export const getRuntimeCameraView = (camera: SceneJSON['camera'] | null | undefined): RuntimeCameraView => ({
   scrollX: num(camera?.position?.x, 0),
   scrollY: num(camera?.position?.y, 0),
   zoom: Math.max(0.01, num(camera?.zoom, 1)),
 });
+
+export const getRuntimePlaySurfaceLayout = (
+  viewport: { width: number; height: number },
+  sourceViewport = FALLBACK_VIEWPORT_SIZE,
+): { width: number; height: number; displayWidth: number; displayHeight: number; offsetX: number; offsetY: number } => {
+  const sourceWidth = Math.max(1, num(sourceViewport.width, FALLBACK_VIEWPORT_SIZE.width));
+  const sourceHeight = Math.max(1, num(sourceViewport.height, FALLBACK_VIEWPORT_SIZE.height));
+  const targetWidth = Math.max(1, num(viewport.width, sourceWidth));
+  const targetHeight = Math.max(1, num(viewport.height, sourceHeight));
+  const fit = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+  const displayWidth = Math.max(1, Math.round(sourceWidth * fit));
+  const displayHeight = Math.max(1, Math.round(sourceHeight * fit));
+  return {
+    width: Math.round(sourceWidth),
+    height: Math.round(sourceHeight),
+    displayWidth,
+    displayHeight,
+    offsetX: Math.max(0, Math.round((targetWidth - displayWidth) / 2)),
+    offsetY: Math.max(0, Math.round((targetHeight - displayHeight) / 2)),
+  };
+};
+
+const applyRuntimeCameraView = (
+  camera: { setScroll: (x: number, y: number) => unknown; setZoom: (zoom: number) => unknown },
+  runtimeCamera: RuntimeCameraView,
+) => {
+  camera.setScroll(runtimeCamera.scrollX, runtimeCamera.scrollY);
+  camera.setZoom(runtimeCamera.zoom);
+};
+
+const syncRuntimeCanvasSize = (
+  game: { scale?: { resize?: (width: number, height: number) => unknown }; canvas?: HTMLCanvasElement },
+  container: HTMLElement,
+  isPlaying: boolean,
+) => {
+  const viewport = readPhaserViewportSize(container);
+  const layout = isPlaying ? getRuntimePlaySurfaceLayout(viewport) : null;
+  game.scale?.resize?.(layout?.width ?? viewport.width, layout?.height ?? viewport.height);
+  if (game.canvas) {
+    game.canvas.style.display = 'block';
+    game.canvas.style.width = layout ? `${layout.displayWidth}px` : '100%';
+    game.canvas.style.height = layout ? `${layout.displayHeight}px` : '100%';
+    game.canvas.style.margin = layout ? `${layout.offsetY}px 0 0 ${layout.offsetX}px` : '0';
+  }
+  return viewport;
+};
 
 export const getPhaserRuntimeChromeState = (isPlaying: boolean, loadStatus: LoadState['status']) => {
   const allowEditorInput = !isPlaying;
@@ -492,11 +540,14 @@ export function PhaserRuntimeMount({
         const pixelArt = env.pixelArt !== false;
 
         const initialSize = readPhaserViewportSize(container);
+        const initialPlayLayout = useRuntimeGameStore.getState().isPlaying
+          ? getRuntimePlaySurfaceLayout(initialSize)
+          : null;
         gameRef.current = new Phaser.Game({
           type: Phaser.AUTO,
           parent: container,
-          width: initialSize.width,
-          height: initialSize.height,
+          width: initialPlayLayout?.width ?? initialSize.width,
+          height: initialPlayLayout?.height ?? initialSize.height,
           backgroundColor: EDITOR_VOID_COLOR,
           pixelArt,
           roundPixels: pixelArt,
@@ -1122,8 +1173,7 @@ export function PhaserRuntimeMount({
               const hasCameraZoom = typeof cam?.zoom === 'number' && cam.zoom !== 1;
               const initRuntimeCamera = runtimeCameraRef.current;
               if (initIsPlaying) {
-                this.cameras.main.setScroll(initRuntimeCamera.scrollX, initRuntimeCamera.scrollY);
-                this.cameras.main.setZoom(initRuntimeCamera.zoom);
+                applyRuntimeCameraView(this.cameras.main, initRuntimeCamera);
               } else {
                 // Explicit project camera wins; default editor camera opens fitted/centered.
                 if (hasCameraScroll) this.cameras.main.setScroll(cam.position.x, cam.position.y);
@@ -1269,25 +1319,20 @@ export function PhaserRuntimeMount({
 
         const resizeGame = () => {
           if (!gameRef.current || disposed) return;
-          const { width, height } = readPhaserViewportSize(container);
-          gameRef.current.scale.resize(width, height);
+          const isRuntimePlaying = useRuntimeGameStore.getState().isPlaying;
+          const { width, height } = syncRuntimeCanvasSize(gameRef.current, container, isRuntimePlaying);
           const scene = gameRef.current.scene?.scenes?.[0] as import('phaser').Scene | undefined;
           if (
             autoFitBoundsRef.current &&
             scene?.cameras?.main &&
             shouldAutoFit2DEditorCamera({
-              isPlaying: useRuntimeGameStore.getState().isPlaying,
+              isPlaying: isRuntimePlaying,
               hasAutoFit: autoFitCameraRef.current,
             })
           ) {
             setFittedViewportCamera(scene.cameras.main, autoFitBoundsRef.current, { width, height });
           }
-          const canvas = gameRef.current.canvas as HTMLCanvasElement | undefined;
-          if (canvas) {
-            canvas.style.display = 'block';
-            canvas.style.width = '100%';
-            canvas.style.height = '100%';
-          }
+          if (scene?.cameras?.main && isRuntimePlaying) applyRuntimeCameraView(scene.cameras.main, runtimeCameraRef.current);
         };
         scheduleResize = () => {
           cancelAnimationFrame(resizeRaf);
@@ -1533,8 +1578,7 @@ export function PhaserRuntimeMount({
           scrollY: camera.scrollY,
           zoom: camera.zoom,
         };
-        camera.setScroll(runtimeCameraRef.current.scrollX, runtimeCameraRef.current.scrollY);
-        camera.setZoom(runtimeCameraRef.current.zoom);
+        applyRuntimeCameraView(camera, runtimeCameraRef.current);
       } else if (camera && !isPlaying && wasPlaying && editorCameraBeforePlayRef.current) {
         const editorCamera = editorCameraBeforePlayRef.current;
         camera.setScroll(editorCamera.scrollX, editorCamera.scrollY);
@@ -1589,19 +1633,11 @@ export function PhaserRuntimeMount({
     resizeRaf = requestAnimationFrame(() => {
       const container = containerRef.current;
       if (!container || !gameRef.current) return;
-      const { width, height } = readPhaserViewportSize(container);
-      gameRef.current.scale?.resize?.(width, height);
+      syncRuntimeCanvasSize(gameRef.current, container, isPlaying);
       const scene = gameRef.current.scene?.scenes?.[0] as import('phaser').Scene | undefined;
       const camera = scene?.cameras?.main;
       if (camera && isPlaying) {
-        camera.setScroll(runtimeCameraRef.current.scrollX, runtimeCameraRef.current.scrollY);
-        camera.setZoom(runtimeCameraRef.current.zoom);
-      }
-      const canvas = gameRef.current.canvas as HTMLCanvasElement | undefined;
-      if (canvas) {
-        canvas.style.display = 'block';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
+        applyRuntimeCameraView(camera, runtimeCameraRef.current);
       }
     });
     return () => cancelAnimationFrame(resizeRaf);

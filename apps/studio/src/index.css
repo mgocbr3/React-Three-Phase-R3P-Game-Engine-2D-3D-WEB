@@ -192,6 +192,93 @@
   :root[data-ui-theme="light"] .glass-menu {
     box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
   }
+
+  .ai-service-trigger {
+    position: relative;
+    isolation: isolate;
+    box-shadow:
+      0 0 0 1px rgba(96, 165, 250, 0.22),
+      0 0 18px rgba(14, 165, 233, 0.12);
+  }
+
+  .ai-service-trigger::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(120deg, #38bdf8, #8b5cf6, #ec4899, #22d3ee, #34d399, #38bdf8);
+    background-size: 360% 360%;
+    opacity: 0;
+    filter: blur(7px);
+    transition: opacity 180ms ease;
+    animation: ai-service-gradient-flow 5s ease infinite;
+  }
+
+  .ai-service-trigger:hover::before,
+  .ai-service-trigger.is-open::before {
+    opacity: 0.55;
+  }
+
+  .ai-service-card {
+    isolation: isolate;
+    overflow: visible;
+  }
+
+  .ai-service-card::before,
+  .ai-service-card::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(120deg, #38bdf8, #8b5cf6, #ec4899, #22d3ee, #34d399, #38bdf8);
+    background-size: 360% 360%;
+    animation: ai-service-gradient-flow 5s ease infinite;
+  }
+
+  .ai-service-card::before {
+    inset: -10px;
+    z-index: -2;
+    opacity: 0.34;
+    filter: blur(18px);
+  }
+
+  .ai-service-card::after {
+    inset: -1px;
+    z-index: -1;
+    padding: 1px;
+    opacity: 0.9;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+
+  .ai-service-card-content {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+@keyframes ai-service-gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-service-trigger::before,
+  .ai-service-card::before,
+  .ai-service-card::after {
+    animation: none;
+  }
 }
 
 @layer components {

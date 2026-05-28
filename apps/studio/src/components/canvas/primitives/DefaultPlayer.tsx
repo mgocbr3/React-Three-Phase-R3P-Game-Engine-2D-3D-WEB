@@ -122,7 +122,16 @@ export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
     const hasDoubleJumped = useRef(false);
 
     useEffect(() => {
+      const isEditableTarget = (target: EventTarget | null): boolean => {
+        const el = target as HTMLElement | null;
+        if (!el || !el.tagName) return false;
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+        if (el.isContentEditable) return true;
+        return false;
+      };
+
       const handleKeyDown = (e: KeyboardEvent) => {
+        if (isEditableTarget(e.target)) return;
         if (e.code === 'Space') e.preventDefault();
         switch (e.code) {
           case 'KeyW':
@@ -151,6 +160,7 @@ export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
         }
       };
       const handleKeyUp = (e: KeyboardEvent) => {
+        if (isEditableTarget(e.target)) return;
         switch (e.code) {
           case 'KeyW':
           case 'ArrowUp':

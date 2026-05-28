@@ -568,8 +568,18 @@ export const FPSController = forwardRef<THREE.Object3D, FPSControllerProps>(({
   
   useEffect(() => {
     const canvas = gl.domElement;
+
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      const el = target as HTMLElement | null;
+      if (!el || !el.tagName) return false;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
     
     const handleKeyDown = (e: KeyboardEvent) => {
+      const canvasHasPointerLock = document.pointerLockElement === canvas;
+      if (!canvasHasPointerLock && isEditableTarget(e.target)) return;
       // Prevent default browser behavior for Space (prevents page scroll)
       if (e.code === 'Space') {
         e.preventDefault();
@@ -593,6 +603,8 @@ export const FPSController = forwardRef<THREE.Object3D, FPSControllerProps>(({
     };
     
     const handleKeyUp = (e: KeyboardEvent) => {
+      const canvasHasPointerLock = document.pointerLockElement === canvas;
+      if (!canvasHasPointerLock && isEditableTarget(e.target)) return;
       switch (e.code) {
         case 'KeyW': movement.current.forward = false; break;
         case 'KeyS': movement.current.backward = false; break;
