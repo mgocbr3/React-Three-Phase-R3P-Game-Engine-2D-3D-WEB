@@ -99,7 +99,9 @@ export const EditorHeader = () => {
   const [isBuildSettingsOpen, setIsBuildSettingsOpen] = useState(false);
   const [buildProject, setBuildProject] = useState<PixlProjectDocument | null>(null);
   const [localWorkspace, setLocalWorkspace] = useState(() => getCurrentProjectWorkspace());
+  const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const layoutMenuRef = useRef<HTMLDivElement>(null);
 
   const {
     activeSceneKind,
@@ -313,9 +315,11 @@ export const EditorHeader = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setActiveMenu(null);
       }
+      if (layoutMenuRef.current && !layoutMenuRef.current.contains(target)) setIsLayoutMenuOpen(false);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -390,6 +394,16 @@ export const EditorHeader = () => {
     }
     alert('Nenhum projeto salvo encontrado.');
   };
+
+  const layoutMenuItems: MenuItem[] = [
+    { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },
+    { label: 'Viewport Focus', icon: Maximize2, action: () => applyLayoutPreset('viewport-focus') },
+    { label: 'Inspect Layout', icon: PanelLeft, action: () => applyLayoutPreset('inspect') },
+    { label: 'Show All Panels', icon: LayoutGrid, action: showAllPanels },
+    { label: '', divider: true },
+    { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
+    { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
+  ];
 
   const menuConfig: MenuConfig = {
     File: [
@@ -470,13 +484,7 @@ export const EditorHeader = () => {
       { label: 'Open Console', icon: Terminal, action: () => openBottomTab('console') },
       { label: 'Restore Project Tabs', icon: LayoutGrid, action: () => { restorePanel('bottom'); restoreAllBottomTabs(); } },
       { label: '', divider: true },
-      { label: 'Show All Panels', icon: LayoutGrid, action: showAllPanels },
-      { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },
-      { label: 'Viewport Focus', icon: Maximize2, action: () => applyLayoutPreset('viewport-focus') },
-      { label: 'Inspect Layout', icon: PanelLeft, action: () => applyLayoutPreset('inspect') },
-      { label: '', divider: true },
-      { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
-      { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
+      ...layoutMenuItems,
     ],
     Help: [
       { label: 'Documentation', icon: Book },
@@ -521,32 +529,7 @@ export const EditorHeader = () => {
 
                 {activeMenu === menu && (
                   <div className="editor-menu-dropdown absolute left-0 top-full z-50 mt-0.5 w-60 overflow-hidden py-1">
-                    {menuConfig[menu].map((item, index) => (
-                      item.divider ? (
-                        <div key={index} className="my-1 h-px bg-border" />
-                      ) : (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            item.action?.();
-                            setActiveMenu(null);
-                          }}
-                          disabled={item.disabled}
-                          className={cn(
-                            'editor-menu-item flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs transition-colors',
-                            item.disabled
-                              ? 'cursor-not-allowed text-muted-foreground/45'
-                              : 'text-foreground'
-                          )}
-                        >
-                          {item.icon && <item.icon className="h-3.5 w-3.5 text-muted-foreground" />}
-                          <span className="flex-1 truncate">{item.label}</span>
-                          {item.shortcut && (
-                            <span className="font-mono text-[10px] text-muted-foreground">{item.shortcut}</span>
-                          )}
-                        </button>
-                      )
-                    ))}
+                    <MenuItems items={menuConfig[menu]} onSelect={() => setActiveMenu(null)} showShortcut />
                   </div>
                 )}
               </div>
@@ -557,6 +540,28 @@ export const EditorHeader = () => {
             {diagnostics && (
               <ProjectDiagnosticsButton diagnostics={diagnostics} onClick={openBuildSettings} />
             )}
+
+            <div ref={layoutMenuRef} className="relative">
+              <button
+                onClick={() => {
+                  setActiveMenu(null);
+                  setIsLayoutMenuOpen((open) => !open);
+                }}
+                className="editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                aria-expanded={isLayoutMenuOpen}
+                aria-haspopup="menu"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span>Layout</span>
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </button>
+
+              {isLayoutMenuOpen && (
+                <div className="editor-menu-dropdown absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden py-1">
+                  <MenuItems items={layoutMenuItems} onSelect={() => setIsLayoutMenuOpen(false)} />
+                </div>
+              )}
+            </div>
 
             {previewSession && (
               <div
@@ -682,6 +687,41 @@ const IconButton = ({ icon: Icon, label, onClick, disabled }: IconButtonProps) =
 );
 
 const HeaderSeparator = () => <div className="mx-1 h-6 w-px bg-border" />;
+
+interface MenuItemsProps {
+  items: MenuItem[];
+  onSelect: () => void;
+  showShortcut?: boolean;
+}
+
+const MenuItems = ({ items, onSelect, showShortcut }: MenuItemsProps) => (
+  <>
+    {items.map((item, index) => (
+      item.divider ? (
+        <div key={index} className="my-1 h-px bg-border" />
+      ) : (
+        <button
+          key={index}
+          onClick={() => {
+            item.action?.();
+            onSelect();
+          }}
+          disabled={item.disabled}
+          className={cn(
+            'editor-menu-item flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs transition-colors',
+            item.disabled ? 'cursor-not-allowed text-muted-foreground/45' : 'text-foreground',
+          )}
+        >
+          {item.icon && <item.icon className="h-3.5 w-3.5 text-muted-foreground" />}
+          <span className="flex-1 truncate">{item.label}</span>
+          {showShortcut && item.shortcut && (
+            <span className="font-mono text-[10px] text-muted-foreground">{item.shortcut}</span>
+          )}
+        </button>
+      )
+    ))}
+  </>
+);
 
 const diagnosticsIcon: Record<ProjectDiagnosticStatus, typeof CheckCircle2> = {
   blocked: AlertTriangle,
