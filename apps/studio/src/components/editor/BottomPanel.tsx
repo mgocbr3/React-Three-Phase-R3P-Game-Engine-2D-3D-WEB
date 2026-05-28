@@ -3,7 +3,7 @@ import {
   FolderOpen, Terminal, Package,
   Search, Filter, RefreshCw, Download, FolderPlus, Trash2,
   AlertCircle, AlertTriangle, Info, ChevronRight, Play, Grid, List,
-  Upload, FileBox, Image, Music, Code, Clock, Layout, MoreVertical,
+  Upload, FileBox, Image, Music, Code, Clock, Layout,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -208,6 +208,12 @@ const getAssetMetadataLabel = (asset: ProjectAsset) => {
   return role || cropId || tags.find((tag) => tag !== 'harvest-rush') || runtimeArray || getAssetFileName(asset);
 };
 
+const consoleToneClass: Record<ConsoleMessage['type'], string> = {
+  info: 'text-[#6fb877]',
+  warn: 'text-[#d0ad4f]',
+  error: 'text-[#d16a61]',
+};
+
 const getAssetPreviewStyle = (asset: ProjectAsset) => {
   const text = `${asset.name} ${getAssetFileName(asset)} ${getAssetMetadataLabel(asset)}`.toLowerCase();
   if (['texture', 'image', 'sprite', 'spritesheet'].includes(asset.type)) return 'from-sky-500/35 via-cyan-300/20 to-slate-950';
@@ -274,16 +280,6 @@ const AssetPreview = ({ asset, size = 'md' }: { asset: ProjectAsset; size?: 'sm'
   );
 };
 
-const BottomTabMenuItem = ({ label, onClick }: { label: string; onClick: () => void }) => (
-  <button
-    className="editor-menu-item flex h-7 w-full items-center px-3 text-left text-[11px]"
-    onClick={onClick}
-    onPointerDown={(event) => event.stopPropagation()}
-  >
-    {label}
-  </button>
-);
-
 export const BottomPanel = () => {
   const dockChrome = useDockChrome();
   const availableBottomTabs = useMemo(() => getAvailableBottomTabs(), []);
@@ -297,7 +293,6 @@ export const BottomPanel = () => {
   const restoreAllBottomTabs = useBottomPanelTabsStore((s) => s.restoreAllTabs);
   const [draggedTab, setDraggedTab] = useState<BottomTabId | null>(null);
   const [tabDropTarget, setTabDropTarget] = useState<BottomTabDropTarget | null>(null);
-  const [tabMenuOpen, setTabMenuOpen] = useState<BottomTabId | null>(null);
   const draggedTabRef = useRef<BottomTabId | null>(null);
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
   const [consoleSearch, setConsoleSearch] = useState('');
@@ -370,6 +365,7 @@ export const BottomPanel = () => {
   const tabs = visibleTabIds
     .map((id) => availableBottomTabs.find((tab) => tab.id === id))
     .filter((tab): tab is BottomTabDefinition => Boolean(tab));
+  const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? 'Project';
 
   const assetFolders = useMemo(() => ASSET_FOLDERS.map((folder) => {
     if (folder.id !== 'assets') return folder;
@@ -660,9 +656,9 @@ export const BottomPanel = () => {
 
   const getMessageIcon = (type: ConsoleMessage['type']) => {
     switch (type) {
-      case 'error': return <AlertCircle className="w-3.5 h-3.5 text-destructive" />;
-      case 'warn': return <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />;
-      default: return <Info className="w-3.5 h-3.5 text-primary" />;
+      case 'error': return <AlertCircle className={cn('w-3.5 h-3.5', consoleToneClass.error)} />;
+      case 'warn': return <AlertTriangle className={cn('w-3.5 h-3.5', consoleToneClass.warn)} />;
+      default: return <Info className={cn('w-3.5 h-3.5', consoleToneClass.info)} />;
     }
   };
 
@@ -693,7 +689,7 @@ export const BottomPanel = () => {
               onDragEnd={handleTabDragEnd}
               onPointerDown={(event) => event.stopPropagation()}
               className={cn(
-                'editor-panel-tab group relative flex h-6 max-w-[160px] cursor-grab items-center gap-1 px-1.5 text-[11px] transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
+                'editor-panel-tab relative flex h-6 max-w-[160px] cursor-grab items-center gap-1 px-1.5 text-[11px] transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
                 activeTab === tab.id 
                   ? 'active' 
                   : 'text-muted-foreground',
@@ -703,44 +699,25 @@ export const BottomPanel = () => {
             >
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setTabMenuOpen(null);
-                }}
+                onClick={() => setActiveTab(tab.id)}
                 className="flex h-full min-w-0 items-center gap-1"
               >
                 <Icon className="h-3 w-3 shrink-0" />
                 <span className="truncate">{tab.label}</span>
               </button>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setTabMenuOpen((open) => open === tab.id ? null : tab.id);
-                }}
-                onPointerDown={(event) => event.stopPropagation()}
-                className={cn(
-                  'editor-panel-action ml-0.5 flex h-5 w-5 items-center justify-center text-muted-foreground transition-opacity',
-                  activeTab === tab.id ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100'
-                )}
-                aria-label={`Menu ${tab.label}`}
-                title={`Menu ${tab.label}`}
-              >
-                <MoreVertical className="h-3 w-3" />
-              </button>
-              {tabMenuOpen === tab.id && (
-                <div className="editor-menu-dropdown absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden py-1">
-                  <BottomTabMenuItem label="Activate" onClick={() => { setActiveTab(tab.id); setTabMenuOpen(null); }} />
-                  <BottomTabMenuItem label="Move to End" onClick={() => { moveTabToEnd(tab.id); setTabMenuOpen(null); }} />
-                  <BottomTabMenuItem label="Restore Tabs" onClick={() => { restoreAllBottomTabs(); setTabMenuOpen(null); }} />
-                  <BottomTabMenuItem label="Close Tab" onClick={() => { closeBottomTab(tab.id); setTabMenuOpen(null); }} />
-                </div>
-              )}
             </div>
           );
         })}
         <div className="ml-auto">
-          <DockFrameMenu label={dockChrome?.label ?? 'Project'} />
+          <DockFrameMenu
+            label={dockChrome?.label ?? 'Project'}
+            closeLabel="Close Panel"
+            items={[
+              { label: `Move ${activeTabLabel} to End`, onClick: () => activeTab && moveTabToEnd(activeTab) },
+              { label: 'Restore Project Tabs', onClick: restoreAllBottomTabs },
+              { label: 'Close Tab', onClick: () => activeTab && closeBottomTab(activeTab) },
+            ]}
+          />
         </div>
         {draggedTab && (
           <div
@@ -1059,7 +1036,9 @@ export const BottomPanel = () => {
                 <span className="text-xs font-medium">Engine Console</span>
                 {diagnostics && (
                   <span className="ml-1 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                    {diagnostics.errors}E / {diagnostics.warnings}W
+                    <span className={diagnostics.errors ? consoleToneClass.error : consoleToneClass.info}>{diagnostics.errors}E</span>
+                    <span className="px-1">/</span>
+                    <span className={diagnostics.warnings ? consoleToneClass.warn : consoleToneClass.info}>{diagnostics.warnings}W</span>
                   </span>
                 )}
               </div>
@@ -1082,21 +1061,24 @@ export const BottomPanel = () => {
                 </button>
                 <button 
                   onClick={() => setConsoleFilter('info')}
-                  className={cn("flex items-center gap-1 p-1 rounded", consoleFilter === 'info' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                  aria-label={`Info ${consoleCounts.info}`}
+                  className={cn("flex items-center gap-1 p-1 rounded bg-transparent", consoleToneClass.info, consoleFilter === 'info' ? 'font-semibold opacity-100' : 'opacity-75 hover:opacity-100')}
                 >
                   <Info className="w-3.5 h-3.5" />
                   <span className="text-[10px]">{consoleCounts.info}</span>
                 </button>
                 <button 
                   onClick={() => setConsoleFilter('warn')}
-                  className={cn("flex items-center gap-1 p-1 rounded", consoleFilter === 'warn' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                  aria-label={`Warnings ${consoleCounts.warn}`}
+                  className={cn("flex items-center gap-1 p-1 rounded bg-transparent", consoleToneClass.warn, consoleFilter === 'warn' ? 'font-semibold opacity-100' : 'opacity-75 hover:opacity-100')}
                 >
                   <AlertTriangle className="w-3.5 h-3.5" />
                   <span className="text-[10px]">{consoleCounts.warn}</span>
                 </button>
                 <button 
                   onClick={() => setConsoleFilter('error')}
-                  className={cn("flex items-center gap-1 p-1 rounded", consoleFilter === 'error' ? 'bg-secondary/30 text-muted-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                  aria-label={`Errors ${consoleCounts.error}`}
+                  className={cn("flex items-center gap-1 p-1 rounded bg-transparent", consoleToneClass.error, consoleFilter === 'error' ? 'font-semibold opacity-100' : 'opacity-75 hover:opacity-100')}
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
                   <span className="text-[10px]">{consoleCounts.error}</span>
@@ -1132,8 +1114,6 @@ export const BottomPanel = () => {
                     msg.targetObjectId
                       ? 'cursor-pointer hover:bg-secondary/30'
                       : 'cursor-default',
-                    msg.type === 'error' && 'bg-destructive/10',
-                    msg.type === 'warn' && 'bg-amber-500/10',
                   )}
                 >
                   <div className="pt-0.5">{getMessageIcon(msg.type)}</div>
@@ -1141,7 +1121,7 @@ export const BottomPanel = () => {
                     {msg.source ?? 'Console'}
                   </span>
                   <div className="min-w-0">
-                    <div className="truncate text-foreground">{msg.message}</div>
+                    <div className={cn('truncate', consoleToneClass[msg.type])}>{msg.message}</div>
                     {msg.path && (
                       <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{msg.path}</div>
                     )}

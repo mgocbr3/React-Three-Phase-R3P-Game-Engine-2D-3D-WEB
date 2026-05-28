@@ -1,10 +1,27 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createElement } from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { BottomPanel, getAvailableBottomTabs, normalizeBottomTabOrder, shouldRenderStorePane } from './BottomPanel';
+import { DockFrame } from './DockFrame';
+
+const renderDockedBottomPanel = () => render(createElement(DockFrame, {
+  id: 'bottom',
+  zone: 'bottom',
+  label: 'Project',
+  onClose: vi.fn(),
+  onDockMain: vi.fn(),
+  onDockBottom: vi.fn(),
+  onResetDock: vi.fn(),
+  dragging: false,
+  draggingAny: false,
+  dropActive: false,
+  onPointerDown: vi.fn(),
+  customChrome: true,
+  children: createElement(BottomPanel),
+}));
 
 describe('BottomPanel tab availability', () => {
   beforeEach(() => {
@@ -63,15 +80,16 @@ describe('BottomPanel tab availability', () => {
   });
 
   it('keeps close under the ellipsis menu and closes without starting a tab drag', () => {
-    render(createElement(BottomPanel));
+    renderDockedBottomPanel();
 
     expect(screen.queryByTitle('Fechar Console')).toBeNull();
 
-    const menuConsole = screen.getByTitle('Menu Console');
-    fireEvent.pointerDown(menuConsole);
+    fireEvent.click(screen.getByText('Console'));
+    const menuProject = screen.getByTitle('Menu Project');
+    fireEvent.pointerDown(menuProject);
     expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
 
-    fireEvent.click(menuConsole);
+    fireEvent.click(menuProject);
     fireEvent.click(screen.getByText('Close Tab'));
 
     expect(useBottomPanelTabsStore.getState().closedTabs).toContain('console');
@@ -80,19 +98,32 @@ describe('BottomPanel tab availability', () => {
   });
 
   it('opens compact tab actions from the ellipsis menu', () => {
-    const { container } = render(createElement(BottomPanel));
+    const { container } = renderDockedBottomPanel();
 
-    expect(container.querySelector('.editor-dock-outline')).toBeNull();
+    expect(container.querySelectorAll('.editor-dock-outline')).toHaveLength(1);
     expect(container.querySelectorAll('.panel-header')).toHaveLength(1);
+    expect(screen.getAllByTitle('Menu Project')).toHaveLength(1);
     fireEvent.pointerDown(screen.getByTitle('Menu Project'));
     fireEvent.click(screen.getByTitle('Menu Project'));
 
-    expect(screen.getByText('Move to End')).toBeVisible();
-    expect(screen.getByText('Restore Tabs')).toBeVisible();
+    expect(screen.getByText('Move Project to End')).toBeVisible();
+    expect(screen.getByText('Restore Project Tabs')).toBeVisible();
     expect(screen.getByText('Close Tab')).toBeVisible();
+    expect(screen.getByText('Close Panel')).toBeVisible();
     expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
-    expect(screen.getByTitle('Menu Console')).toHaveClass('opacity-0');
-    expect(screen.getByTitle('Menu Project')).not.toHaveClass('opacity-0');
+    expect(screen.queryByTitle('Menu Console')).toBeNull();
+  });
+
+  it('uses restrained Unity-like console tones without colored panes', () => {
+    useBottomPanelTabsStore.getState().setActiveTab('console');
+    const { container } = renderDockedBottomPanel();
+
+    expect(screen.getByLabelText(/Info/)).toHaveClass('text-[#6fb877]');
+    expect(screen.getByLabelText(/Warnings/)).toHaveClass('text-[#d0ad4f]');
+    expect(screen.getByLabelText(/Errors/)).toHaveClass('text-[#d16a61]');
+    expect(screen.getByText('React 3 Phase inicializado')).toHaveClass('text-[#6fb877]');
+    expect(container.querySelector('[class*="bg-amber"]')).toBeNull();
+    expect(container.querySelector('[class*="bg-destructive/10"]')).toBeNull();
   });
 
   it('previews bottom tab order while dragging over another tab', () => {

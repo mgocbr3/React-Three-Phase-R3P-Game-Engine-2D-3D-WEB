@@ -34,7 +34,17 @@ const DockChromeContext = createContext<DockChromeContextValue | null>(null);
 
 export const useDockChrome = () => useContext(DockChromeContext);
 
-export const DockFrameMenu = ({ label: labelOverride }: { label?: string }) => {
+type DockFrameMenuItem = { label: string; onClick: () => void };
+
+export const DockFrameMenu = ({
+  label: labelOverride,
+  items = [],
+  closeLabel = 'Close Tab',
+}: {
+  label?: string;
+  items?: DockFrameMenuItem[];
+  closeLabel?: string;
+}) => {
   const chrome = useDockChrome();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -68,11 +78,15 @@ export const DockFrameMenu = ({ label: labelOverride }: { label?: string }) => {
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
       {menuOpen && (
-        <div className="editor-menu-dropdown absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden py-1">
+        <div className="editor-menu-dropdown absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden py-1">
+          {items.map((item) => (
+            <DockMenuButton key={item.label} label={item.label} onClick={() => runMenuAction(item.onClick)} />
+          ))}
+          {items.length > 0 && <div className="my-1 border-t border-border" />}
           <DockMenuButton label="Dock Main" onClick={() => runMenuAction(chrome.onDockMain)} />
           <DockMenuButton label="Dock Below" onClick={() => runMenuAction(chrome.onDockBottom)} />
           <DockMenuButton label="Reset Dock" onClick={() => runMenuAction(chrome.onResetDock)} />
-          <DockMenuButton label="Close Tab" onClick={() => runMenuAction(chrome.onClose)} />
+          <DockMenuButton label={closeLabel} onClick={() => runMenuAction(chrome.onClose)} />
         </div>
       )}
     </div>
