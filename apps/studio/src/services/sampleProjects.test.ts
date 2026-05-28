@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildSampleEditorUrl, listSampleProjects } from './sampleProjects';
 
@@ -28,5 +28,19 @@ describe('sample projects', () => {
     expect(css).toContain('.title-panel.open');
     expect(css).toContain("url('../../assets/");
     expect(existsSync(resolve(root, 'levels/harvest-rush.level3d.json'))).toBe(true);
+  });
+
+  it('does not spawn Harvest Rush optional farm actors from missing GLB files', () => {
+    const root = resolve(process.cwd(), 'public/sample-projects/harvest-rush-3d');
+    const runtime = readFileSync(resolve(root, 'runtime/src/main.js'), 'utf8');
+    const farmFiles = new Set(readdirSync(resolve(root, 'assets/vendor/farm-pack')).filter((file) => file.endsWith('.glb')));
+
+    for (const block of ['TRAFFIC_ACTORS', 'LIVESTOCK_ACTORS', 'WIND_TREE_ACTORS']) {
+      const [, body = ''] = runtime.match(new RegExp(`const ${block} = \\[([\\s\\S]*?)\\];`)) || [];
+      const files = [...body.matchAll(/file: '([^']+\.glb)'/g)].map((match) => match[1]);
+      expect(files.filter((file) => !farmFiles.has(file))).toEqual([]);
+    }
+
+    expect(runtime).toContain('hasFarmPackFile(file)');
   });
 });

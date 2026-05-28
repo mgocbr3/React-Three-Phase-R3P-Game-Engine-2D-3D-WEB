@@ -336,10 +336,17 @@ const CROP_MODEL_ASSETS = {
   pumpkin: { file: 'plant_011.glb', scale: 0.32 },
 };
 
+const FARM_PACK_FILES = new Set([
+  FARM_SCENE_FILE.slice(FARM_PACK_BASE.length),
+  ...MACHINES.flatMap((machine) => [machine.file, machine.trailerFile]),
+  ...Object.values(CROP_MODEL_ASSETS).map((asset) => asset.file),
+]);
+const hasFarmPackFile = (file) => Boolean(file && FARM_PACK_FILES.has(file));
+
 const TRAFFIC_ACTORS = [
   {
-    file: 'car_001.glb',
-    scale: 0.4,
+    file: 'tractor_001.glb',
+    scale: 0.3,
     speed: 2.9,
     radius: 1.2,
     rest: [22, 42],
@@ -347,8 +354,8 @@ const TRAFFIC_ACTORS = [
     route: [[85.3, -56], [85.3, 62]],
   },
   {
-    file: 'truck_001.glb',
-    scale: 0.38,
+    file: 'tractor_002.glb',
+    scale: 0.3,
     speed: 2.35,
     radius: 2.05,
     rest: [38, 68],
@@ -366,23 +373,8 @@ const LIVESTOCK_PADDOCKS = {
   chickenWest: { minX: -61.0, maxX: -58.4, minZ: -45.1, maxZ: -42.3 },
 };
 
-const LIVESTOCK_ACTORS = [
-  { file: 'cow_001.glb', scale: 0.42, paddock: 'cowWest', speed: 0.72, collider: 0.95 },
-  { file: 'cow_001.glb', scale: 0.4, paddock: 'cowEast', speed: 0.68, collider: 0.9 },
-  { file: 'sheep_001.glb', scale: 0.4, paddock: 'sheepNorth', speed: 0.95, collider: 0.72 },
-  { file: 'goat_001.glb', scale: 0.38, paddock: 'goatNorth', speed: 1.05, collider: 0.7 },
-  { file: 'horse_002.glb', scale: 0.42, paddock: 'horseYard', speed: 0.98, collider: 0.95 },
-  { file: 'chicken_001.glb', scale: 0.32, paddock: 'chickenWest', speed: 1.25, collider: 0.35 },
-];
-
-const WIND_TREE_ACTORS = [
-  { file: 'tree_001.glb', position: [-22, 20], scale: 0.52 },
-  { file: 'tree_004.glb', position: [24, 16], scale: 0.48 },
-  { file: 'tree_006.glb', position: [-46, -18], scale: 0.5 },
-  { file: 'fir_tree_001.glb', position: [46, -18], scale: 0.44 },
-  { file: 'fir_tree_003.glb', position: [-12, 55], scale: 0.46 },
-  { file: 'tree_003.glb', position: [58, 38], scale: 0.5 },
-];
+const LIVESTOCK_ACTORS = [];
+const WIND_TREE_ACTORS = [];
 
 function scaleFarmWorldValue(value) {
   return Number.isFinite(value) ? value * FARM_WORLD_SCALE : value;
@@ -1198,7 +1190,7 @@ function applyEditorLevelToRuntime(level) {
       const position = object.transform?.position;
       const rotation = object.transform?.rotation;
       const scale = object.transform?.scale;
-      if (!file || !Array.isArray(position) || !Array.isArray(scale)) return null;
+      if (!hasFarmPackFile(file) || !Array.isArray(position) || !Array.isArray(scale)) return null;
       return {
         file,
         position: [Number(position[0]) || 0, Number(position[2]) || 0],
