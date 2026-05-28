@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Settings, Palette, Box, Camera, Video, Eye, Lock, Copy, Trash2, User, Move, 
   Zap, Brain, Atom, Tag, Gamepad2, ChevronDown, ChevronRight, Sun, Lightbulb, 
@@ -47,6 +47,7 @@ import {
   type ComponentDataScalar,
 } from '@/services/componentCatalog';
 import { getEditorObjectIcon } from './editorObjectIcon';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 
 // Tabs as icon-based navigation
 const mainTabs = [
@@ -62,6 +63,7 @@ export const InspectorPanel = () => {
     objects,
     selectedObjectId,
     activeSceneKind,
+    isEditMode,
     updateObject,
     addComponentToObject,
     updateObjectComponent,
@@ -72,8 +74,14 @@ export const InspectorPanel = () => {
   } = useEditorStore();
   const [mainTab, setMainTab] = useState<MainTabId>('inspector');
   const [searchQuery, setSearchQuery] = useState('');
+  const previewSession = useRuntimeGameStore((s) => s.previewSession);
+  const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
   
   const selectedObject = objects.find(obj => obj.id === selectedObjectId);
+
+  useEffect(() => {
+    if (isRuntimePreviewActive && mainTab !== 'inspector') setMainTab('inspector');
+  }, [isRuntimePreviewActive, mainTab]);
 
   return (
     <div className="editor-dock editor-dock-outline w-full h-full flex flex-col overflow-hidden">
@@ -85,10 +93,13 @@ export const InspectorPanel = () => {
           return (
             <button
               key={tab.id}
+              disabled={isRuntimePreviewActive && tab.id !== 'inspector'}
               onClick={() => setMainTab(tab.id)}
               className={cn(
                 'editor-panel-tab flex h-7 flex-1 items-center justify-center gap-1.5 px-3 text-xs transition-colors',
-                isActive 
+                isRuntimePreviewActive && tab.id !== 'inspector'
+                  ? 'cursor-not-allowed opacity-35'
+                  : isActive
                   ? 'active' 
                   : 'text-muted-foreground'
               )}
@@ -118,6 +129,7 @@ export const InspectorPanel = () => {
             deleteObject={deleteObject} 
             duplicateObject={duplicateObject}
             activeSceneKind={activeSceneKind}
+            readOnly={isRuntimePreviewActive}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
           />
@@ -153,6 +165,7 @@ interface PropertiesPanelProps {
   deleteObject: (id: string) => void;
   duplicateObject: (id: string) => void;
   activeSceneKind: '2d' | '3d';
+  readOnly?: boolean;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
 }
@@ -168,6 +181,7 @@ const PropertiesPanel = ({
   deleteObject,
   duplicateObject,
   activeSceneKind,
+  readOnly = false,
   searchQuery,
   setSearchQuery,
 }: PropertiesPanelProps) => {
@@ -183,7 +197,11 @@ const PropertiesPanel = ({
   const ObjectIcon = getEditorObjectIcon(object.type);
   
   return (
-    <div className="flex flex-col h-full">
+    <fieldset
+      disabled={readOnly}
+      className={cn('flex h-full flex-col', readOnly && 'opacity-70')}
+      title={readOnly ? 'Inspector locked during Play Mode' : undefined}
+    >
       {/* Search */}
       <div className="p-2.5 border-b border-border/50">
         <div className="glass-search">
@@ -390,7 +408,7 @@ const PropertiesPanel = ({
           />
         )}
       </div>
-    </div>
+    </fieldset>
   );
 };
 
