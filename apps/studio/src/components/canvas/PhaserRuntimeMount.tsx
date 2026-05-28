@@ -155,6 +155,29 @@ const num = (value: unknown, fallback: number): number => (
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
 );
 
+export const getRuntimeCameraView = (camera: SceneJSON['camera'] | null | undefined) => ({
+  scrollX: num(camera?.position?.x, 0),
+  scrollY: num(camera?.position?.y, 0),
+  zoom: Math.max(0.01, num(camera?.zoom, 1)),
+});
+
+export const getPhaserRuntimeChromeState = (isPlaying: boolean, loadStatus: LoadState['status']) => {
+  const allowEditorInput = !isPlaying;
+  return {
+    allowEditorInput,
+    showEditorOverlay: allowEditorInput && loadStatus === 'ready',
+    viewportInset: allowEditorInput ? VIEWPORT_2D_RULER_SIZE : 0,
+  };
+};
+
+export const shouldAutoFit2DEditorCamera = ({
+  isPlaying,
+  hasAutoFit,
+}: {
+  isPlaying: boolean;
+  hasAutoFit: boolean;
+}) => !isPlaying && hasAutoFit;
+
 const mergeBounds = (a: ViewportWorldBounds, b: ViewportWorldBounds): ViewportWorldBounds => ({
   minX: Math.min(a.minX, b.minX),
   minY: Math.min(a.minY, b.minY),
@@ -308,6 +331,9 @@ export function PhaserRuntimeMount({
   const gameRef = useRef<any>(null);
   const autoFitBoundsRef = useRef<ViewportWorldBounds | null>(null);
   const autoFitCameraRef = useRef(false);
+  const runtimeCameraRef = useRef(getRuntimeCameraView(null));
+  const editorCameraBeforePlayRef = useRef<ReturnType<typeof getRuntimeCameraView> | null>(null);
+  const lastIsPlayingRef = useRef(false);
   const editorPanRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
 
@@ -381,6 +407,7 @@ export function PhaserRuntimeMount({
         if (!activeScene) throw new Error('No active scene in project');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const phaserScene: SceneJSON = pixlSceneToPhaserScene(activeScene as any);
+        runtimeCameraRef.current = getRuntimeCameraView(phaserScene.camera);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const gravity: { x: number; y: number } = (Array.isArray(phaserScene.physics?.gravity)
@@ -467,6 +494,7 @@ export function PhaserRuntimeMount({
                   _pointer: import('phaser').Input.Pointer,
                   gameObject: import('phaser').GameObjects.GameObject,
                 ) => {
+                  if (useRuntimeGameStore.getState().isPlaying) return;
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const pixlId = (gameObject as any).getData?.('pixlId') as string | undefined;
                   if (pixlId) {
@@ -492,6 +520,7 @@ export function PhaserRuntimeMount({
                     const n = (g as any)?.name as string | undefined;
                     return typeof n === 'string' && n.startsWith('__pixl_');
                   });
+                  if (useRuntimeGameStore.getState().isPlaying) return;
                   if (hitInternal) return;
                   if (!hits || hits.length === 0) {
                     useEditorStore.getState().selectObject(null);
@@ -983,14 +1012,16 @@ export function PhaserRuntimeMount({
               const cam = phaserScene.camera;
               const hasCameraScroll = !!(cam?.position && (cam.position.x !== 0 || cam.position.y !== 0));
               const hasCameraZoom = typeof cam?.zoom === 'number' && cam.zoom !== 1;
-              // Explicit project camera wins; default editor camera opens fitted/centered.
-              if (hasCameraScroll) {
-                this.cameras.main.setScroll(cam.position.x, cam.position.y);
+              const initRuntimeCamera = runtimeCameraRef.current;
+              if (initIsPlaying) {
+                this.cameras.main.setScroll(initRuntimeCamera.scrollX, initRuntimeCamera.scrollY);
+                this.cameras.main.setZoom(initRuntimeCamera.zoom);
+              } else {
+                // Explicit project camera wins; default editor camera opens fitted/centered.
+                if (hasCameraScroll) this.cameras.main.setScroll(cam.position.x, cam.position.y);
+                if (hasCameraZoom) this.cameras.main.setZoom(cam.zoom);
               }
-              if (hasCameraZoom) {
-                this.cameras.main.setZoom(cam.zoom);
-              }
-              if (!hasCameraScroll && !hasCameraZoom) {
+              if (!initIsPlaying && !hasCameraScroll && !hasCameraZoom) {
                 const bounds = getSceneBounds(phaserScene.rootObjects);
                 if (bounds) {
                   autoFitBoundsRef.current = bounds;
@@ -1133,7 +1164,14 @@ export function PhaserRuntimeMount({
           const { width, height } = readPhaserViewportSize(container);
           gameRef.current.scale.resize(width, height);
           const scene = gameRef.current.scene?.scenes?.[0] as import('phaser').Scene | undefined;
-          if (autoFitCameraRef.current && autoFitBoundsRef.current && scene?.cameras?.main) {
+          if (
+            autoFitBoundsRef.current &&
+            scene?.cameras?.main &&
+            shouldAutoFit2DEditorCamera({
+              isPlaying: useRuntimeGameStore.getState().isPlaying,
+              hasAutoFit: autoFitCameraRef.current,
+            })
+          ) {
             setFittedViewportCamera(scene.cameras.main, autoFitBoundsRef.current, { width, height });
           }
           const canvas = gameRef.current.canvas as HTMLCanvasElement | undefined;
@@ -1240,7 +1278,8 @@ export function PhaserRuntimeMount({
       const redraw = sceneAny.__pixlRedrawOutline as
         | ((id: string | null) => void)
         | undefined;
-      redraw?.(selectedObjectId);
+      const activeSelection = isPlaying ? null : selectedObjectId;
+      redraw?.(activeSelection);
 
       // Only the selected gameobject is draggable in edit mode. Other
       // interactive objects keep their hit-testing for click-select but
@@ -1263,7 +1302,7 @@ export function PhaserRuntimeMount({
         const id = anyGo.getData?.('pixlId') as string | undefined;
         if (typeof anyGo.input?.draggable === 'boolean') {
           // Re-set via the Phaser API which keeps the flag in sync.
-          if (id && id === selectedObjectId) {
+          if (id && id === activeSelection) {
             scene.input.setDraggable(go, true);
           } else {
             scene.input.setDraggable(go, false);
@@ -1372,10 +1411,28 @@ export function PhaserRuntimeMount({
   useEffect(() => {
     const game = gameRef.current;
     if (!game || load.status !== 'ready') return;
+    const wasPlaying = lastIsPlayingRef.current;
+    lastIsPlayingRef.current = isPlaying;
+    let resizeRaf = 0;
     try {
       const scene = game.scene?.scenes?.[0];
       if (!scene) return;
       const sceneMgr = scene.scene;
+      const camera = scene.cameras?.main;
+      if (camera && isPlaying && !wasPlaying) {
+        editorCameraBeforePlayRef.current = {
+          scrollX: camera.scrollX,
+          scrollY: camera.scrollY,
+          zoom: camera.zoom,
+        };
+        camera.setScroll(runtimeCameraRef.current.scrollX, runtimeCameraRef.current.scrollY);
+        camera.setZoom(runtimeCameraRef.current.zoom);
+      } else if (camera && !isPlaying && wasPlaying && editorCameraBeforePlayRef.current) {
+        const editorCamera = editorCameraBeforePlayRef.current;
+        camera.setScroll(editorCamera.scrollX, editorCamera.scrollY);
+        camera.setZoom(editorCamera.zoom);
+        editorCameraBeforePlayRef.current = null;
+      }
       const currentlyPaused = sceneMgr?.isPaused?.() ?? false;
       if (isPlaying && currentlyPaused) {
         sceneMgr.resume();
@@ -1421,6 +1478,25 @@ export function PhaserRuntimeMount({
       // eslint-disable-next-line no-console
       console.error('[PhaserRuntimeMount] play/stop toggle failed:', err);
     }
+    resizeRaf = requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (!container || !gameRef.current) return;
+      const { width, height } = readPhaserViewportSize(container);
+      gameRef.current.scale?.resize?.(width, height);
+      const scene = gameRef.current.scene?.scenes?.[0] as import('phaser').Scene | undefined;
+      const camera = scene?.cameras?.main;
+      if (camera && isPlaying) {
+        camera.setScroll(runtimeCameraRef.current.scrollX, runtimeCameraRef.current.scrollY);
+        camera.setZoom(runtimeCameraRef.current.zoom);
+      }
+      const canvas = gameRef.current.canvas as HTMLCanvasElement | undefined;
+      if (canvas) {
+        canvas.style.display = 'block';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+      }
+    });
+    return () => cancelAnimationFrame(resizeRaf);
   }, [isPlaying, load.status]);
 
   const getEditorCamera = useCallback(() => {
@@ -1472,6 +1548,7 @@ export function PhaserRuntimeMount({
     editorPanRef.current = null;
     event.currentTarget.releasePointerCapture(event.pointerId);
   }, []);
+  const chrome = getPhaserRuntimeChromeState(isPlaying, load.status);
 
   return (
     <div
@@ -1497,8 +1574,8 @@ export function PhaserRuntimeMount({
         ref={containerRef}
         style={{
           position: 'absolute',
-          left: VIEWPORT_2D_RULER_SIZE,
-          top: VIEWPORT_2D_RULER_SIZE,
+          left: chrome.viewportInset,
+          top: chrome.viewportInset,
           right: 0,
           bottom: 0,
           overflow: 'hidden',
@@ -1526,7 +1603,7 @@ export function PhaserRuntimeMount({
           )}
         </div>
       )}
-      <Viewport2DOverlay gameRef={gameRef} visible={visible && load.status === 'ready'} />
+      <Viewport2DOverlay gameRef={gameRef} visible={visible && chrome.showEditorOverlay} />
     </div>
   );
 }

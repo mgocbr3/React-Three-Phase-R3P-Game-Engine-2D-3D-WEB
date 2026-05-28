@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { canInstallRuntimeScript, clearPixlPhaserGameGlobal, readEditorViewportPointer, readPhaserViewportSize } from './PhaserRuntimeMount';
+import {
+  canInstallRuntimeScript,
+  clearPixlPhaserGameGlobal,
+  getPhaserRuntimeChromeState,
+  getRuntimeCameraView,
+  readEditorViewportPointer,
+  readPhaserViewportSize,
+  shouldAutoFit2DEditorCamera,
+} from './PhaserRuntimeMount';
 
 const host = (rectWidth: number, rectHeight: number, clientWidth: number, clientHeight: number) => ({
   clientWidth,
@@ -19,6 +27,36 @@ describe('PhaserRuntimeMount', () => {
   it('reads editor pointer coordinates from the inset 2D canvas area', () => {
     expect(readEditorViewportPointer(host(800, 600, 800, 600), 120, 90)).toEqual({ x: 120, y: 90 });
     expect(readEditorViewportPointer(host(800, 600, 800, 600), -1, 90)).toBeNull();
+  });
+
+  it('removes editor chrome from the 2D runtime surface while playing', () => {
+    expect(getPhaserRuntimeChromeState(true, 'ready')).toEqual({
+      allowEditorInput: false,
+      showEditorOverlay: false,
+      viewportInset: 0,
+    });
+    expect(getPhaserRuntimeChromeState(false, 'ready')).toMatchObject({
+      allowEditorInput: true,
+      showEditorOverlay: true,
+    });
+  });
+
+  it('uses the exported camera pose for 2D play mode', () => {
+    expect(getRuntimeCameraView({ position: { x: 0, y: 0 }, zoom: 1 })).toEqual({
+      scrollX: 0,
+      scrollY: 0,
+      zoom: 1,
+    });
+    expect(getRuntimeCameraView({ position: { x: 140, y: 80 }, zoom: 1.5 })).toEqual({
+      scrollX: 140,
+      scrollY: 80,
+      zoom: 1.5,
+    });
+  });
+
+  it('keeps editor auto-fit out of 2D play mode', () => {
+    expect(shouldAutoFit2DEditorCamera({ isPlaying: true, hasAutoFit: true })).toBe(false);
+    expect(shouldAutoFit2DEditorCamera({ isPlaying: false, hasAutoFit: true })).toBe(true);
   });
 
   it('skips async runtime script setup after the Phaser scene is destroyed', () => {
