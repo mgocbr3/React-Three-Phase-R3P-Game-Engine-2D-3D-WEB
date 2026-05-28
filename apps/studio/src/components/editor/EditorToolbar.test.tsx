@@ -122,4 +122,34 @@ describe('EditorToolbar scene-aware tools', () => {
     expect(useEngineSettings.getState().showGizmo).toBe(false);
     expect(useEngineSettings.getState().showGrid).toBe(true);
   });
+
+  it('does not run toolbar shortcuts while a select menu has focus', () => {
+    render(
+      <>
+        <select aria-label="Layer">
+          <option>Default</option>
+        </select>
+        <EditorToolbar variant="inline" />
+      </>
+    );
+
+    fireEvent.keyDown(screen.getByLabelText('Layer'), { key: 'g' });
+
+    expect(useEngineSettings.getState().showGrid).toBe(true);
+  });
+
+  it('does not run toolbar shortcuts from contenteditable editors', () => {
+    render(
+      <>
+        <div role="textbox" contentEditable suppressContentEditableWarning>
+          script
+        </div>
+        <EditorToolbar variant="inline" />
+      </>
+    );
+
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'G', shiftKey: true });
+
+    expect(useEngineSettings.getState().showGizmo).toBe(true);
+  });
 });

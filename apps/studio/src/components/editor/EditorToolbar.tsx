@@ -54,6 +54,17 @@ const addIcons: Partial<Record<ObjectType | 'terrain', typeof Box>> = {
   terrain: Mountain,
 };
 
+const isEditableShortcutTarget = (target: EventTarget | null) => {
+  const el = target instanceof HTMLElement ? target : null;
+  return !!el && (
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement ||
+    el.isContentEditable ||
+    !!el.closest('[contenteditable]:not([contenteditable="false"])')
+  );
+};
+
 interface EditorToolbarProps {
   variant?: 'floating' | 'inline';
   className?: string;
@@ -100,9 +111,7 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (editorLocked) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
+      if (isEditableShortcutTarget(e.target)) return;
       
       // Undo: Ctrl+Z
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
