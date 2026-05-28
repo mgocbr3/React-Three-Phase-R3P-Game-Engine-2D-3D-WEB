@@ -1,5 +1,6 @@
 import {
   MousePointer2,
+  Move,
   Move3D,
   RotateCw,
   Maximize2,
@@ -29,11 +30,11 @@ import { useTerrainStore } from '@/stores/terrainStore';
 import { useViewportStore } from '@/stores/viewportStore';
 import { getEditorAddMenuSections, getEditorAddObjectPosition, getEditorToolKind } from './editorAddMenu';
 
-const transformTools: { mode: TransformMode; icon: typeof Move3D; label: string; shortcut: string }[] = [
-  { mode: 'select', icon: MousePointer2, label: 'Select (Free Camera)', shortcut: 'Q' },
-  { mode: 'translate', icon: Move3D, label: 'Move', shortcut: 'W' },
-  { mode: 'rotate', icon: RotateCw, label: 'Rotate', shortcut: 'E' },
-  { mode: 'scale', icon: Maximize2, label: 'Scale', shortcut: 'R' },
+const getTransformTools = (kind: '2d' | '3d'): { mode: TransformMode; icon: typeof Move3D; label: string; shortcut: string }[] => [
+  { mode: 'select', icon: MousePointer2, label: kind === '2d' ? 'Select 2D' : 'Select (Free Camera)', shortcut: 'Q' },
+  { mode: 'translate', icon: kind === '2d' ? Move : Move3D, label: kind === '2d' ? 'Move 2D' : 'Move 3D', shortcut: 'W' },
+  { mode: 'rotate', icon: RotateCw, label: kind === '2d' ? 'Rotate 2D' : 'Rotate 3D', shortcut: 'E' },
+  { mode: 'scale', icon: Maximize2, label: kind === '2d' ? 'Scale 2D' : 'Scale 3D', shortcut: 'R' },
 ];
 
 const addIcons: Partial<Record<ObjectType | 'terrain', typeof Box>> = {
@@ -198,7 +199,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
           </>
         )}
 
-        {transformTools.map((tool) => (
+        {getTransformTools(addMenuKind).map((tool) => (
           <ToolButton
             key={tool.mode}
             icon={tool.icon}
