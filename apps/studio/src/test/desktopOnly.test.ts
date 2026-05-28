@@ -48,6 +48,14 @@ describe('desktop-only studio build', () => {
     expect(css).toMatch(/\.glass-search input\s*{[^}]*border:\s*1px solid transparent;[^}]*border-radius:\s*0;/s);
   });
 
+  it('keeps engine settings modal flat instead of glassy or neon', () => {
+    const settingsModal = readFileSync(src('components/editor/EngineSettingsModal.tsx'), 'utf8');
+
+    expect(settingsModal).not.toMatch(/backdrop-blur|linear-gradient|boxShadow|shadow-2xl|shadow-xl|shadow-md|Liquid Glass/);
+    expect(settingsModal).not.toMatch(/rounded-2xl|rounded-xl|rounded-lg|rounded-full/);
+    expect(settingsModal).not.toMatch(/bg-primary|text-primary|hsl\(var\(--primary\)/);
+  });
+
   it('keeps 3D play-mode post processing sober and dependency-local', () => {
     const postProcessing = readFileSync(src('components/canvas/PostProcessingEffects.tsx'), 'utf8');
 

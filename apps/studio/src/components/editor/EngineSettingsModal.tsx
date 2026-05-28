@@ -40,23 +40,10 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-md"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
       
-      {/* Modal - Fixed size with liquid glass */}
-      <div 
-        className="relative w-[850px] h-[560px] rounded-2xl shadow-2xl flex overflow-hidden bg-card border border-border backdrop-blur-xl"
-        style={{
-          boxShadow: '0 25px 80px -12px rgba(0, 0, 0, 0.6)',
-        }}
-      >
-        {/* Sidebar - Using semantic colors */}
-        <div 
-          className="w-56 p-3 flex flex-col bg-sidebar-background border-r border-border"
-        >
+      <div className="relative flex h-[560px] w-[850px] overflow-hidden border border-[var(--editor-border-dark)] bg-[var(--editor-panel)] text-[var(--editor-text)]">
+        <div className="flex w-56 flex-col border-r border-[var(--editor-border-dark)] bg-[var(--editor-panel-header)] p-3">
           <h2 className="px-3 py-2 text-[11px] font-medium text-muted-foreground">
             Configurações
           </h2>
@@ -68,17 +55,13 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all',
+                    'flex w-full items-center gap-2.5 border-l-2 px-3 py-2 text-[13px] font-medium transition-colors',
                     activeCategory === cat.id
-                      ? 'text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                      ? 'border-[var(--editor-command-highlight)] bg-[var(--editor-command-active)] text-foreground'
+                      : 'border-transparent text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground'
                   )}
-                  style={activeCategory === cat.id ? {
-                    background: 'linear-gradient(90deg, hsl(var(--primary) / 0.15) 0%, transparent 100%)',
-                    borderLeft: '2px solid hsl(var(--primary))',
-                  } : { borderLeft: '2px solid transparent' }}
                 >
-                  <Icon className={cn("w-4 h-4", activeCategory === cat.id ? "text-primary" : "")} />
+                  <Icon className="w-4 h-4" />
                   <span>{cat.label}</span>
                 </button>
               );
@@ -86,12 +69,8 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 flex flex-col">
-          {/* Header - Using semantic colors */}
-          <div 
-            className="flex items-center justify-between px-5 py-3 bg-background border-b border-border"
-          >
+          <div className="flex items-center justify-between border-b border-[var(--editor-border-dark)] bg-[var(--editor-panel-header)] px-5 py-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-foreground">
                 {categories.find(c => c.id === activeCategory)?.label}
@@ -100,14 +79,14 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
             <div className="flex items-center gap-3">
               <button
                 onClick={resetToDefaults}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-foreground rounded-lg hover:bg-white/5 transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-[var(--editor-row-hover)] hover:text-foreground"
               >
                 <RotateCcw className="w-3 h-3" />
                 Restaurar Padrões
               </button>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+                className="p-1.5 text-muted-foreground transition-colors hover:bg-[var(--editor-row-hover)] hover:text-foreground"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -733,19 +712,16 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-3.5 flex items-center justify-end gap-3 bg-background/60 border-t border-border">
+          <div className="flex items-center justify-end gap-3 border-t border-[var(--editor-border-dark)] bg-[var(--editor-panel-header)] px-5 py-3.5">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-white/5 transition-all"
+              className="px-4 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[var(--editor-row-hover)] hover:text-foreground"
             >
               Cancelar
             </button>
             <button
               onClick={onClose}
-              className="px-5 py-2 text-[13px] font-medium rounded-lg transition-all bg-primary text-primary-foreground hover:bg-primary/90"
-              style={{
-                boxShadow: '0 4px 12px hsl(var(--primary) / 0.4)',
-              }}
+              className="border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-5 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-[var(--editor-row-hover)]"
             >
               Aplicar
             </button>
@@ -756,7 +732,6 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
   );
 };
 
-// Setting Group Component - Liquid Glass
 const SettingGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="space-y-4">
     <h3 className="text-[11px] font-medium text-muted-foreground">{title}</h3>
@@ -764,7 +739,6 @@ const SettingGroup = ({ title, children }: { title: string; children: React.Reac
   </div>
 );
 
-// Toggle Setting Component - Liquid Glass
 interface ToggleSettingProps {
   label: string;
   description?: string;
@@ -781,27 +755,22 @@ const ToggleSetting = ({ label, description, value, onChange }: ToggleSettingPro
     <button
       onClick={() => onChange(!value)}
       className={cn(
-        'w-10 h-[22px] rounded-full transition-all relative flex-shrink-0',
+        'relative h-[22px] w-10 flex-shrink-0 border transition-colors',
         value 
-          ? '' 
-          : 'bg-muted/80 border border-border/50'
+          ? 'border-[var(--editor-command-highlight)] bg-[var(--editor-command-active)]'
+          : 'border-[var(--editor-command-border)] bg-[var(--editor-panel-sunken)]'
       )}
-      style={value ? {
-        background: 'linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(220 70% 50%) 100%)',
-        boxShadow: '0 2px 8px hsl(var(--primary) / 0.4)',
-      } : {}}
     >
       <div
         className={cn(
-          'absolute top-[3px] w-4 h-4 rounded-full shadow-md transition-all',
-          value ? 'translate-x-5 bg-white' : 'translate-x-[3px] bg-muted-foreground/60'
+          'absolute top-[3px] h-4 w-4 bg-muted-foreground transition-transform',
+          value ? 'translate-x-5 bg-foreground' : 'translate-x-[3px]'
         )}
       />
     </button>
   </div>
 );
 
-// Select Setting Component - Liquid Glass
 interface SelectSettingProps {
   label: string;
   value: string;
@@ -815,7 +784,7 @@ const SelectSetting = ({ label, value, options, onChange }: SelectSettingProps) 
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="glass-select text-[12px] min-w-[160px]"
+      className="min-w-[160px] border border-[var(--editor-command-border)] bg-[var(--editor-panel-sunken)] px-2 py-1 text-[12px] text-foreground outline-none transition-colors focus:border-[var(--editor-command-highlight)]"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>
@@ -826,7 +795,6 @@ const SelectSetting = ({ label, value, options, onChange }: SelectSettingProps) 
   </div>
 );
 
-// Slider Setting Component - Liquid Glass
 interface SliderSettingProps {
   label: string;
   value: number;
@@ -840,7 +808,7 @@ const SliderSetting = ({ label, value, min, max, step, onChange }: SliderSetting
   <div className="space-y-2">
     <div className="flex items-center justify-between">
       <p className="text-[13px] font-medium text-foreground">{label}</p>
-      <span className="text-[11px] text-primary font-semibold tabular-nums">{value.toFixed(step < 1 ? 2 : 0)}</span>
+      <span className="text-[11px] font-semibold tabular-nums text-foreground">{value.toFixed(step < 1 ? 2 : 0)}</span>
     </div>
     <input
       type="range"
@@ -854,7 +822,6 @@ const SliderSetting = ({ label, value, min, max, step, onChange }: SliderSetting
   </div>
 );
 
-// Color Setting Component - Liquid Glass
 interface ColorSettingProps {
   label: string;
   value: string;
@@ -869,7 +836,7 @@ const ColorSetting = ({ label, value, onChange }: ColorSettingProps) => (
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-8 h-8 rounded-lg cursor-pointer border border-border/50"
+        className="h-8 w-8 cursor-pointer border border-[var(--editor-command-border)]"
       />
       <span className="text-[11px] font-mono text-muted-foreground">{value}</span>
     </div>
