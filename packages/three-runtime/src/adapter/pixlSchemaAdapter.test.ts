@@ -206,6 +206,46 @@ describe('pixlSceneToWesScene', () => {
       expect.objectContaining({ type: 'gltfNode', nodeName: 'Barn' }),
     ]);
   });
+
+  it('maps Pixl mannequin animation settings to the native animation component', () => {
+    const scene = makeScene([
+      makeObject({
+        type: 'player',
+        components: [
+          {
+            id: 'mesh',
+            type: 'pixl.mesh',
+            enabled: true,
+            data: { modelUrl: '/models/manequin/mixamo/xbot.glb' },
+          },
+          {
+            id: 'anim',
+            type: 'pixl.animation',
+            enabled: true,
+            data: {
+              modelUrl: '/models/manequin/mixamo/xbot.glb',
+              currentAnimation: 'idle',
+              autoPlay: true,
+              loop: true,
+              speed: 1,
+            },
+          },
+        ],
+      }),
+    ]);
+
+    const out = pixlSceneToWesScene(scene);
+
+    expect(out.gameObjects![0].components).toEqual([
+      expect.objectContaining({ type: 'model', assetPath: '/models/manequin/mixamo/xbot.glb' }),
+      expect.objectContaining({
+        type: 'animation',
+        assetPath: '/models/manequin/mixamo/xbot.glb',
+        clip: 'idle',
+        autoPlay: true,
+      }),
+    ]);
+  });
 });
 
 describe('pixlProjectToWesGame', () => {

@@ -107,7 +107,6 @@ const RENDERLESS_PIXL_TYPES = new Set<string>([
   'pixl.logic',
   'pixl.entity',
   'pixl.player',
-  'pixl.animation',
   'pixl.particles',
   'pixl.terrain',
   'pixl.transform3d', // baked into GameObject.transform already
@@ -154,6 +153,20 @@ const mapComponent = (instance: PixlComponentInstance): ComponentJSON | null => 
         name: instance.id,
         assetPath: normalizeAssetPath(assetPath),
         ...data,
+      };
+    }
+    case 'pixl.animation': {
+      const assetPath = (data.modelUrl ?? data.assetPath ?? data.url) as string | undefined;
+      if (!assetPath) return null;
+      return {
+        type: 'animation',
+        name: instance.id,
+        assetPath: normalizeAssetPath(assetPath),
+        clip: (data.currentAnimation ?? data.animationName ?? data.clip) as string | undefined,
+        autoPlay: data.autoPlay ?? true,
+        loop: data.loop ?? true,
+        speed: data.speed ?? 1,
+        paused: data.paused ?? false,
       };
     }
     case 'pixl.physics': {
@@ -272,10 +285,13 @@ const synthesizeGltfNodeComponents = (
 };
 
 const buildGameObjectJSON = (object: PixlSceneObject, children: PixlSceneObject[]): GameObjectJSON => {
-  const mapped = (object.components ?? [])
+  const rawMapped = (object.components ?? [])
     .map(mapComponent)
     .filter((c): c is ComponentJSON => c !== null);
   const synthesized = synthesizeGltfNodeComponents(object);
+  const mapped = synthesized.length
+    ? rawMapped.filter((component) => component.type !== 'animation')
+    : rawMapped;
   const primitive = synthesizePrimitiveComponent(object, [...synthesized, ...mapped]);
   const components = [...synthesized, ...primitive, ...mapped];
 

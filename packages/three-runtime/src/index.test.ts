@@ -6,5 +6,6 @@ describe('@pixlland/three-runtime public API', () => {
 
     expect(runtime.PrimitiveComponent).toBeTypeOf('function');
     expect(runtime.GltfNodeComponent).toBeTypeOf('function');
+    expect(runtime.AnimationComponent).toBeTypeOf('function');
   });
 });

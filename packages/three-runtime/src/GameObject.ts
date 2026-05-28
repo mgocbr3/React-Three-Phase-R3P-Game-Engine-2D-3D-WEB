@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 
 import Component, { type ComponentJSON, type ComponentTickContext } from './Component.js';
+import AnimationComponent from './components/AnimationComponent.js';
 import GltfNodeComponent from './components/GltfNodeComponent.js';
 import LightComponent from './components/LightComponent.js';
 import ModelComponent from './components/ModelComponent.js';
@@ -35,6 +36,7 @@ class GameObject {
   gameObjects: GameObject[];
 
   static componentClassForType: Record<string, ComponentClass> = {
+    animation: AnimationComponent,
     model: ModelComponent,
     gltfNode: GltfNodeComponent,
     rigidBody: RigidBodyComponent,

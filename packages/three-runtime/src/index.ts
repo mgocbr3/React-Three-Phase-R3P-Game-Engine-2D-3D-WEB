@@ -25,6 +25,8 @@ export { default as TextureAsset } from './assets/TextureAsset.js';
 
 export { default as ModelComponent } from './components/ModelComponent.js';
 export type { ModelComponentJSON } from './components/ModelComponent.js';
+export { default as AnimationComponent } from './components/AnimationComponent.js';
+export type { AnimationComponentJSON } from './components/AnimationComponent.js';
 export { default as LightComponent } from './components/LightComponent.js';
 export type { LightComponentJSON } from './components/LightComponent.js';
 export { default as SoundComponent } from './components/SoundComponent.js';
