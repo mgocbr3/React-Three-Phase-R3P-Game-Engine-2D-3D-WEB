@@ -87,6 +87,48 @@ describe('EditorHeader layout selector', () => {
     expect(screen.getByRole('button', { name: 'Dock Scene 3D Center' })).toBeVisible();
   });
 
+  it('restores Content Browser when docking the Project panel below', () => {
+    useEditorLayoutStore.getState().setPanelVisible('bottom', false);
+    useBottomPanelTabsStore.getState().closeTab('assets');
+    useBottomPanelTabsStore.getState().setActiveTab('console');
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Window' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dock Project Below' }));
+
+    const layout = useEditorLayoutStore.getState();
+    const tabs = useBottomPanelTabsStore.getState();
+    expect(layout.panels.bottom).toBe(true);
+    expect(layout.panelZones.bottom).toBe('bottom');
+    expect(tabs.closedTabs).not.toContain('assets');
+    expect(tabs.activeTab).toBe('assets');
+  });
+
+  it('resets bottom tabs with the Unity-like default layout command', () => {
+    useBottomPanelTabsStore.getState().moveTabToEnd('assets');
+    useBottomPanelTabsStore.getState().closeTab('ui');
+    useBottomPanelTabsStore.getState().setActiveTab('console');
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Layout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Default Layout' }));
+
+    const tabs = useBottomPanelTabsStore.getState();
+    expect(tabs.tabOrder).toEqual(['assets', 'ui', 'timeline', 'console']);
+    expect(tabs.closedTabs).toEqual([]);
+    expect(tabs.activeTab).toBe('assets');
+  });
+
   it('saves and reloads bottom tab layout with the Unity-like layout command', () => {
     useBottomPanelTabsStore.getState().moveTabToEnd('assets');
     useBottomPanelTabsStore.getState().closeTab('ui');

@@ -183,6 +183,7 @@ export const EditorHeader = () => {
   const restoreAllBottomTabs = useBottomPanelTabsStore((s) => s.restoreAllTabs);
   const saveBottomTabsLayout = useBottomPanelTabsStore((s) => s.saveCurrentTabsLayout);
   const loadBottomTabsLayout = useBottomPanelTabsStore((s) => s.loadSavedTabsLayout);
+  const resetBottomTabs = useBottomPanelTabsStore((s) => s.resetTabs);
 
   const projectName = localProject?.name || 'Untitled Project';
   const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
@@ -247,6 +248,16 @@ export const EditorHeader = () => {
     loadBottomTabsLayout();
     toast.success('Layout carregado.', { duration: 1200 });
   }, [loadBottomTabsLayout, loadSavedLayout]);
+
+  const resetWindowLayout = useCallback(() => {
+    resetLayout();
+    resetBottomTabs();
+  }, [resetBottomTabs, resetLayout]);
+
+  const showAllWindowPanels = useCallback(() => {
+    showAllPanels();
+    restoreAllBottomTabs();
+  }, [restoreAllBottomTabs, showAllPanels]);
 
   const openBuildSettings = useCallback(() => {
     try {
@@ -423,10 +434,10 @@ export const EditorHeader = () => {
   };
 
   const layoutMenuItems: MenuItem[] = [
-    { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },
+    { label: 'Default Layout', icon: LayoutGrid, action: resetWindowLayout },
     { label: 'Viewport Focus', icon: Maximize2, action: () => applyLayoutPreset('viewport-focus') },
     { label: 'Inspect Layout', icon: PanelLeft, action: () => applyLayoutPreset('inspect') },
-    { label: 'Show All Panels', icon: LayoutGrid, action: showAllPanels },
+    { label: 'Show All Panels', icon: LayoutGrid, action: showAllWindowPanels },
     { label: '', divider: true },
     { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
     { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
@@ -511,7 +522,7 @@ export const EditorHeader = () => {
       { label: `Dock ${dockPanelLabels.scene} Left`, icon: PanelLeft, action: () => restorePanel('scene') },
       { label: `Dock ${viewportPanelLabel} Center`, icon: Monitor, action: () => restorePanel('viewport') },
       { label: `Dock ${dockPanelLabels.inspector} Right`, icon: PanelLeft, action: () => restorePanel('inspector') },
-      { label: `Dock ${dockPanelLabels.bottom} Below`, icon: PanelBottom, action: () => restorePanel('bottom') },
+      { label: `Dock ${dockPanelLabels.bottom} Below`, icon: PanelBottom, action: () => openBottomTab('assets') },
       { label: '', divider: true },
       { label: 'Open Content Browser', icon: FolderOpen, action: () => openBottomTab('assets') },
       { label: 'Open UI Editor', icon: LayoutGrid, action: () => openBottomTab('ui') },
