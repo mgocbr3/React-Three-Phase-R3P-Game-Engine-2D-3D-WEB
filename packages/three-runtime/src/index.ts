@@ -31,6 +31,10 @@ export { default as SoundComponent } from './components/SoundComponent.js';
 export type { SoundComponentJSON } from './components/SoundComponent.js';
 export { default as RigidBodyComponent } from './components/RigidBodyComponent.js';
 export type { RigidBodyComponentJSON, ColliderData } from './components/RigidBodyComponent.js';
+export { default as PrimitiveComponent } from './components/PrimitiveComponent.js';
+export type { PrimitiveComponentJSON } from './components/PrimitiveComponent.js';
+export { default as GltfNodeComponent } from './components/GltfNodeComponent.js';
+export type { GltfNodeComponentJSON } from './components/GltfNodeComponent.js';
 
 export { default as InputManager } from './input/InputManager.js';
 export { default as KeyboardHandler } from './input/KeyboardHandler.js';
