@@ -556,7 +556,7 @@ export const EditorHeader = () => {
           <div className="flex min-w-0 items-center gap-2">
             <button
               onClick={() => navigate('/')}
-              className="editor-command-chip flex h-7 items-center gap-1.5 px-1.5 text-xs font-semibold text-foreground"
+              className="editor-brand-button flex h-7 items-center gap-1.5 px-1.5 text-xs font-semibold text-foreground"
               title="Voltar ao Hub"
             >
               <img src={logoSilver} alt="React 3 Phase" className="h-4 w-4 object-contain" />
@@ -659,8 +659,7 @@ export const EditorHeader = () => {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => navigate('/')}
-                className="mr-1 flex h-[33px] max-w-[220px] items-center gap-1.5 border border-[var(--editor-border-dark)] border-b-transparent bg-[var(--editor-tab-active)] px-3 text-xs font-semibold text-foreground"
-                style={{ boxShadow: 'inset 0 1px 0 var(--editor-border-light)' }}
+                className="editor-project-tab mr-1 flex h-[33px] max-w-[220px] items-center gap-1.5 px-3 text-xs font-semibold text-foreground"
                 title={projectName}
               >
                 <span className="truncate">{projectName}</span>
@@ -668,7 +667,7 @@ export const EditorHeader = () => {
               </button>
               {localWorkspace.directoryName && (
                 <div
-                  className="flex min-w-0 max-w-[300px] items-center gap-1.5 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-[11px] text-muted-foreground"
+                  className="editor-path-chip flex min-w-0 max-w-[300px] items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground"
                   title={`${localWorkspace.directoryName}/${localWorkspace.projectFilePath}`}
                 >
                   <FolderOpen className="h-3 w-3 flex-shrink-0 text-muted-foreground" />

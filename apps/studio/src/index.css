@@ -258,6 +258,32 @@
     box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
   }
 
+  .editor-brand-button {
+    background: transparent;
+    border: 1px solid transparent;
+  }
+
+  .editor-brand-button:hover {
+    background: var(--editor-row-hover);
+  }
+
+  .editor-project-tab {
+    background: var(--editor-panel-header);
+    border: 1px solid var(--editor-border-dark);
+    border-bottom-color: transparent;
+    box-shadow: none;
+  }
+
+  .editor-project-tab:hover {
+    background: var(--editor-tab);
+  }
+
+  .editor-path-chip {
+    background: transparent;
+    border-left: 1px solid var(--editor-border-dark);
+    border-right: 1px solid var(--editor-border-dark);
+  }
+
   .editor-menu-item {
     color: hsl(var(--foreground));
   }
@@ -267,15 +293,15 @@
   }
 
   .editor-command-chip {
-    background: var(--editor-command);
-    border: 1px solid var(--editor-command-border);
-    border-radius: 2px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0;
     box-shadow: none;
   }
 
   .editor-command-chip:hover {
     background: var(--editor-command-hover);
-    border-color: var(--editor-border-light);
+    border-color: transparent;
   }
 
   .editor-command-chip:active,
@@ -288,8 +314,8 @@
 
   .engine-view-tab {
     border-radius: 0;
-    border: 1px solid var(--editor-command-border);
-    background: var(--editor-command);
+    border: 1px solid transparent;
+    background: transparent;
   }
 
   .engine-view-tab.active {
@@ -306,7 +332,7 @@
   }
 
   .editor-dock-outline {
-    border: 1px solid var(--editor-border-dark);
+    border: 1px solid #0f0f0f;
     box-shadow: none;
   }
 
@@ -330,7 +356,7 @@
 
   .editor-panel-tab {
     @apply h-6 px-2 border border-transparent border-b-0 text-[11px] font-medium text-muted-foreground transition-colors;
-    border-radius: 2px 2px 0 0;
+    border-radius: 0;
   }
 
   .editor-panel-tab:hover {
@@ -340,18 +366,14 @@
 
   .editor-panel-tab.active {
     position: relative;
-    background: var(--editor-tab-active);
-    border-color: var(--editor-border-dark);
+    background: transparent;
+    border-color: transparent;
     box-shadow: none;
     color: hsl(var(--foreground));
   }
 
   .editor-panel-tab.active::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    background: #3a3a3a;
+    content: none;
   }
 
   .panel-section {
@@ -505,8 +527,8 @@
   .glass-search input {
     @apply h-7 w-full pl-8 pr-3 py-1 text-xs text-foreground;
     background: var(--editor-panel-sunken);
-    border: 1px solid var(--editor-border-dark);
-    border-radius: 2px;
+    border: 1px solid transparent;
+    border-radius: 0;
   }
 
   .glass-search input::placeholder {

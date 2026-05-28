@@ -33,6 +33,19 @@ describe('desktop-only studio build', () => {
     expect(css).toContain('overflow-x: auto');
   });
 
+  it('keeps Unity-like editor chrome flat instead of stacking raised controls', () => {
+    const editorHeader = readFileSync(src('components/editor/EditorHeader.tsx'), 'utf8');
+    const css = readFileSync(src('index.css'), 'utf8');
+
+    expect(editorHeader).not.toContain("boxShadow: 'inset");
+    expect(editorHeader).toContain('editor-brand-button');
+    expect(editorHeader).toContain('editor-project-tab');
+    expect(css).toMatch(/\.editor-command-chip\s*{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
+    expect(css).toMatch(/\.editor-panel-tab\.active\s*{[^}]*background:\s*transparent;[^}]*border-color:\s*transparent;[^}]*box-shadow:\s*none;/s);
+    expect(css).toMatch(/\.editor-panel-tab\.active::before\s*{[^}]*content:\s*none;/s);
+    expect(css).toMatch(/\.glass-search input\s*{[^}]*border:\s*1px solid transparent;[^}]*border-radius:\s*0;/s);
+  });
+
   it('defaults to keyboard and gamepad bindings only', () => {
     useInputMapStore.getState().resetToDefaults();
 
