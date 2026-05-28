@@ -306,18 +306,18 @@ const EditorPage = () => {
       const rect = el.getBoundingClientRect();
       return [{ id, zone, left: rect.left, top: rect.top, width: rect.width, height: rect.height }];
     });
-    const resolveTarget = (x: number, y: number, panelRects = getPanelRects()): EditorDockTarget | null => {
-      const geometric = resolveDockTargetFromRects({ x, y, viewportHeight: window.innerHeight, panels: panelRects });
+    const resolveTarget = (x: number, y: number, panelRects = getPanelRects(), source?: EditorPanelId): EditorDockTarget | null => {
+      const geometric = resolveDockTargetFromRects({ x, y, viewportHeight: window.innerHeight, panels: panelRects, source });
       if (geometric) return geometric;
       const raw = document.elementFromPoint(x, y)
         ?.closest<HTMLElement>('[data-dock-drop-target]')
         ?.dataset.dockDropTarget;
-      return raw === 'main-end' || raw === 'bottom-end' || isPanelId(raw ?? '') ? raw as EditorDockTarget : null;
+      return (raw !== source && (raw === 'main-end' || raw === 'bottom-end' || isPanelId(raw ?? ''))) ? raw as EditorDockTarget : null;
     };
     const finish = (event: globalThis.PointerEvent) => {
       const drag = pointerDockRef.current;
       if (!drag) return;
-      const target = drag.target ?? resolveTarget(event.clientX, event.clientY);
+      const target = drag.target ?? resolveTarget(event.clientX, event.clientY, undefined, drag.source);
       pointerDockRef.current = null;
       if (drag.dragging && target && target !== drag.source) {
         moveDockToTarget(drag.source, target);
@@ -330,7 +330,7 @@ const EditorPage = () => {
       if (!drag.dragging && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return;
       const panelRects = getPanelRects();
       drag.dragging = true;
-      drag.target = resolveTarget(event.clientX, event.clientY, panelRects);
+      drag.target = resolveTarget(event.clientX, event.clientY, panelRects, drag.source);
       setDraggedDock(drag.source);
       setDockDropTarget(drag.target && drag.target !== drag.source ? drag.target : null);
       setDockDragPoint({ x: event.clientX, y: event.clientY });
