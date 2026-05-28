@@ -19,6 +19,7 @@ export interface UseOrbitControlsArgs {
   camera: THREE.PerspectiveCamera | null;
   target?: { x: number; y: number; z: number };
   enabled?: boolean;
+  onReady?: (controls: OrbitControls | null) => void;
 }
 
 export const useOrbitControls = ({
@@ -26,20 +27,19 @@ export const useOrbitControls = ({
   camera,
   target,
   enabled = true,
+  onReady,
 }: UseOrbitControlsArgs): void => {
   const targetKey = target ? `${target.x},${target.y},${target.z}` : '';
   useEffect(() => {
     if (!canvas || !camera || !enabled) return;
     const controls = new OrbitControls(camera, canvas);
-    // Phase 6B debug — expose for inspection. Strip with __pixlGame later.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__pixlOrbitControls = controls;
     if (target) controls.target.set(target.x, target.y, target.z);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 1;
     controls.maxDistance = 5000;
     controls.update();
+    onReady?.(controls);
 
     let raf = 0;
     const tick = (): void => {
@@ -51,7 +51,8 @@ export const useOrbitControls = ({
     return () => {
       cancelAnimationFrame(raf);
       controls.dispose();
+      onReady?.(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvas, camera, targetKey, enabled]);
+  }, [canvas, camera, targetKey, enabled, onReady]);
 };

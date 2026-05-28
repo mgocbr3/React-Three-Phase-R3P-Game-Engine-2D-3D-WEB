@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Game } from '@pixlland/three-runtime';
 import * as THREE from 'three';
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { useEditorStore } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
@@ -260,6 +261,7 @@ export function ThreeRuntimeMount({
   // controls hook activates when both fields are set.
   const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
   const [orbitTarget, setOrbitTarget] = useState<{ x: number; y: number; z: number } | undefined>(undefined);
+  const [orbitControlsInstance, setOrbitControlsInstance] = useState<OrbitControls | null>(null);
   const isRuntimePreview = useRuntimeGameStore((state) => state.isPlaying || Boolean(state.previewSession));
   const editorToolsEnabled = shouldEnableThreeEditorTools({ visible, isRuntimePreview });
 
@@ -268,20 +270,8 @@ export function ThreeRuntimeMount({
     camera,
     target: orbitTarget,
     enabled: editorToolsEnabled,
+    onReady: setOrbitControlsInstance,
   });
-
-  // The OrbitControls instance is captured via the global hook side-effect
-  // so the gizmo can suspend it during drag. Phase 6B step final: thread
-  // this through a proper handle instead of the global.
-  const [orbitControlsInstance, setOrbitControlsInstance] = useState<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any | null
-  >(null);
-  useEffect(() => {
-    if (!camera || !canvasEl) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setOrbitControlsInstance((window as any).__pixlOrbitControls ?? null);
-  }, [camera, canvasEl]);
 
   // Three scene reference for raycasting; captured from game.scene.threeJSScene
   // when the load resolves.

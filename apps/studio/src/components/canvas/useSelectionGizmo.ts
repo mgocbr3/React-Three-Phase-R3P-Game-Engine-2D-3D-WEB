@@ -39,7 +39,7 @@ export interface UseSelectionGizmoArgs {
   canvas: HTMLCanvasElement | null;
   camera: THREE.PerspectiveCamera | null;
   scene: THREE.Scene | null;
-  /** Pass `window.__pixlOrbitControls` once present — auto-suspends during drag. */
+  /** Native orbit controls; auto-suspends during gizmo drag. */
   orbitControls?: OrbitControls | null;
   mode?: GizmoMode;
   space?: NativeGizmoSpace;
@@ -222,7 +222,7 @@ export const useSelectionGizmo = ({
     const transform = new TransformControls(camera, canvas);
     const transformWithPickers = transform as TransformControlsWithPickers;
     enlargeTransformPickerHitArea(Object.values(transformWithPickers._gizmo?.picker ?? {}));
-    // Phase 6B debug — strip later alongside __pixlGame / __pixlOrbitControls.
+    // Phase 6B debug — strip later alongside __pixlGame.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__pixlGizmo = transform;
     scene.add(transform.getHelper());
