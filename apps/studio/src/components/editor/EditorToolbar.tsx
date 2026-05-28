@@ -22,6 +22,7 @@ import {
   Type,
   Image as ImageIcon,
   Focus,
+  Axis3d,
 } from 'lucide-react';
 import { useEditorStore, TransformMode, ObjectType } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
@@ -81,8 +82,9 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
   const { setModalOpen: setTerrainModalOpen } = useTerrainStore();
   const { viewportMode, setViewportMode, lockedKind } = useViewportStore();
   
-  const { showGrid, updateSettings } = useEngineSettings();
+  const { showGrid, showGizmo, updateSettings } = useEngineSettings();
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
+  const toggleGizmo = () => updateSettings({ showGizmo: !showGizmo });
   
   const [showAddMenu, setShowAddMenu] = useState(false);
   const isInline = variant === 'inline';
@@ -240,6 +242,15 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
           disabled={editorLocked}
           tooltip="Toggle Grid (G)"
         />
+        {addMenuKind === '3d' && (
+          <ToolButton
+            icon={Axis3d}
+            active={showGizmo}
+            onClick={toggleGizmo}
+            disabled={editorLocked}
+            tooltip="Scene Axes (3D)"
+          />
+        )}
 
         {/* Space Toggle - World/Local */}
         <ToolButton

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useViewportStore } from '@/stores/viewportStore';
 import { EditorToolbar } from './EditorToolbar';
@@ -16,6 +17,7 @@ describe('EditorToolbar scene-aware tools', () => {
       focusTarget: null,
     });
     useViewportStore.setState({ viewportMode: '3d', lockedKind: null });
+    useEngineSettings.setState({ showGrid: true, showGizmo: true });
   });
 
   it('uses 2D tool labels when the project kind is locked to Phaser', () => {
@@ -94,5 +96,13 @@ describe('EditorToolbar scene-aware tools', () => {
     fireEvent.click(screen.getByTitle('Frame Selected (F)'));
 
     expect(useEditorStore.getState().focusTarget?.position).toEqual([3, 4, 5]);
+  });
+
+  it('toggles the 3D scene axes from the toolbar', () => {
+    render(<EditorToolbar variant="inline" />);
+
+    fireEvent.click(screen.getByTitle('Scene Axes (3D)'));
+
+    expect(useEngineSettings.getState().showGizmo).toBe(false);
   });
 });
