@@ -47,6 +47,12 @@ export const getEditorAddMenuSections = (kind: SceneKind): AddMenuSection[] => (
     ]
 );
 
+export const getEditorToolKind = (
+  lockedKind: SceneKind | null | undefined,
+  viewportMode: SceneKind | null | undefined,
+  activeSceneKind?: SceneKind | null,
+): SceneKind => lockedKind ?? activeSceneKind ?? viewportMode ?? '3d';
+
 export const getEditorAddObjectPosition = (
   kind: SceneKind,
   game: ViewportGameLike | null | undefined = typeof window === 'undefined'

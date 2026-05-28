@@ -690,6 +690,7 @@ export const BottomPanel = () => {
                 }}
                 onPointerDown={(event) => event.stopPropagation()}
                 className="ml-1 rounded-sm p-0.5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                aria-label={`Fechar ${tab.label}`}
                 title={`Fechar ${tab.label}`}
               >
                 <X className="h-3 w-3" />

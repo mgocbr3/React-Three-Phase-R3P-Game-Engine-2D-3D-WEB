@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useTerrainStore } from '@/stores/terrainStore';
 import { useViewportStore } from '@/stores/viewportStore';
-import { getEditorAddMenuSections, getEditorAddObjectPosition } from './editorAddMenu';
+import { getEditorAddMenuSections, getEditorAddObjectPosition, getEditorToolKind } from './editorAddMenu';
 
 const transformTools: { mode: TransformMode; icon: typeof Move3D; label: string; shortcut: string }[] = [
   { mode: 'select', icon: MousePointer2, label: 'Select (Free Camera)', shortcut: 'Q' },
@@ -127,7 +127,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
   }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace]);
 
   const isInline = variant === 'inline';
-  const addMenuKind = lockedKind ?? activeSceneKind ?? viewportMode;
+  const addMenuKind = getEditorToolKind(lockedKind, viewportMode, activeSceneKind);
   const addMenuSections = getEditorAddMenuSections(addMenuKind);
 
   return (

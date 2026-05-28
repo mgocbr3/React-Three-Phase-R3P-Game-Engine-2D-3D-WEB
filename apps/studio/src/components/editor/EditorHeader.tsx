@@ -57,6 +57,7 @@ import { TerrainSettingsModal } from '@/components/terrain/TerrainSettingsModal'
 import { toast } from 'sonner';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
 import { useBottomPanelTabsStore, type BottomTabId } from '@/stores/bottomPanelTabsStore';
+import { useViewportStore } from '@/stores/viewportStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAssetStore } from '@/stores/assetStore';
 import { cn } from '@/lib/utils';
@@ -81,7 +82,7 @@ import {
 import { FilePickerBusyError } from '@/services/filePickerLock';
 import { EditorToolbar } from './EditorToolbar';
 import { getDockPanelLabels } from './editorDockLayout';
-import { getEditorAddMenuSections, getEditorAddObjectPosition } from './editorAddMenu';
+import { getEditorAddMenuSections, getEditorAddObjectPosition, getEditorToolKind } from './editorAddMenu';
 import { toggleRuntimePreviewFromEditor } from '@/engine/runtime/runtimePreviewControls';
 import { getRuntimeAdapterLabel } from '@/engine/runtime/runtimePreview';
 
@@ -184,6 +185,7 @@ export const EditorHeader = () => {
   const saveBottomTabsLayout = useBottomPanelTabsStore((s) => s.saveCurrentTabsLayout);
   const loadBottomTabsLayout = useBottomPanelTabsStore((s) => s.loadSavedTabsLayout);
   const resetBottomTabs = useBottomPanelTabsStore((s) => s.resetTabs);
+  const { viewportMode, lockedKind } = useViewportStore();
 
   const projectName = localProject?.name || 'Untitled Project';
   const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
@@ -442,7 +444,8 @@ export const EditorHeader = () => {
     { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
     { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
   ];
-  const dockPanelLabels = getDockPanelLabels(activeSceneKind);
+  const editorToolKind = getEditorToolKind(lockedKind, viewportMode, activeSceneKind);
+  const dockPanelLabels = getDockPanelLabels(editorToolKind);
   const viewportPanelLabel = dockPanelLabels.viewport;
   const windowPanelItems: MenuItem[] = [
     { label: dockPanelLabels.scene, checked: panels.scene, action: () => togglePanel('scene') },
@@ -450,7 +453,7 @@ export const EditorHeader = () => {
     { label: dockPanelLabels.inspector, checked: panels.inspector, action: () => togglePanel('inspector') },
     { label: dockPanelLabels.bottom, checked: panels.bottom, action: () => togglePanel('bottom') },
   ];
-  const sceneCreateMenuItems: MenuItem[] = getEditorAddMenuSections(activeSceneKind).flatMap((section, sectionIndex) => [
+  const sceneCreateMenuItems: MenuItem[] = getEditorAddMenuSections(editorToolKind).flatMap((section, sectionIndex) => [
     ...(sectionIndex ? [{ label: '', divider: true }] : []),
     ...section.items.map((item): MenuItem => {
       const action = item.kind === 'terrain' ? 'terrain' : item.objectType;
@@ -459,7 +462,7 @@ export const EditorHeader = () => {
         icon: sceneAddIcons[action],
         action: () => {
           if (item.kind === 'terrain') setTerrainModalOpen(true);
-          else addObject(item.objectType, getEditorAddObjectPosition(activeSceneKind));
+          else addObject(item.objectType, getEditorAddObjectPosition(editorToolKind));
         },
       };
     }),

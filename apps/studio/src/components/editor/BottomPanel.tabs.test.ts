@@ -58,6 +58,22 @@ describe('BottomPanel tab availability', () => {
     expect(screen.getByTestId('bottom-tab-end-drop')).toBeVisible();
   });
 
+  it('keeps the close control explicit and closes without starting a tab drag', () => {
+    render(createElement(BottomPanel));
+
+    const closeConsole = screen.getByTitle('Fechar Console');
+    expect(closeConsole).toHaveAttribute('aria-label', 'Fechar Console');
+
+    fireEvent.pointerDown(closeConsole);
+    expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
+
+    fireEvent.click(closeConsole);
+
+    expect(useBottomPanelTabsStore.getState().closedTabs).toContain('console');
+    expect(useBottomPanelTabsStore.getState().activeTab).toBe('assets');
+    expect(screen.queryByText('Console')).not.toBeInTheDocument();
+  });
+
   it('previews bottom tab order while dragging over another tab', () => {
     render(createElement(BottomPanel));
 

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '@/stores/editorStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
 import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
+import { useViewportStore } from '@/stores/viewportStore';
 import { EditorHeader } from './EditorHeader';
 
 describe('EditorHeader layout selector', () => {
@@ -12,6 +13,7 @@ describe('EditorHeader layout selector', () => {
     useEditorLayoutStore.getState().resetLayout();
     useBottomPanelTabsStore.getState().resetTabs();
     useEditorStore.setState({ activeSceneKind: '3d' });
+    useViewportStore.setState({ viewportMode: '3d', lockedKind: null });
   });
 
   it('applies Unity-like layout presets from the top toolbar', () => {
@@ -46,6 +48,23 @@ describe('EditorHeader layout selector', () => {
 
     expect(screen.getByRole('button', { name: 'Square' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Sprite' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Cube' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Terrain' })).not.toBeInTheDocument();
+  });
+
+  it('uses the locked viewport kind for Scene creation entries', () => {
+    useEditorStore.setState({ activeSceneKind: '3d' });
+    useViewportStore.getState().setLockedKind('2d');
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scene' }));
+
+    expect(screen.getByRole('button', { name: 'Square' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Cube' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Terrain' })).not.toBeInTheDocument();
   });
