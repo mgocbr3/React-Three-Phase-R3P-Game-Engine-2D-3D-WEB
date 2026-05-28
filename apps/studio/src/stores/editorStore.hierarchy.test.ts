@@ -27,6 +27,7 @@ const resetHierarchy = () => {
     selectedObjectId: null,
     history: [],
     historyIndex: -1,
+    objectClipboard: null,
   });
 };
 
@@ -123,6 +124,139 @@ describe('editorStore hierarchy actions', () => {
 
     useEditorStore.getState().deleteObject('missing');
 
+    expect(useEditorStore.getState().objects).toBe(before);
+    expect(useEditorStore.getState().history).toHaveLength(0);
+  });
+
+  it('duplicates a hierarchy subtree with fresh object and component ids', () => {
+    useEditorStore.setState({
+      objects: [
+        {
+          ...makeObject('root'),
+          components: [
+            {
+              id: 'root-tag',
+              type: 'pixl.tag',
+              enabled: true,
+              data: { tags: ['spawner'] },
+            },
+          ],
+        },
+        {
+          ...makeObject('child', 'root'),
+          components: [
+            {
+              id: 'child-script',
+              type: 'pixl.script',
+              enabled: true,
+              data: { instances: [] },
+            },
+          ],
+        },
+        makeObject('grandchild', 'child'),
+        makeObject('other'),
+      ],
+      selectedObjectId: 'root',
+      history: [],
+      historyIndex: -1,
+    });
+
+    useEditorStore.getState().duplicateObject('root');
+
+    const objects = useEditorStore.getState().objects;
+    expect(objects).toHaveLength(7);
+
+    const duplicatedRoot = objects.find((object) => object.name === 'root_copy');
+    expect(duplicatedRoot).toBeDefined();
+    expect(duplicatedRoot?.id).not.toBe('root');
+    expect(duplicatedRoot?.parentId ?? null).toBeNull();
+    expect(duplicatedRoot?.position).toEqual([2, 0, 0]);
+    expect(duplicatedRoot?.components?.[0]).toMatchObject({
+      type: 'pixl.tag',
+      enabled: true,
+      data: { tags: ['spawner'] },
+    });
+    expect(duplicatedRoot?.components?.[0].id).not.toBe('root-tag');
+
+    const duplicatedChild = objects.find((object) => object.name === 'child_copy');
+    const duplicatedGrandchild = objects.find((object) => object.name === 'grandchild_copy');
+    expect(duplicatedChild?.parentId).toBe(duplicatedRoot?.id);
+    expect(duplicatedChild?.components?.[0].id).not.toBe('child-script');
+    expect(duplicatedGrandchild?.parentId).toBe(duplicatedChild?.id);
+
+    expect(new Set(objects.map((object) => object.id))).toHaveProperty('size', objects.length);
+    expect(useEditorStore.getState().selectedObjectId).toBe(duplicatedRoot?.id);
+    expect(useEditorStore.getState().history).toHaveLength(1);
+  });
+
+  it('copies and pastes a hierarchy subtree without mutating the source selection', () => {
+    useEditorStore.setState({
+      objects: [
+        {
+          ...makeObject('root'),
+          components: [
+            {
+              id: 'root-tag',
+              type: 'pixl.tag',
+              enabled: true,
+              data: { tags: ['spawner'] },
+            },
+          ],
+        },
+        makeObject('child', 'root'),
+        makeObject('grandchild', 'child'),
+        makeObject('other'),
+      ],
+      selectedObjectId: 'root',
+      history: [],
+      historyIndex: -1,
+    });
+
+    const store = useEditorStore.getState() as ReturnType<typeof useEditorStore.getState> & {
+      copyObject: (id: string) => boolean;
+      pasteObject: () => string | null;
+      hasObjectClipboard: () => boolean;
+    };
+
+    expect(store.copyObject('root')).toBe(true);
+    expect(store.hasObjectClipboard()).toBe(true);
+    expect(useEditorStore.getState().objects).toHaveLength(4);
+    expect(useEditorStore.getState().history).toHaveLength(0);
+
+    const pastedRootId = store.pasteObject();
+    const objects = useEditorStore.getState().objects;
+    const pastedRoot = objects.find((object) => object.id === pastedRootId);
+    const pastedChild = objects.find((object) => object.name === 'child_copy');
+    const pastedGrandchild = objects.find((object) => object.name === 'grandchild_copy');
+
+    expect(objects).toHaveLength(7);
+    expect(pastedRoot).toMatchObject({
+      name: 'root_copy',
+      parentId: null,
+      position: [2, 0, 0],
+    });
+    expect(pastedRoot?.components?.[0]).toMatchObject({
+      type: 'pixl.tag',
+      data: { tags: ['spawner'] },
+    });
+    expect(pastedRoot?.components?.[0].id).not.toBe('root-tag');
+    expect(pastedChild?.parentId).toBe(pastedRootId);
+    expect(pastedGrandchild?.parentId).toBe(pastedChild?.id);
+    expect(useEditorStore.getState().selectedObjectId).toBe(pastedRootId);
+    expect(useEditorStore.getState().history).toHaveLength(1);
+  });
+
+  it('treats missing copy sources and empty paste buffers as no-ops', () => {
+    const store = useEditorStore.getState() as ReturnType<typeof useEditorStore.getState> & {
+      copyObject: (id: string) => boolean;
+      pasteObject: () => string | null;
+      hasObjectClipboard: () => boolean;
+    };
+    const before = useEditorStore.getState().objects;
+
+    expect(store.copyObject('missing')).toBe(false);
+    expect(store.hasObjectClipboard()).toBe(false);
+    expect(store.pasteObject()).toBeNull();
     expect(useEditorStore.getState().objects).toBe(before);
     expect(useEditorStore.getState().history).toHaveLength(0);
   });

@@ -71,11 +71,15 @@ export const MobileHeader = () => {
     addObject,
     deleteObject,
     duplicateObject,
+    copyObject,
+    pasteObject,
+    hasObjectClipboard,
     selectedObjectId
   } = useEditorStore();
   const { setModalOpen: setTerrainModalOpen } = useTerrainStore();
   const { interfaceMode, setInterfaceMode } = useInterfaceStore();
   const { showGrid, showStats, updateSettings } = useEngineSettings();
+  const canPasteObject = hasObjectClipboard();
 
   const toggleGrid = () => updateSettings({ showGrid: !showGrid });
   const toggleStats = () => updateSettings({ showStats: !showStats });
@@ -112,8 +116,8 @@ export const MobileHeader = () => {
       { label: 'Desfazer', icon: Undo, action: undo, disabled: !canUndo(), color: 'text-muted-foreground' },
       { label: 'Refazer', icon: Redo, action: redo, disabled: !canRedo(), color: 'text-muted-foreground' },
       { label: '', divider: true },
-      { label: 'Copiar', icon: Copy, disabled: !selectedObjectId, color: 'text-muted-foreground' },
-      { label: 'Colar', icon: Clipboard, color: 'text-muted-foreground' },
+      { label: 'Copiar', icon: Copy, action: () => selectedObjectId && copyObject(selectedObjectId), disabled: !selectedObjectId, color: 'text-muted-foreground' },
+      { label: 'Colar', icon: Clipboard, action: () => pasteObject(), disabled: !canPasteObject, color: 'text-muted-foreground' },
       { label: 'Duplicar', icon: Copy, action: () => selectedObjectId && duplicateObject(selectedObjectId), disabled: !selectedObjectId, color: 'text-muted-foreground' },
       { label: '', divider: true },
       { label: 'Deletar', icon: Trash2, action: () => selectedObjectId && deleteObject(selectedObjectId), disabled: !selectedObjectId, color: 'text-muted-foreground' },

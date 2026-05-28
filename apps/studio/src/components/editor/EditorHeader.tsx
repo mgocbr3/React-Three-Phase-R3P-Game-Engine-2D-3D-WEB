@@ -118,6 +118,9 @@ export const EditorHeader = () => {
     addObject,
     deleteObject,
     duplicateObject,
+    copyObject,
+    pasteObject,
+    hasObjectClipboard,
     selectedObjectId,
     saveProject,
     loadSavedProject,
@@ -174,6 +177,7 @@ export const EditorHeader = () => {
     transformSpace,
   ]);
   const diagnostics = diagnosticsSnapshot?.diagnostics ?? null;
+  const canPasteObject = hasObjectClipboard();
 
   const handleRuntimeToggle = useCallback(() => {
     try {
@@ -361,8 +365,8 @@ export const EditorHeader = () => {
       { label: 'Redo', shortcut: 'Ctrl+Y', icon: Redo, action: redo, disabled: !canRedo() },
       { label: '', divider: true },
       { label: 'Cut', shortcut: 'Ctrl+X', icon: Copy, disabled: !selectedObjectId },
-      { label: 'Copy', shortcut: 'Ctrl+C', icon: Copy, disabled: !selectedObjectId },
-      { label: 'Paste', shortcut: 'Ctrl+V', icon: Clipboard },
+      { label: 'Copy', shortcut: 'Ctrl+C', icon: Copy, action: () => selectedObjectId && copyObject(selectedObjectId), disabled: !selectedObjectId },
+      { label: 'Paste', shortcut: 'Ctrl+V', icon: Clipboard, action: () => pasteObject(), disabled: !canPasteObject },
       { label: 'Duplicate', shortcut: 'Ctrl+D', icon: Copy, action: () => selectedObjectId && duplicateObject(selectedObjectId), disabled: !selectedObjectId },
       { label: '', divider: true },
       { label: 'Delete', shortcut: 'Del', icon: Trash2, action: () => selectedObjectId && deleteObject(selectedObjectId), disabled: !selectedObjectId },

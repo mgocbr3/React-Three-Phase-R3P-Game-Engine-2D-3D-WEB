@@ -399,6 +399,11 @@ export interface SceneObject {
   terrainSettings?: TerrainSettings; // NEW: Terrain generation settings
 }
 
+interface ObjectClipboard {
+  rootId: string;
+  objects: SceneObject[];
+}
+
 export interface EditorCameraPoseTarget {
   position: [number, number, number];
   quaternion: [number, number, number, number];
@@ -428,6 +433,7 @@ interface EditorState {
   // Undo/Redo history
   history: SceneObject[][];
   historyIndex: number;
+  objectClipboard: ObjectClipboard | null;
   
   loadTemplate: (templateId?: string | null) => void;
   setEditMode: (edit: boolean) => void;
@@ -448,6 +454,9 @@ interface EditorState {
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
   reparentObject: (id: string, parentId: string | null) => boolean;
   reorderObject: (id: string, targetId: string, position: HierarchyReorderPosition) => boolean;
+  copyObject: (id: string) => boolean;
+  pasteObject: (parentId?: string | null) => string | null;
+  hasObjectClipboard: () => boolean;
   addComponentToObject: (objectId: string, component: PixlComponentInstance) => void;
   updateObjectComponent: (objectId: string, componentId: string, updates: Partial<PixlComponentInstance>) => void;
   updateObjectComponentData: (objectId: string, componentId: string, data: Record<string, unknown>) => void;
@@ -483,6 +492,81 @@ interface EditorState {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+const cloneJson = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+const generateUniqueId = (usedIds: Set<string>): string => {
+  let id = generateId();
+  while (usedIds.has(id)) {
+    id = generateId();
+  }
+  usedIds.add(id);
+  return id;
+};
+
+const cloneObjectSubtreeForInsert = ({
+  sourceRootId,
+  sourceObjects,
+  existingObjects,
+  parentId,
+}: {
+  sourceRootId: string;
+  sourceObjects: SceneObject[];
+  existingObjects: SceneObject[];
+  parentId?: string | null;
+}): { rootId: string; objects: SceneObject[] } | null => {
+  const sourceRoot = sourceObjects.find((object) => object.id === sourceRootId);
+  if (!sourceRoot) return null;
+
+  const sourceIds = new Set(sourceObjects.map((object) => object.id));
+  const existingIds = new Set(existingObjects.map((object) => object.id));
+  const idMap = new Map<string, string>();
+
+  for (const object of sourceObjects) {
+    idMap.set(object.id, generateUniqueId(existingIds));
+  }
+
+  const rootId = idMap.get(sourceRootId);
+  if (!rootId) return null;
+
+  const rootParentId = parentId !== undefined
+    ? parentId
+    : sourceRoot.parentId && existingIds.has(sourceRoot.parentId)
+      ? sourceRoot.parentId
+      : null;
+
+  const objects: SceneObject[] = sourceObjects.map((object): SceneObject => {
+    const nextId = idMap.get(object.id)!;
+    const copy = cloneJson(object);
+    const nextParentId = object.id === sourceRootId
+      ? rootParentId
+      : object.parentId && sourceIds.has(object.parentId)
+        ? idMap.get(object.parentId) ?? null
+        : null;
+
+    return {
+      ...copy,
+      id: nextId,
+      name: `${object.name}_copy`,
+      parentId: nextParentId,
+      position: object.id === sourceRootId
+        ? [object.position[0] + 2, object.position[1], object.position[2]]
+        : copy.position,
+      components: copy.components?.map((component, index) => ({
+        ...component,
+        id: `${nextId}-component-${index}-${generateId()}`,
+        data: cloneJson(component.data),
+      })),
+      scriptInstances: copy.scriptInstances?.map((instance, index) => ({
+        ...instance,
+        id: `${nextId}-script-${index}-${generateId()}`,
+        parameters: cloneJson(instance.parameters),
+      })),
+    };
+  });
+
+  return { rootId, objects };
+};
 
 const buildChildrenByParent = (objects: SceneObject[]): Map<string, SceneObject[]> => {
   const childrenByParent = new Map<string, SceneObject[]>();
@@ -1123,6 +1207,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Undo/Redo state
   history: [],
   historyIndex: -1,
+  objectClipboard: null,
   
   loadTemplate: (templateId) => {
     const objects = getTemplateObjects(templateId);
@@ -1364,6 +1449,61 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     return didReorder;
   },
 
+  copyObject: (id) => {
+    let didCopy = false;
+
+    set((state) => {
+      if (!state.objects.some((object) => object.id === id)) return state;
+
+      const subtreeIds = collectDescendantIds(state.objects, id);
+      subtreeIds.add(id);
+      const objects = state.objects
+        .filter((object) => subtreeIds.has(object.id))
+        .map((object) => cloneJson(object));
+
+      didCopy = true;
+      return {
+        objectClipboard: {
+          rootId: id,
+          objects,
+        },
+      };
+    });
+
+    return didCopy;
+  },
+
+  pasteObject: (parentId) => {
+    let pastedRootId: string | null = null;
+    let changed = false;
+
+    set((state) => {
+      if (!state.objectClipboard?.objects.length) return state;
+      if (parentId && !state.objects.some((object) => object.id === parentId)) return state;
+
+      const cloned = cloneObjectSubtreeForInsert({
+        sourceRootId: state.objectClipboard.rootId,
+        sourceObjects: state.objectClipboard.objects,
+        existingObjects: state.objects,
+        parentId,
+      });
+      if (!cloned) return state;
+
+      pastedRootId = cloned.rootId;
+      changed = true;
+
+      return {
+        objects: [...state.objects, ...cloned.objects],
+        selectedObjectId: cloned.rootId,
+      };
+    });
+
+    if (changed) get().saveToHistory();
+    return pastedRootId;
+  },
+
+  hasObjectClipboard: () => Boolean(get().objectClipboard?.objects.length),
+
   addComponentToObject: (objectId, component) => {
     if (!isComponentAllowedForScene(component.type, get().activeSceneKind)) return;
 
@@ -1451,22 +1591,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   
   duplicateObject: (id) => {
-    const obj = get().objects.find((o) => o.id === id);
-    if (!obj) return;
-    
-    const newId = generateId();
-    const newObj: SceneObject = {
-      ...obj,
-      id: newId,
-      name: `${obj.name}_copy`,
-      position: [obj.position[0] + 2, obj.position[1], obj.position[2]],
-    };
-    
-    set((state) => ({
-      objects: [...state.objects, newObj],
-      selectedObjectId: newId,
-    }));
-    get().saveToHistory();
+    let duplicatedRootId: string | null = null;
+    let changed = false;
+
+    set((state) => {
+      const source = state.objects.find((object) => object.id === id);
+      if (!source) return state;
+
+      const subtreeIds = collectDescendantIds(state.objects, id);
+      subtreeIds.add(id);
+
+      const subtreeObjects = state.objects.filter((object) => subtreeIds.has(object.id));
+      const cloned = cloneObjectSubtreeForInsert({
+        sourceRootId: id,
+        sourceObjects: subtreeObjects,
+        existingObjects: state.objects,
+      });
+      if (!cloned) return state;
+
+      const lastSubtreeIndex = state.objects.reduce(
+        (lastIndex, object, index) => (subtreeIds.has(object.id) ? index : lastIndex),
+        -1,
+      );
+
+      duplicatedRootId = cloned.rootId;
+      changed = true;
+      return {
+        objects: [
+          ...state.objects.slice(0, lastSubtreeIndex + 1),
+          ...cloned.objects,
+          ...state.objects.slice(lastSubtreeIndex + 1),
+        ],
+        selectedObjectId: duplicatedRootId,
+      };
+    });
+
+    if (changed) get().saveToHistory();
   },
   
   setObjects: (objects) => set({ objects }),
