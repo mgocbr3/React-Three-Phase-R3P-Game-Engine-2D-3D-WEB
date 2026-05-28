@@ -347,7 +347,7 @@ const EditorPage = () => {
 
   if (isOpeningDiskProject) {
     return (
-      <div className="editor-shell fixed inset-0 flex items-center justify-center bg-[var(--editor-bg)] text-[var(--editor-text)]">
+      <div className="editor-shell fixed inset-0 flex min-w-[1180px] items-center justify-center bg-[var(--editor-bg)] text-[var(--editor-text)]">
         Carregando projeto...
       </div>
     );
@@ -438,7 +438,7 @@ const EditorPage = () => {
   );
 
   return (
-    <div className="editor-shell fixed inset-0 flex flex-col">
+    <div className="editor-shell fixed inset-0 flex min-w-[1180px] flex-col">
       {/* Top Header */}
       <EditorHeader />
 

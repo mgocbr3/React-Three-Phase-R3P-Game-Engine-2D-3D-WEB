@@ -23,6 +23,16 @@ describe('desktop-only studio build', () => {
     expect(inputMapPanel).not.toContain("setCaptureType('touch')");
   });
 
+  it('keeps editor chrome desktop-only instead of hiding commands at mobile breakpoints', () => {
+    const editorHeader = readFileSync(src('components/editor/EditorHeader.tsx'), 'utf8');
+    const editorPage = readFileSync(src('pages/EditorPage.tsx'), 'utf8');
+    const css = readFileSync(src('index.css'), 'utf8');
+
+    expect(editorHeader).not.toMatch(/hidden[^'"]*md:flex/);
+    expect(editorPage).toContain('min-w-[1180px]');
+    expect(css).toContain('overflow-x: auto');
+  });
+
   it('defaults to keyboard and gamepad bindings only', () => {
     useInputMapStore.getState().resetToDefaults();
 

@@ -197,6 +197,7 @@
 @layer components {
   .editor-shell {
     background: var(--editor-topbar);
+    overflow-x: auto;
   }
 
   .editor-header {

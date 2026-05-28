@@ -611,7 +611,7 @@ export const EditorHeader = () => {
 
             {previewSession && (
               <div
-                className="editor-command-chip hidden h-7 items-center gap-1.5 px-2 text-xs font-semibold text-primary md:flex"
+                className="editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold text-primary"
                 title={`Play Mode: ${runtimeLabel}`}
               >
                 <Gamepad2 className="h-3.5 w-3.5" />
@@ -660,7 +660,7 @@ export const EditorHeader = () => {
             </button>
             {localWorkspace.directoryName && (
               <div
-                className="hidden min-w-0 max-w-[300px] items-center gap-1.5 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-[11px] text-muted-foreground md:flex"
+                className="flex min-w-0 max-w-[300px] items-center gap-1.5 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-[11px] text-muted-foreground"
                 title={`${localWorkspace.directoryName}/${localWorkspace.projectFilePath}`}
               >
                 <FolderOpen className="h-3 w-3 flex-shrink-0 text-primary" />
@@ -816,7 +816,7 @@ const ProjectDiagnosticsButton = ({ diagnostics, onClick }: ProjectDiagnosticsBu
       onClick={onClick}
       title={getDiagnosticsTitle(diagnostics)}
       className={cn(
-        'editor-command-chip hidden h-7 items-center gap-1.5 border px-2 text-xs font-semibold transition-colors md:flex',
+        'editor-command-chip flex h-7 items-center gap-1.5 border px-2 text-xs font-semibold transition-colors',
         diagnosticsTone[diagnostics.status],
       )}
     >
