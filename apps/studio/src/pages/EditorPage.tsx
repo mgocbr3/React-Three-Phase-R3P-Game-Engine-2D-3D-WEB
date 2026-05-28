@@ -75,6 +75,19 @@ const DockFrame = ({
   </div>
 );
 
+const DockEndDrop = ({ onMoveToEnd }: { onMoveToEnd: (panel: EditorPanelId) => void }) => (
+  <div
+    data-testid="dock-end-drop"
+    onDragOver={(event) => event.preventDefault()}
+    onDrop={(event) => {
+      const source = event.dataTransfer.getData('application/x-pixl-dock');
+      if (isPanelId(source)) onMoveToEnd(source);
+    }}
+    className="h-full w-3 shrink-0 border-l border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]/70"
+    title="Solte aqui para mover o painel ao fim"
+  />
+);
+
 const EditorPage = () => {
   const { templateId } = useParams<{ templateId: string }>();
   const { activeSceneKind, loadTemplate, saveProject, loadSavedProject, hasSavedProject } = useEditorStore();
@@ -85,6 +98,7 @@ const EditorPage = () => {
   const dockOrder = useEditorLayoutStore((s) => s.dockOrder);
   const setPanelVisible = useEditorLayoutStore((s) => s.setPanelVisible);
   const movePanelBefore = useEditorLayoutStore((s) => s.movePanelBefore);
+  const movePanelToEnd = useEditorLayoutStore((s) => s.movePanelToEnd);
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
 
   // Local autosave — writes `pixl-project-document` + per-id snapshot after
@@ -295,6 +309,7 @@ const EditorPage = () => {
                   </Fragment>
                 );
               })}
+              <DockEndDrop onMoveToEnd={movePanelToEnd} />
             </ResizablePanelGroup>
           ) : (
             <div className="flex h-full items-center justify-center bg-[var(--editor-bg)] text-xs text-muted-foreground">

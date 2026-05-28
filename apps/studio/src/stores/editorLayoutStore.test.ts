@@ -23,6 +23,12 @@ describe('editorLayoutStore dock layout', () => {
     expect(useEditorLayoutStore.getState().dockOrder).toEqual(['bottom', 'scene', 'viewport', 'inspector']);
   });
 
+  it('moves dock panels to the end of the dock row', () => {
+    useEditorLayoutStore.getState().movePanelToEnd('scene');
+
+    expect(useEditorLayoutStore.getState().dockOrder).toEqual(['viewport', 'inspector', 'bottom', 'scene']);
+  });
+
   it('keeps hidden panels in the dock order so Window can insert them again', () => {
     useEditorLayoutStore.getState().setPanelVisible('viewport', false);
     useEditorLayoutStore.getState().movePanelBefore('bottom', 'scene');

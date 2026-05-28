@@ -13,6 +13,7 @@ interface EditorLayoutState {
   setPanelVisible: (panel: EditorPanelId, visible: boolean) => void;
   togglePanel: (panel: EditorPanelId) => void;
   movePanelBefore: (panel: EditorPanelId, target: EditorPanelId) => void;
+  movePanelToEnd: (panel: EditorPanelId) => void;
   applyPreset: (preset: EditorLayoutPreset) => void;
   resetLayout: () => void;
 }
@@ -75,6 +76,11 @@ export const useEditorLayoutStore = create<EditorLayoutState>()(
           order.splice(index < 0 ? order.length : index, 0, panel);
           return { dockOrder: order, preset: 'default' };
         }),
+      movePanelToEnd: (panel) =>
+        set((state) => ({
+          dockOrder: [...normalizeDockOrder(state.dockOrder).filter((id) => id !== panel), panel],
+          preset: 'default',
+        })),
       applyPreset: (preset) =>
         set(() => ({
           panels: presets[preset],
