@@ -140,6 +140,38 @@ describe('createBuildTargetSummary', () => {
     ]));
   });
 
+  it('accepts primitive mesh components in 3D scenes', () => {
+    const project = buildProject('3d');
+    project.scenes[0]!.rootObjects = [
+      {
+        id: 'box',
+        name: 'Box',
+        type: 'group',
+        transform: {
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+        },
+        visible: true,
+        locked: false,
+        tags: [],
+        components: [
+          {
+            id: 'box-primitive',
+            type: 'pixl.primitive',
+            enabled: true,
+            data: { shape: 'box', size: { x: 1, y: 1, z: 1 } },
+          },
+        ],
+      },
+    ];
+
+    const readiness = analyzeBuildReadiness(project);
+
+    expect(readiness.status).toBe('ready');
+    expect(readiness.issues).toEqual([]);
+  });
+
   it('reports legacy editorObject data through the shared document invariant audit', () => {
     const project = buildProject('3d');
     project.scenes[0]!.rootObjects = [

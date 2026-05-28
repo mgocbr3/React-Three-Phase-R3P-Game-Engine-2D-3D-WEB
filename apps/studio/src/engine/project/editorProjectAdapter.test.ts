@@ -123,6 +123,47 @@ describe('editor project adapter', () => {
     expect(snapshot.transformSpace).toBe('local');
   });
 
+  it('normalizes lightweight v2 scene documents before feeding the editor', () => {
+    const minimalModernProject = {
+      format: 'pixlplayground-project',
+      version: 2,
+      id: 'primitive-demo',
+      slug: 'primitive-demo',
+      name: 'Primitive Demo (3D)',
+      activeSceneId: 'arena',
+      engine: { name: 'PixlPlayground', version: '0.2.0' },
+      runtime: { primary: 'three-3d', renderers: ['three'], physics: ['rapier'] },
+      scenes: [{
+        id: 'arena',
+        name: 'Arena',
+        kind: '3d',
+        rootObjects: [{
+          id: 'ground',
+          name: 'Ground',
+          type: 'group',
+          transform: { position: [0, -0.5, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [{ id: 'ground-mesh', type: 'pixl.primitive', enabled: true, data: { shape: 'box' } }],
+        }],
+      }],
+      game: { templateId: null },
+    };
+
+    const normalized = normalizeProjectDocument(minimalModernProject as any);
+    const snapshot = createEditorSnapshotFromProjectDocument(normalized);
+
+    expect(normalized.assets.entries).toEqual([]);
+    expect(normalized.editor.selectedSceneId).toBe('arena');
+    expect(normalized.scenes[0].units).toBe('meters');
+    expect(snapshot.activeSceneKind).toBe('3d');
+    expect(snapshot.objects).toHaveLength(1);
+    expect(snapshot.objects[0]).toMatchObject({
+      id: 'ground',
+      name: 'Ground',
+      type: 'group',
+      components: [expect.objectContaining({ type: 'pixl.primitive' })],
+    });
+  });
+
   it('preserves 2D schema objects, raw render data, components and project assets', () => {
     const project = createProjectDocumentFromEditorState({
       gameScript: '// 2d',

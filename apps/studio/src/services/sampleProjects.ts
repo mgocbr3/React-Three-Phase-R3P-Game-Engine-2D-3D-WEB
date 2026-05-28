@@ -89,7 +89,7 @@ export const buildSampleEditorUrl = (slug: string): string | null => {
   const params = new URLSearchParams();
   params.set('sampleProject', slug);
   if (meta.useNativeViewport !== false) params.set('engine', 'native');
-  if (meta.kind === '2d') params.set('kind', '2d');
+  params.set('kind', meta.kind);
   return `/editor?${params.toString()}`;
 };
 

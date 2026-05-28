@@ -18,6 +18,7 @@ export const PIXL_3D_COMPONENT_TYPES = [
   'pixl.particles',
   'pixl.terrain',
   'pixl.mesh',
+  'pixl.primitive',
   'pixl.transform3d',
   'pixl.light3d',
   'pixl.camera3d',

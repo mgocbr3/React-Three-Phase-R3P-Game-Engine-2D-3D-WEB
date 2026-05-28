@@ -495,8 +495,121 @@ export const createProjectDocumentFromEditorState = (
   };
 };
 
+const normalizeSceneObject = (object: Partial<PixlSceneObject>): PixlSceneObject => ({
+  id: object.id || createPixlId('object'),
+  name: object.name || 'Object',
+  type: object.type || 'group',
+  parentId: object.parentId ?? null,
+  transform: {
+    position: toVec3(object.transform?.position, [0, 0, 0]),
+    rotation: toVec3(object.transform?.rotation, [0, 0, 0]),
+    scale: toVec3(object.transform?.scale, [1, 1, 1]),
+  },
+  visible: object.visible !== false,
+  locked: Boolean(object.locked),
+  tags: Array.isArray(object.tags) ? [...object.tags] : [],
+  components: (object.components ?? []).map((component) => ({
+    id: component.id || createPixlId(component.type || 'component'),
+    type: component.type || 'pixl.component',
+    enabled: component.enabled !== false,
+    data: cloneJson(component.data ?? {}),
+  })),
+  data: object.data ? cloneJson(object.data) : undefined,
+  children: object.children?.map(normalizeSceneObject),
+});
+
+const normalizeModernProjectDocument = (document: PixlProjectDocument): PixlProjectDocument => {
+  const firstSceneKind = document.scenes[0]?.kind === '2d' ? '2d' : '3d';
+  const runtime = runtimeForSceneKind(firstSceneKind);
+  const activeSceneId = document.activeSceneId || document.scenes[0]?.id || 'main';
+  const scenes = (document.scenes.length ? document.scenes : [{
+    id: activeSceneId,
+    name: 'Main',
+    kind: firstSceneKind,
+    rootObjects: [],
+  } as Partial<PixlSceneDocument>]).map((scene) => {
+    const kind = scene.kind === '2d' ? '2d' : '3d';
+    const sceneRuntime = runtimeForSceneKind(kind);
+    return {
+      ...scene,
+      id: scene.id || activeSceneId,
+      name: scene.name || 'Main',
+      kind,
+      units: scene.units ?? sceneRuntime.units,
+      rootObjects: (scene.rootObjects ?? []).map(normalizeSceneObject),
+      camera: {
+        ...scene.camera,
+        id: scene.camera?.id ?? 'editor-camera',
+        name: scene.camera?.name ?? 'Editor Camera',
+        position: toVec3(scene.camera?.position, kind === '2d' ? [0, 0, 0] : [14, 10, 14]),
+        target: toVec3(scene.camera?.target, [0, 0, 0]),
+        fov: scene.camera?.fov ?? 50,
+        near: scene.camera?.near ?? 0.1,
+        far: scene.camera?.far ?? 1000,
+      },
+      environment: {
+        ...scene.environment,
+        background: scene.environment?.background ?? (kind === '2d' ? '#a8a8a8' : '#87ceeb'),
+        ambientLight: scene.environment?.ambientLight ?? '#ffffff',
+        ambientIntensity: scene.environment?.ambientIntensity ?? 0.7,
+        sunColor: scene.environment?.sunColor ?? '#fffaf0',
+        sunIntensity: scene.environment?.sunIntensity ?? 0.8,
+      },
+      physics: {
+        ...scene.physics,
+        engine: scene.physics?.engine ?? sceneRuntime.physicsEngine,
+        gravity: toVec3(scene.physics?.gravity, sceneRuntime.gravity),
+      },
+    } as PixlSceneDocument;
+  });
+
+  return {
+    format: PIXL_PROJECT_FORMAT,
+    version: PIXL_PROJECT_VERSION,
+    id: document.id || createPixlId('project'),
+    slug: document.slug || document.id || 'untitled-project',
+    name: document.name || 'Untitled Project',
+    createdAt: document.createdAt ?? document.savedAt ?? 0,
+    savedAt: document.savedAt ?? document.createdAt ?? 0,
+    engine: {
+      name: 'PixlPlayground',
+      version: document.engine?.version ?? '0.2.0',
+      schemaVersion: PIXL_PROJECT_VERSION,
+      runtimeManifest: document.engine?.runtimeManifest,
+    },
+    runtime: {
+      primary: document.runtime?.primary ?? runtime.primary,
+      renderers: document.runtime?.renderers?.length ? [...document.runtime.renderers] : [...runtime.renderers],
+      physics: document.runtime?.physics?.length ? [...document.runtime.physics] : [...runtime.physics],
+    },
+    activeSceneId,
+    scenes,
+    assets: {
+      root: document.assets?.root ?? 'Assets',
+      folders: document.assets?.folders?.length ? [...document.assets.folders] : [...DEFAULT_PROJECT_FOLDERS],
+      entries: document.assets?.entries?.map((asset) => cloneJson(asset)) ?? [],
+    },
+    editor: {
+      mode: document.editor?.mode ?? firstSceneKind,
+      transformSpace: document.editor?.transformSpace ?? 'world',
+      snapEnabled: document.editor?.snapEnabled ?? false,
+      snapTranslate: document.editor?.snapTranslate ?? 1,
+      snapRotate: document.editor?.snapRotate ?? 15,
+      snapScale: document.editor?.snapScale ?? 0.25,
+      selectedSceneId: document.editor?.selectedSceneId ?? activeSceneId,
+      layoutPreset: document.editor?.layoutPreset ?? 'default',
+    },
+    game: {
+      templateId: document.game?.templateId ?? null,
+      script: document.game?.script ?? '// Game Script\n',
+      source: document.game?.source,
+    },
+    integrations: document.integrations ? cloneJson(document.integrations) : undefined,
+  };
+};
+
 export const normalizeProjectDocument = (document: AnyPixlProjectDocument): PixlProjectDocument => {
-  if (isPixlProjectDocument(document)) return document;
+  if (isPixlProjectDocument(document)) return normalizeModernProjectDocument(document);
 
   if (!isLegacyPixlProjectDocument(document)) {
     throw new Error('Arquivo de projeto PixlPlayground invalido.');

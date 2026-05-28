@@ -23,6 +23,7 @@ describe('component catalog', () => {
     const types = getComponentDefinitionsForScene('3d').map((definition) => definition.type);
 
     expect(types).toContain('pixl.visual');
+    expect(types).toContain('pixl.primitive');
     expect(types).toContain('pixl.physics');
     expect(types).toContain('pixl.script');
     expect(types).not.toContain('pixl.sprite');
@@ -49,6 +50,7 @@ describe('component catalog', () => {
     expect(() => createComponentInstance('hero', 'pixl.unknown')).toThrow('Unknown component type');
     expect(isComponentAllowedForScene('pixl.sprite', '3d')).toBe(false);
     expect(isComponentAllowedForScene('pixl.light3d', '2d')).toBe(false);
+    expect(isComponentAllowedForScene('pixl.primitive', '3d')).toBe(true);
     expect(isComponentAllowedForScene('pixl.script', '2d')).toBe(true);
   });
 

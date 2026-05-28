@@ -131,6 +131,21 @@ const COMPONENT_DEFINITIONS: EngineComponentDefinition[] = [
     },
   },
   {
+    type: 'pixl.primitive',
+    label: 'Primitive Mesh',
+    description: 'Geometria 3D nativa sem asset externo.',
+    scope: '3d',
+    defaultData: {
+      shape: 'box',
+      size: { x: 1, y: 1, z: 1 },
+      color: '#ffffff',
+      roughness: 0.5,
+      metalness: 0,
+      castShadow: true,
+      receiveShadow: true,
+    },
+  },
+  {
     type: 'pixl.physics',
     label: 'Physics 3D',
     description: 'Corpo Rapier 3D e collider.',

@@ -3,7 +3,7 @@
   "version": 2,
   "id": "magic-battleground-mvp",
   "slug": "magic-battleground-mvp",
-  "name": "Magic Battleground MVP",
+  "name": "Primitive Demo (3D)",
   "activeSceneId": "arena",
   "scenes": [
     {
