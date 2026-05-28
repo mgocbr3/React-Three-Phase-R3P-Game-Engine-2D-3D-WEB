@@ -77,6 +77,7 @@ class RigidBodyComponent extends Component {
     const json = this.jsonData as RigidBodyComponentJSON;
     const scene = this.gameObject.getScene();
     if (!scene.rapierWorld) {
+      if (scene.game.gameOptions.disablePhysics) return;
       throw new Error('RigidBodyComponent.load: scene has no Rapier world (physics disabled?)');
     }
 
