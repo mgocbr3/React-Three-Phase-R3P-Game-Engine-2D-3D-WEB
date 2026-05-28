@@ -11,7 +11,7 @@ import { InspectorPanel } from '@/components/editor/InspectorPanel';
 import { BottomPanel } from '@/components/editor/BottomPanel';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockPanelSize, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockPanelSize, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -141,6 +141,34 @@ const DockBottomMagnet = ({
   </div>
 );
 
+const DockDragGhost = ({
+  label,
+  targetLabel,
+  position,
+}: {
+  label: string;
+  targetLabel: string;
+  position: { left: number; top: number };
+}) => (
+  <div
+    data-testid="dock-drag-ghost"
+    className="pointer-events-none fixed z-[70] h-[76px] w-56 overflow-hidden border border-primary/70 bg-[#1f1f1f]/95 text-foreground shadow-[0_12px_34px_rgba(0,0,0,0.46),0_0_24px_rgba(75,160,255,0.22)] backdrop-blur-sm"
+    style={{ left: position.left, top: position.top }}
+  >
+    <div className="panel-header h-7 px-2 text-xs font-semibold">{label}</div>
+    <div className="flex h-[48px] items-center px-2.5 text-[11px] text-muted-foreground">
+      <span className="border border-primary/50 bg-primary/10 px-2 py-1 text-primary">{targetLabel}</span>
+    </div>
+  </div>
+);
+
+const getDockTargetLabel = (target: EditorDockTarget | null, labels: Record<EditorPanelId, string>) => {
+  if (target === 'bottom-end') return 'Encaixar embaixo';
+  if (target === 'main-end') return 'Fim da linha';
+  if (target) return `Antes de ${labels[target]}`;
+  return 'Escolha um encaixe';
+};
+
 const EditorPage = () => {
   const { templateId } = useParams<{ templateId: string }>();
   const { activeSceneKind, loadTemplate, saveProject, loadSavedProject, hasSavedProject } = useEditorStore();
@@ -156,6 +184,7 @@ const EditorPage = () => {
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
   const [draggedDock, setDraggedDock] = useState<EditorPanelId | null>(null);
   const [dockDropTarget, setDockDropTarget] = useState<EditorDockTarget | null>(null);
+  const [dockDragPoint, setDockDragPoint] = useState<{ x: number; y: number } | null>(null);
   const pointerDockRef = useRef<{
     source: EditorPanelId;
     startX: number;
@@ -316,6 +345,7 @@ const EditorPage = () => {
   const clearDockDrag = useCallback(() => {
     setDraggedDock(null);
     setDockDropTarget(null);
+    setDockDragPoint(null);
   }, []);
   const moveDockToTarget = useCallback((source: EditorPanelId, target: EditorDockTarget) => {
     if (source === target) return;
@@ -358,6 +388,7 @@ const EditorPage = () => {
       drag.target = resolveTarget(event.clientX, event.clientY);
       setDraggedDock(drag.source);
       setDockDropTarget(drag.target && drag.target !== drag.source ? drag.target : null);
+      setDockDragPoint({ x: event.clientX, y: event.clientY });
       event.preventDefault();
     };
     window.addEventListener('pointermove', move);
@@ -398,15 +429,29 @@ const EditorPage = () => {
   ));
   const mainDockIds = idsInZone('main');
   const bottomDockIds = idsInZone('bottom');
+  const dockPanelLabels: Record<EditorPanelId, string> = {
+    scene: 'Hierarchy',
+    viewport: activeSceneKind === '2d' ? 'Preview 2D' : 'Scene 3D',
+    inspector: 'Inspector',
+    bottom: 'Project',
+  };
   const dockContent: Record<EditorPanelId, { label: string; content: ReactNode }> = {
-    scene: { label: 'Hierarchy', content: <SceneGraphPanel /> },
+    scene: { label: dockPanelLabels.scene, content: <SceneGraphPanel /> },
     viewport: {
-      label: activeSceneKind === '2d' ? 'Preview 2D' : 'Scene 3D',
+      label: dockPanelLabels.viewport,
       content: <div className="relative h-full border-x border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]">{editorRuntimeSurface}</div>,
     },
-    inspector: { label: 'Inspector', content: <InspectorPanel /> },
-    bottom: { label: 'Project', content: <BottomPanel /> },
+    inspector: { label: dockPanelLabels.inspector, content: <InspectorPanel /> },
+    bottom: { label: dockPanelLabels.bottom, content: <BottomPanel /> },
   };
+  const dockGhostPosition = dockDragPoint
+    ? getDockDragGhostPosition({
+      x: dockDragPoint.x,
+      y: dockDragPoint.y,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    })
+    : null;
   const renderDockRow = (ids: EditorPanelId[], zone: EditorDockZone) => (
     ids.length ? (
       <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -486,6 +531,13 @@ const EditorPage = () => {
               {draggedDock && (
                 <DockBottomMagnet
                   active={dockDropTarget === 'bottom-end'}
+                />
+              )}
+              {draggedDock && dockGhostPosition && (
+                <DockDragGhost
+                  label={dockPanelLabels[draggedDock]}
+                  targetLabel={getDockTargetLabel(dockDropTarget, dockPanelLabels)}
+                  position={dockGhostPosition}
                 />
               )}
             </>

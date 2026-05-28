@@ -9,7 +9,17 @@ export type DockPanelRect = {
   height: number;
 };
 
+export type DockDragGhostPositionInput = {
+  x: number;
+  y: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  width?: number;
+  height?: number;
+};
+
 const weight = (id: EditorPanelId) => (id === 'viewport' ? 46 : 18);
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export const getDockPanelSize = (id: EditorPanelId, visibleIds: EditorPanelId[]) => {
   const total = visibleIds.reduce((sum, panel) => sum + weight(panel), 0) || weight(id);
@@ -38,4 +48,20 @@ export const resolveDockTargetFromRects = ({
   if (x < hit.left + hit.width / 2) return hit.id;
   const row = panels.filter((p) => p.zone === hit.zone && y >= p.top && y <= p.top + p.height).sort((a, b) => a.left - b.left);
   return row.find((p) => p.left > hit.left)?.id ?? (hit.zone === 'bottom' ? 'bottom-end' : 'main-end');
+};
+
+export const getDockDragGhostPosition = ({
+  x,
+  y,
+  viewportWidth,
+  viewportHeight,
+  width = 224,
+  height = 76,
+}: DockDragGhostPositionInput) => {
+  const margin = 12;
+  const offset = 14;
+  return {
+    left: clamp(x + offset, margin, Math.max(margin, viewportWidth - width - margin)),
+    top: clamp(y + offset, margin, Math.max(margin, viewportHeight - height - margin)),
+  };
 };

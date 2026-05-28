@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDockPanelSize, resolveDockTargetFromRects } from './editorDockLayout';
+import { getDockDragGhostPosition, getDockPanelSize, resolveDockTargetFromRects } from './editorDockLayout';
 import { defaultDockOrder, type EditorPanelId } from '@/stores/editorLayoutStore';
 
 const totalDefaultSize = (ids: EditorPanelId[]) => (
@@ -35,5 +35,12 @@ describe('editorDockLayout', () => {
 
   it('keeps a broad bottom magnet for docking panels below', () => {
     expect(resolveDockTargetFromRects({ x: 700, y: 760, viewportHeight: 900, panels: [] })).toBe('bottom-end');
+  });
+
+  it('keeps the floating dock preview inside the viewport', () => {
+    expect(getDockDragGhostPosition({ x: 900, y: 680, viewportWidth: 960, viewportHeight: 720 })).toEqual({
+      left: 724,
+      top: 632,
+    });
   });
 });
