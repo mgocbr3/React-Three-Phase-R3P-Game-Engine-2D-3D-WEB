@@ -455,6 +455,7 @@ interface EditorState {
   reparentObject: (id: string, parentId: string | null) => boolean;
   reorderObject: (id: string, targetId: string, position: HierarchyReorderPosition) => boolean;
   copyObject: (id: string) => boolean;
+  cutObject: (id: string) => boolean;
   pasteObject: (parentId?: string | null) => string | null;
   hasObjectClipboard: () => boolean;
   addComponentToObject: (objectId: string, component: PixlComponentInstance) => void;
@@ -1471,6 +1472,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
 
     return didCopy;
+  },
+
+  cutObject: (id) => {
+    if (!get().copyObject(id)) return false;
+    get().deleteObject(id);
+    return true;
   },
 
   pasteObject: (parentId) => {

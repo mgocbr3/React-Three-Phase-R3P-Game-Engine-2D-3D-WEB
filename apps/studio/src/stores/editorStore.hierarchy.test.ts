@@ -246,15 +246,59 @@ describe('editorStore hierarchy actions', () => {
     expect(useEditorStore.getState().history).toHaveLength(1);
   });
 
+  it('cuts a hierarchy subtree into the object clipboard and records one history entry', () => {
+    useEditorStore.setState({
+      objects: [
+        makeObject('root'),
+        makeObject('child', 'root'),
+        makeObject('grandchild', 'child'),
+        makeObject('other'),
+      ],
+      selectedObjectId: 'child',
+      history: [],
+      historyIndex: -1,
+      objectClipboard: null,
+    });
+
+    const store = useEditorStore.getState() as ReturnType<typeof useEditorStore.getState> & {
+      cutObject: (id: string) => boolean;
+      pasteObject: () => string | null;
+      hasObjectClipboard: () => boolean;
+    };
+
+    expect(store.cutObject('child')).toBe(true);
+    expect(store.hasObjectClipboard()).toBe(true);
+    expect(useEditorStore.getState().objects.map((object) => object.id)).toEqual(['root', 'other']);
+    expect(useEditorStore.getState().selectedObjectId).toBeNull();
+    expect(useEditorStore.getState().history).toHaveLength(1);
+
+    const pastedChildId = store.pasteObject();
+    const objects = useEditorStore.getState().objects;
+    const pastedChild = objects.find((object) => object.id === pastedChildId);
+    const pastedGrandchild = objects.find((object) => object.name === 'grandchild_copy');
+
+    expect(objects).toHaveLength(4);
+    expect(pastedChild).toMatchObject({
+      name: 'child_copy',
+      parentId: 'root',
+      position: [2, 0, 0],
+    });
+    expect(pastedGrandchild?.parentId).toBe(pastedChildId);
+    expect(useEditorStore.getState().selectedObjectId).toBe(pastedChildId);
+    expect(useEditorStore.getState().history).toHaveLength(2);
+  });
+
   it('treats missing copy sources and empty paste buffers as no-ops', () => {
     const store = useEditorStore.getState() as ReturnType<typeof useEditorStore.getState> & {
       copyObject: (id: string) => boolean;
+      cutObject: (id: string) => boolean;
       pasteObject: () => string | null;
       hasObjectClipboard: () => boolean;
     };
     const before = useEditorStore.getState().objects;
 
     expect(store.copyObject('missing')).toBe(false);
+    expect(store.cutObject('missing')).toBe(false);
     expect(store.hasObjectClipboard()).toBe(false);
     expect(store.pasteObject()).toBeNull();
     expect(useEditorStore.getState().objects).toBe(before);

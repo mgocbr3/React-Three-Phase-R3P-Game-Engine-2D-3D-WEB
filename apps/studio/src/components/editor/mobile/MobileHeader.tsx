@@ -72,6 +72,7 @@ export const MobileHeader = () => {
     deleteObject,
     duplicateObject,
     copyObject,
+    cutObject,
     pasteObject,
     hasObjectClipboard,
     selectedObjectId
@@ -116,6 +117,7 @@ export const MobileHeader = () => {
       { label: 'Desfazer', icon: Undo, action: undo, disabled: !canUndo(), color: 'text-muted-foreground' },
       { label: 'Refazer', icon: Redo, action: redo, disabled: !canRedo(), color: 'text-muted-foreground' },
       { label: '', divider: true },
+      { label: 'Recortar', icon: Copy, action: () => selectedObjectId && cutObject(selectedObjectId), disabled: !selectedObjectId, color: 'text-muted-foreground' },
       { label: 'Copiar', icon: Copy, action: () => selectedObjectId && copyObject(selectedObjectId), disabled: !selectedObjectId, color: 'text-muted-foreground' },
       { label: 'Colar', icon: Clipboard, action: () => pasteObject(), disabled: !canPasteObject, color: 'text-muted-foreground' },
       { label: 'Duplicar', icon: Copy, action: () => selectedObjectId && duplicateObject(selectedObjectId), disabled: !selectedObjectId, color: 'text-muted-foreground' },

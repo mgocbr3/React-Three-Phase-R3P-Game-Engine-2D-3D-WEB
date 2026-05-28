@@ -67,6 +67,7 @@ import {
   type ProjectDiagnosticsSummary,
   type ProjectDiagnosticStatus,
 } from '@/services/projectDiagnostics';
+import { handleEditorObjectShortcut } from '@/services/editorObjectShortcuts';
 import {
   announcePixlOpen,
   announcePixlSave,
@@ -119,6 +120,7 @@ export const EditorHeader = () => {
     deleteObject,
     duplicateObject,
     copyObject,
+    cutObject,
     pasteObject,
     hasObjectClipboard,
     selectedObjectId,
@@ -302,6 +304,18 @@ export const EditorHeader = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (handleEditorObjectShortcut(event, {
+        selectedObjectId,
+        copyObject,
+        cutObject,
+        pasteObject,
+        duplicateObject,
+        deleteObject,
+        hasObjectClipboard,
+      })) {
+        return;
+      }
+
       const mod = event.ctrlKey || event.metaKey;
       if (!mod) return;
       const key = event.key.toLowerCase();
@@ -320,7 +334,16 @@ export const EditorHeader = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleRuntimeToggle]);
+  }, [
+    copyObject,
+    cutObject,
+    deleteObject,
+    duplicateObject,
+    handleRuntimeToggle,
+    hasObjectClipboard,
+    pasteObject,
+    selectedObjectId,
+  ]);
 
   const handleTerrainSettingsChange = (settings: TerrainSettings) => {
     updateTerrainSettings(settings);
@@ -364,7 +387,7 @@ export const EditorHeader = () => {
       { label: 'Undo', shortcut: 'Ctrl+Z', icon: Undo, action: undo, disabled: !canUndo() },
       { label: 'Redo', shortcut: 'Ctrl+Y', icon: Redo, action: redo, disabled: !canRedo() },
       { label: '', divider: true },
-      { label: 'Cut', shortcut: 'Ctrl+X', icon: Copy, disabled: !selectedObjectId },
+      { label: 'Cut', shortcut: 'Ctrl+X', icon: Copy, action: () => selectedObjectId && cutObject(selectedObjectId), disabled: !selectedObjectId },
       { label: 'Copy', shortcut: 'Ctrl+C', icon: Copy, action: () => selectedObjectId && copyObject(selectedObjectId), disabled: !selectedObjectId },
       { label: 'Paste', shortcut: 'Ctrl+V', icon: Clipboard, action: () => pasteObject(), disabled: !canPasteObject },
       { label: 'Duplicate', shortcut: 'Ctrl+D', icon: Copy, action: () => selectedObjectId && duplicateObject(selectedObjectId), disabled: !selectedObjectId },
