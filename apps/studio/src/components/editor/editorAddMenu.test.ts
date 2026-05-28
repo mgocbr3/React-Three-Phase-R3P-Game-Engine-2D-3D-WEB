@@ -39,4 +39,12 @@ describe('editor add menu', () => {
 
     expect(getEditorAddObjectPosition('3d')).toBeUndefined();
   });
+
+  it('creates 3D objects at the current Scene pivot when available', () => {
+    const placement = {
+      threeEditor: { getAddObjectPosition: () => [1.25, 3.5, -6] },
+    } satisfies NonNullable<Parameters<typeof getEditorAddObjectPosition>[1]>;
+
+    expect(getEditorAddObjectPosition('3d', placement)).toEqual([1.25, 3.5, -6]);
+  });
 });

@@ -16,6 +16,25 @@ type ViewportGameLike = {
     getWorldPoint?: (x: number, y: number) => { x?: number; y?: number };
   } } }> };
 };
+type ViewportPlacementLike = ViewportGameLike & {
+  threeEditor?: { getAddObjectPosition?: () => [number, number, number] | undefined };
+};
+
+const getDefaultViewportPlacement = (): ViewportPlacementLike | null => {
+  if (typeof window === 'undefined') return null;
+  const runtime = window as Window & {
+    __pixlPhaserGame?: ViewportGameLike;
+    __pixlThreeEditor?: ViewportPlacementLike['threeEditor'];
+  };
+  return {
+    scene: runtime.__pixlPhaserGame?.scene,
+    threeEditor: runtime.__pixlThreeEditor,
+  };
+};
+
+const isPosition3 = (value: unknown): value is [number, number, number] => (
+  Array.isArray(value) && value.length === 3 && value.every((item) => Number.isFinite(item))
+);
 
 const primitives3d: AddMenuItem[] = [
   { kind: 'object', objectType: 'box', label: 'Cube' },
@@ -55,10 +74,12 @@ export const getEditorToolKind = (
 
 export const getEditorAddObjectPosition = (
   kind: SceneKind,
-  game: ViewportGameLike | null | undefined = typeof window === 'undefined'
-    ? null
-    : (window as Window & { __pixlPhaserGame?: ViewportGameLike }).__pixlPhaserGame,
+  game: ViewportPlacementLike | null | undefined = getDefaultViewportPlacement(),
 ): [number, number, number] | undefined => {
+  if (kind === '3d') {
+    const position = game?.threeEditor?.getAddObjectPosition?.();
+    return isPosition3(position) ? position : undefined;
+  }
   if (kind !== '2d') return undefined;
   const camera = game?.scene?.scenes?.[0]?.cameras?.main;
   const width = camera?.width ?? 800;

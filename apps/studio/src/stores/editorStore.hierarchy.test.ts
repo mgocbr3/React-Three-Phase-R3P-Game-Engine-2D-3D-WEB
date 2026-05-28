@@ -128,6 +128,16 @@ describe('editorStore hierarchy actions', () => {
     expect(useEditorStore.getState().history).toHaveLength(0);
   });
 
+  it('names added 3D box primitives like Unity cubes', () => {
+    useEditorStore.setState({ objects: [], history: [], historyIndex: -1 });
+
+    useEditorStore.getState().addObject('box', [1, 2, 3]);
+
+    const object = useEditorStore.getState().objects[0];
+    expect(object.name).toMatch(/^Cube_/);
+    expect(object.position).toEqual([1, 2, 3]);
+  });
+
   it('duplicates a hierarchy subtree with fresh object and component ids', () => {
     useEditorStore.setState({
       objects: [

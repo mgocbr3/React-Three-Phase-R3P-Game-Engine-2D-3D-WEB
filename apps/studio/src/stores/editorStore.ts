@@ -997,6 +997,7 @@ const getDefaultLogicSettings = (): LogicSettings => ({
 const getDefaultObject = (type: ObjectType, position: [number, number, number]): SceneObject => {
   const id = generateId();
   const baseName = ({
+    box: 'Cube',
     rectangle: 'Square',
     circle: 'Circle',
     text: 'Text',

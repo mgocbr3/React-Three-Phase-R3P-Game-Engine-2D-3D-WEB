@@ -60,6 +60,7 @@ const DEFAULT_SCENE: string | undefined = undefined; // let project.activeSceneI
 const HELPER_USER_DATA = { pixlEditorHelper: true };
 type SceneAxisView = 'x' | 'y' | 'z' | 'free';
 type SceneAxisPose = { position: [number, number, number]; up: [number, number, number] };
+type ThreeEditorPlacementApi = { getAddObjectPosition: () => [number, number, number] | undefined };
 
 const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => {
   const material = (object as THREE.LineSegments).material as THREE.Material | THREE.Material[] | undefined;
@@ -351,6 +352,26 @@ export function ThreeRuntimeMount({
     orbitControlsInstance.target?.copy?.(center);
     orbitControlsInstance.update?.();
   }, [camera, externalSelectedThree, focusTarget, orbitControlsInstance, selectedObjectId, threeScene]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !editorToolsEnabled) return;
+    const runtime = window as Window & { __pixlThreeEditor?: ThreeEditorPlacementApi };
+    const placementApi: ThreeEditorPlacementApi = {
+      getAddObjectPosition: () => {
+        const target = orbitControlsInstance?.target instanceof THREE.Vector3
+          ? orbitControlsInstance.target
+          : orbitTarget
+            ? new THREE.Vector3(orbitTarget.x, orbitTarget.y, orbitTarget.z)
+            : null;
+        if (!target) return undefined;
+        return [target.x, target.y, target.z];
+      },
+    };
+    runtime.__pixlThreeEditor = placementApi;
+    return () => {
+      if (runtime.__pixlThreeEditor === placementApi) delete runtime.__pixlThreeEditor;
+    };
+  }, [editorToolsEnabled, orbitControlsInstance, orbitTarget]);
 
   const commitNativeGizmoTransform = useCallback((object: THREE.Object3D, transform: ThreeObjectTransform) => {
     const objectId = getPixlObjectIdFromThreeObject(object) ?? selectedObjectId;
