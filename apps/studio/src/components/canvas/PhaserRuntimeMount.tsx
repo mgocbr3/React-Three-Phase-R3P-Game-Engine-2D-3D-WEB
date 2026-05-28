@@ -30,6 +30,18 @@ interface LoadState {
 }
 
 const DEFAULT_BASE_URL = '/sample-projects/sample-2d';
+const FALLBACK_VIEWPORT_SIZE = { width: 800, height: 600 };
+
+export const readPhaserViewportSize = (
+  host: Pick<HTMLElement, 'clientWidth' | 'clientHeight' | 'getBoundingClientRect'>,
+  fallback = FALLBACK_VIEWPORT_SIZE,
+) => {
+  const rect = host.getBoundingClientRect();
+  return {
+    width: Math.max(1, Math.round(rect.width || host.clientWidth || fallback.width)),
+    height: Math.max(1, Math.round(rect.height || host.clientHeight || fallback.height)),
+  };
+};
 
 const fetchPixlProject = async (baseUrl: string): Promise<{ scenes: unknown[]; activeSceneId: string }> => {
   const url = `${baseUrl.replace(/\/$/, '')}/project.pixlproject.json`;
@@ -305,6 +317,8 @@ export function PhaserRuntimeMount({
 
     let disposed = false;
     let resizeObserver: ResizeObserver | null = null;
+    let resizeRaf = 0;
+    let scheduleResize = () => {};
     autoFitBoundsRef.current = null;
     autoFitCameraRef.current = false;
     setLoad({ status: 'loading' });
@@ -314,6 +328,7 @@ export function PhaserRuntimeMount({
         const Phaser = (await import('phaser')) as unknown as typeof import('phaser');
         if (disposed) return;
         const fresh = await fetchPixlProject(assetBaseUrl);
+        if (disposed) return;
         // Merge autosaved edits ONTO the fresh sample (vs replacing wholesale).
         // The snapshot only preserves transform/visible/locked/name — render
         // data like `data.imageUrl` lives in the sample. Direct replacement
@@ -350,11 +365,12 @@ export function PhaserRuntimeMount({
         // The project doc can opt out via environment.pixelArt = false.
         const pixelArt = env.pixelArt !== false;
 
+        const initialSize = readPhaserViewportSize(container);
         gameRef.current = new Phaser.Game({
           type: Phaser.AUTO,
           parent: container,
-          width: container.clientWidth || 800,
-          height: container.clientHeight || 600,
+          width: initialSize.width,
+          height: initialSize.height,
           backgroundColor: bg,
           pixelArt,
           roundPixels: pixelArt,
@@ -1076,8 +1092,7 @@ export function PhaserRuntimeMount({
 
         const resizeGame = () => {
           if (!gameRef.current || disposed) return;
-          const width = container.clientWidth || 800;
-          const height = container.clientHeight || 600;
+          const { width, height } = readPhaserViewportSize(container);
           gameRef.current.scale.resize(width, height);
           const scene = gameRef.current.scene?.scenes?.[0] as import('phaser').Scene | undefined;
           if (autoFitCameraRef.current && autoFitBoundsRef.current && scene?.cameras?.main) {
@@ -1090,9 +1105,17 @@ export function PhaserRuntimeMount({
             canvas.style.height = '100%';
           }
         };
-        resizeObserver = new ResizeObserver(resizeGame);
+        scheduleResize = () => {
+          cancelAnimationFrame(resizeRaf);
+          resizeRaf = requestAnimationFrame(resizeGame);
+        };
+        resizeObserver = new ResizeObserver(scheduleResize);
         resizeObserver.observe(container);
-        requestAnimationFrame(resizeGame);
+        const dockPanel = container.closest('[data-dock-panel-id="viewport"]');
+        if (dockPanel) resizeObserver.observe(dockPanel);
+        window.addEventListener('resize', scheduleResize);
+        window.addEventListener('pointerup', scheduleResize);
+        scheduleResize();
 
         // Keyboard capture only works when the canvas can take focus and
         // is in fact focused. Phaser DOES listen on window by default, but
@@ -1151,7 +1174,10 @@ export function PhaserRuntimeMount({
 
     return () => {
       disposed = true;
+      cancelAnimationFrame(resizeRaf);
       resizeObserver?.disconnect();
+      window.removeEventListener('resize', scheduleResize);
+      window.removeEventListener('pointerup', scheduleResize);
       if (gameRef.current) {
         try { gameRef.current.destroy(true); } catch { /* ignore */ }
         gameRef.current = null;
