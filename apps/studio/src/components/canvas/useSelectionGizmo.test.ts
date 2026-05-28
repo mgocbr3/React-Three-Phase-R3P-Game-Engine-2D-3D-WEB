@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import {
   enlargeTransformPickerHitArea,
   findTransformPickerHitAxis,
+  getThreeObjectTransform,
+  hasThreeObjectTransformChanged,
   rayHitsTransformHelper,
   resolveSelectableObject,
 } from './useSelectionGizmo';
@@ -103,5 +105,27 @@ describe('resolveSelectableObject', () => {
 
     expect(rayHitsTransformHelper(raycaster, picker)).toBe(true);
     expect(findTransformPickerHitAxis(raycaster, picker)).toBe('Y');
+  });
+
+  it('serializes native gizmo transforms for the editor store', () => {
+    const object = new THREE.Object3D();
+    object.position.set(1, 2, 3);
+    object.rotation.set(0.1, 0.2, 0.3);
+    object.scale.set(2, 3, 4);
+
+    expect(getThreeObjectTransform(object)).toEqual({
+      position: [1, 2, 3],
+      rotation: [0.1, 0.2, 0.3],
+      scale: [2, 3, 4],
+    });
+    expect(hasThreeObjectTransformChanged(
+      { position: [1, 2, 3], rotation: [0.1, 0.2, 0.3], scale: [2, 3, 4] },
+      getThreeObjectTransform(object),
+    )).toBe(false);
+    object.position.x = 5;
+    expect(hasThreeObjectTransformChanged(
+      { position: [1, 2, 3], rotation: [0.1, 0.2, 0.3], scale: [2, 3, 4] },
+      getThreeObjectTransform(object),
+    )).toBe(true);
   });
 });

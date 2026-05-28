@@ -19,7 +19,7 @@
 // Per GDD §7, gameplay belongs in agent-written scripts that the runtime
 // hot-loads, NOT in the engine's React tree.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Game } from '@pixlland/three-runtime';
 import * as THREE from 'three';
@@ -28,7 +28,14 @@ import { useEditorStore } from '@/stores/editorStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 import { useOrbitControls } from './useOrbitControls';
-import { resolveSelectableObject, useSelectionGizmo, type GizmoMode } from './useSelectionGizmo';
+import {
+  getPixlObjectIdFromThreeObject,
+  hasThreeObjectTransformChanged,
+  resolveSelectableObject,
+  useSelectionGizmo,
+  type GizmoMode,
+  type ThreeObjectTransform,
+} from './useSelectionGizmo';
 
 export interface ThreeRuntimeMountProps {
   /** display: block when true, none when false. Both mounts live in the DOM. */
@@ -240,6 +247,16 @@ export function ThreeRuntimeMount({
     orbitControlsInstance.update?.();
   }, [camera, externalSelectedThree, focusTarget, orbitControlsInstance, selectedObjectId, threeScene]);
 
+  const commitNativeGizmoTransform = useCallback((object: THREE.Object3D, transform: ThreeObjectTransform) => {
+    const objectId = getPixlObjectIdFromThreeObject(object) ?? selectedObjectId;
+    if (!objectId) return;
+    const store = useEditorStore.getState();
+    const current = store.objects.find((item) => item.id === objectId);
+    if (!current || !hasThreeObjectTransformChanged(current, transform)) return;
+    store.updateObject(objectId, transform);
+    store.saveToHistory();
+  }, [selectedObjectId]);
+
   useSelectionGizmo({
     canvas: canvasEl,
     camera,
@@ -248,6 +265,7 @@ export function ThreeRuntimeMount({
     mode: effectiveGizmoMode,
     enabled: visible,
     externalSelected: externalSelectedThree,
+    onTransformCommit: commitNativeGizmoTransform,
   });
 
   useEffect(() => {

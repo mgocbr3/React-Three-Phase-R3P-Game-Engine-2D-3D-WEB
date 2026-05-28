@@ -7,9 +7,6 @@
 // OrbitControls is suspended while the gizmo is being dragged so the camera
 // doesn't fight the user.
 //
-// Persistence via @pixlland/engine-ops.object.setTransform is Phase 6B
-// step 5 — for now the mutation lives only on the local THREE scene.
-
 import { useEffect, useRef, useState } from 'react';
 
 import * as THREE from 'three';
@@ -17,6 +14,11 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 
 export type GizmoMode = 'translate' | 'rotate' | 'scale';
+export type ThreeObjectTransform = {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+};
 
 const TRANSFORM_PICKER_HIT_SCALE = 1.65;
 
@@ -41,7 +43,41 @@ export interface UseSelectionGizmoArgs {
    */
   externalSelected?: THREE.Object3D | null;
   onSelectionChange?: (object: THREE.Object3D | null) => void;
+  onTransformCommit?: (object: THREE.Object3D, transform: ThreeObjectTransform) => void;
 }
+
+export const getThreeObjectTransform = (object: THREE.Object3D): ThreeObjectTransform => ({
+  position: [object.position.x, object.position.y, object.position.z],
+  rotation: [object.rotation.x, object.rotation.y, object.rotation.z],
+  scale: [object.scale.x, object.scale.y, object.scale.z],
+});
+
+const tupleChanged = (
+  a: readonly number[],
+  b: readonly number[],
+  epsilon = 0.0001,
+): boolean => a.length !== b.length || a.some((value, index) => Math.abs(value - b[index]) > epsilon);
+
+export const hasThreeObjectTransformChanged = (
+  before: ThreeObjectTransform,
+  after: ThreeObjectTransform,
+): boolean => (
+  tupleChanged(before.position, after.position) ||
+  tupleChanged(before.rotation, after.rotation) ||
+  tupleChanged(before.scale, after.scale)
+);
+
+export const getPixlObjectIdFromThreeObject = (object: THREE.Object3D | null | undefined): string | null => {
+  const userData = object?.userData as {
+    pixlObjectId?: unknown;
+    pixlId?: unknown;
+    gameObjectID?: unknown;
+  } | undefined;
+  for (const value of [userData?.pixlObjectId, userData?.pixlId, userData?.gameObjectID]) {
+    if (typeof value === 'string' && value) return value;
+  }
+  return null;
+};
 
 export const resolveSelectableObject = (
   object: THREE.Object3D | null | undefined,
@@ -54,11 +90,7 @@ export const resolveSelectableObject = (
       pixlId?: unknown;
       gameObjectID?: unknown;
     };
-    if (
-      typeof userData.pixlObjectId === 'string' ||
-      typeof userData.pixlId === 'string' ||
-      typeof userData.gameObjectID === 'string'
-    ) {
+    if (getPixlObjectIdFromThreeObject(current)) {
       return current;
     }
     if (scene && current === scene) break;
@@ -126,10 +158,16 @@ export const useSelectionGizmo = ({
   enabled = true,
   externalSelected,
   onSelectionChange,
+  onTransformCommit,
 }: UseSelectionGizmoArgs): void => {
   const transformRef = useRef<TransformControls | null>(null);
+  const onTransformCommitRef = useRef(onTransformCommit);
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const [selected, setSelected] = useState<THREE.Object3D | null>(null);
+
+  useEffect(() => {
+    onTransformCommitRef.current = onTransformCommit;
+  }, [onTransformCommit]);
 
   // Set up the gizmo (created once per canvas/camera pair).
   useEffect(() => {
@@ -144,6 +182,9 @@ export const useSelectionGizmo = ({
 
     const onDraggingChanged = (event: { value: unknown }): void => {
       if (orbitControls) orbitControls.enabled = !event.value;
+      if (!event.value && transform.object) {
+        onTransformCommitRef.current?.(transform.object, getThreeObjectTransform(transform.object));
+      }
     };
     transform.addEventListener('dragging-changed', onDraggingChanged);
 
