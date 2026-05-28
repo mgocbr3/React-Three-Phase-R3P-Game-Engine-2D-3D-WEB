@@ -22,7 +22,7 @@ import {
   setFittedViewportCamera,
   type ViewportWorldBounds,
 } from './phaserRuler';
-import { Viewport2DOverlay } from './Viewport2DOverlay';
+import { VIEWPORT_2D_RULER_SIZE, Viewport2DOverlay } from './Viewport2DOverlay';
 
 export interface PhaserRuntimeMountProps {
   visible: boolean;
@@ -48,6 +48,16 @@ export const readPhaserViewportSize = (
     width: Math.max(1, Math.round(rect.width || host.clientWidth || fallback.width)),
     height: Math.max(1, Math.round(rect.height || host.clientHeight || fallback.height)),
   };
+};
+
+export const readEditorViewportPointer = (
+  host: Pick<HTMLElement, 'getBoundingClientRect'>,
+  clientX: number,
+  clientY: number,
+) => {
+  const rect = host.getBoundingClientRect();
+  const point = { x: clientX - (rect.left ?? 0), y: clientY - (rect.top ?? 0) };
+  return point.x < 0 || point.y < 0 || point.x > rect.width || point.y > rect.height ? null : point;
 };
 
 const fetchPixlProject = async (baseUrl: string): Promise<{ scenes: unknown[]; activeSceneId: string }> => {
@@ -1407,11 +1417,13 @@ export function PhaserRuntimeMount({
     if (!visible || isPlaying || load.status !== 'ready') return;
     const camera = getEditorCamera();
     if (!camera) return;
+    const host = containerRef.current;
+    const pointer = host ? readEditorViewportPointer(host, event.clientX, event.clientY) : null;
+    if (!pointer) return;
     autoFitCameraRef.current = false;
     event.preventDefault();
     event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const next = getWheelZoomCamera(camera, { x: event.clientX - rect.left, y: event.clientY - rect.top }, event.deltaY);
+    const next = getWheelZoomCamera(camera, pointer, event.deltaY);
     camera.setScroll(next.scrollX, next.scrollY);
     camera.setZoom(next.zoom);
   }, [getEditorCamera, isPlaying, load.status, visible]);
@@ -1419,6 +1431,8 @@ export function PhaserRuntimeMount({
   const handleEditorPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!visible || isPlaying || load.status !== 'ready' || (event.button !== 1 && event.button !== 2)) return;
     if (!getEditorCamera()) return;
+    const host = containerRef.current;
+    if (!host || !readEditorViewportPointer(host, event.clientX, event.clientY)) return;
     autoFitCameraRef.current = false;
     editorPanRef.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -1447,7 +1461,6 @@ export function PhaserRuntimeMount({
   return (
     <div
       data-runtime="phaser"
-      ref={containerRef}
       onWheel={handleEditorWheel}
       onPointerDown={handleEditorPointerDown}
       onPointerMove={handleEditorPointerMove}
@@ -1465,6 +1478,17 @@ export function PhaserRuntimeMount({
         overscrollBehavior: 'contain',
       }}
     >
+      <div
+        ref={containerRef}
+        style={{
+          position: 'absolute',
+          left: VIEWPORT_2D_RULER_SIZE,
+          top: VIEWPORT_2D_RULER_SIZE,
+          right: 0,
+          bottom: 0,
+          overflow: 'hidden',
+        }}
+      />
       {load.status !== 'ready' && (
         <div
           style={{

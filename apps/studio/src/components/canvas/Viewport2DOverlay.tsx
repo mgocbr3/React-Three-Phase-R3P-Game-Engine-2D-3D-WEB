@@ -6,7 +6,8 @@ type CameraLike = { scrollX: number; scrollY: number; zoom: number };
 type SceneLike = { cameras?: { main?: CameraLike }; input?: { activePointer?: { worldX?: number; worldY?: number } } };
 type PhaserGameLike = { scene?: { scenes?: SceneLike[] } };
 
-const RULER = 30;
+export const VIEWPORT_2D_RULER_SIZE = 30;
+const RULER = VIEWPORT_2D_RULER_SIZE;
 const TILE = 32;
 const MAJOR_EVERY = 4;
 
@@ -27,8 +28,8 @@ const fitCanvas = (canvas: HTMLCanvasElement) => {
 const drawGrid = (canvas: HTMLCanvasElement, camera: CameraLike) => {
   const { ctx, width, height } = fitCanvas(canvas);
   if (!ctx) return;
-  const sx = camera.scrollX + RULER / camera.zoom;
-  const sy = camera.scrollY + RULER / camera.zoom;
+  const sx = camera.scrollX;
+  const sy = camera.scrollY;
   const vertical = getViewportGridLines(sx, width, camera.zoom, TILE, MAJOR_EVERY);
   const horizontal = getViewportGridLines(sy, height, camera.zoom, TILE, MAJOR_EVERY);
 
@@ -94,8 +95,8 @@ export const Viewport2DOverlay = ({
       const camera = scene?.cameras?.main;
       if (camera && gridRef.current && topRef.current && leftRef.current) {
         drawGrid(gridRef.current, camera);
-        drawAxis(topRef.current, camera.scrollX + RULER / camera.zoom, camera.zoom);
-        drawAxis(leftRef.current, camera.scrollY + RULER / camera.zoom, camera.zoom, true);
+        drawAxis(topRef.current, camera.scrollX, camera.zoom);
+        drawAxis(leftRef.current, camera.scrollY, camera.zoom, true);
         const pointer = scene.input?.activePointer;
         if (typeof pointer?.worldX === 'number' && typeof pointer.worldY === 'number') {
           const next = `${formatPointerPosition(pointer.worldX, pointer.worldY)}  ${Math.round(camera.zoom * 100)}%`;
