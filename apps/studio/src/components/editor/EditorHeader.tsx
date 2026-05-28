@@ -145,6 +145,7 @@ export const EditorHeader = () => {
   const togglePreviewFullscreen = useRuntimeGameStore((s) => s.togglePreviewFullscreen);
   const panels = useEditorLayoutStore((s) => s.panels);
   const togglePanel = useEditorLayoutStore((s) => s.togglePanel);
+  const movePanelToZone = useEditorLayoutStore((s) => s.movePanelToZone);
   const showAllPanels = useEditorLayoutStore((s) => s.showAllPanels);
   const resetLayout = useEditorLayoutStore((s) => s.resetLayout);
   const applyLayoutPreset = useEditorLayoutStore((s) => s.applyPreset);
@@ -435,6 +436,8 @@ export const EditorHeader = () => {
       { label: panels.viewport ? 'Hide Scene View' : 'Show Scene View', icon: Monitor, action: () => togglePanel('viewport') },
       { label: panels.inspector ? 'Hide Inspector' : 'Show Inspector', icon: PanelLeft, action: () => togglePanel('inspector') },
       { label: panels.bottom ? 'Hide Project' : 'Show Project', icon: PanelBottom, action: () => togglePanel('bottom') },
+      { label: '', divider: true },
+      { label: 'Dock Project Below', icon: PanelBottom, action: () => movePanelToZone('bottom', 'bottom') },
       { label: '', divider: true },
       { label: 'Show All Panels', icon: LayoutGrid, action: showAllPanels },
       { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },

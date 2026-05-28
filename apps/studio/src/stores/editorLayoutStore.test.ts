@@ -60,6 +60,17 @@ describe('editorLayoutStore dock layout', () => {
     expect(state.dockOrder).toEqual(['bottom', 'scene', 'viewport', 'inspector']);
   });
 
+  it('restores the project panel below when Window shows it again', () => {
+    useEditorLayoutStore.getState().movePanelBefore('bottom', 'scene');
+    useEditorLayoutStore.getState().togglePanel('bottom');
+    useEditorLayoutStore.getState().togglePanel('bottom');
+
+    const state = useEditorLayoutStore.getState();
+    expect(state.panels.bottom).toBe(true);
+    expect(state.panelZones.bottom).toBe('bottom');
+    expect(state.dockOrder).toEqual(['scene', 'viewport', 'inspector', 'bottom']);
+  });
+
   it('shows every panel from Window without resetting the custom dock order', () => {
     useEditorLayoutStore.getState().movePanelToEnd('scene');
     useEditorLayoutStore.getState().setPanelVisible('viewport', false);

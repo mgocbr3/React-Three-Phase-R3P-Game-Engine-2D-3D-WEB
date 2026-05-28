@@ -54,6 +54,19 @@ export const normalizePanelZones = (zones?: Partial<PanelZones>): PanelZones => 
   ...zones,
 });
 
+const defaultPanelSlot = (panel: EditorPanelId) => defaultDockOrder.indexOf(panel);
+
+export const restoreDockPanel = (
+  dockOrder: EditorPanelId[] = [],
+  panelZones: Partial<PanelZones> | undefined,
+  panel: EditorPanelId,
+): { dockOrder: EditorPanelId[]; panelZones: PanelZones } => {
+  const order = normalizeDockOrder(dockOrder).filter((id) => id !== panel);
+  const insertAt = order.findIndex((id) => defaultPanelSlot(id) > defaultPanelSlot(panel));
+  order.splice(insertAt < 0 ? order.length : insertAt, 0, panel);
+  return { dockOrder: order, panelZones: { ...normalizePanelZones(panelZones), [panel]: defaultPanelZones[panel] } };
+};
+
 export const previewDockMove = (
   dockOrder: EditorPanelId[] = [],
   panelZones: Partial<PanelZones> | undefined,
@@ -98,10 +111,14 @@ export const useEditorLayoutStore = create<EditorLayoutState>()(
           preset: 'default',
         })),
       togglePanel: (panel) =>
-        set((state) => ({
-          panels: { ...state.panels, [panel]: !state.panels[panel] },
-          preset: 'default',
-        })),
+        set((state) => {
+          const visible = !state.panels[panel];
+          return {
+            panels: { ...state.panels, [panel]: visible },
+            ...(visible ? restoreDockPanel(state.dockOrder, state.panelZones, panel) : {}),
+            preset: 'default',
+          };
+        }),
       movePanelBefore: (panel, target) =>
         set((state) => {
           if (panel === target) return state;
