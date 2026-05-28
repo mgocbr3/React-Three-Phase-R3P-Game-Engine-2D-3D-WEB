@@ -28,7 +28,8 @@ describe('RuntimeGameFrame', () => {
     const html = buildRuntimeHtml(session);
 
     expect(html).toContain('<script type="importmap">');
-    expect(html).toContain('"three": "/node_modules/three/build/three.module.js"');
+    expect(html).toContain('"three": "/node_modules/.vite/deps/three.js"');
+    expect(html).not.toContain('three.module.js');
     expect(html).toContain('"three/": "/node_modules/three/"');
   });
 

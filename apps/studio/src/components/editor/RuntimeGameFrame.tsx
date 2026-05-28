@@ -33,7 +33,7 @@ const escapeJsonScriptValue = (value: string) => (
 
 const buildImportMap = () => `{
         "imports": {
-          "three": "/node_modules/three/build/three.module.js",
+          "three": "/node_modules/.vite/deps/three.js",
           "three/": "/node_modules/three/"
         }
       }`;

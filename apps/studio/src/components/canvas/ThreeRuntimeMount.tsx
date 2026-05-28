@@ -128,20 +128,39 @@ export const getThreeNativePixelRatio = (
 export const createThreeNativePostProcessingOptions = (
   settings: ThreeNativeRenderSettings,
   enabled = true,
-): RendererPostProcessingOptions => ({
-  enabled,
-  toneMapping: settings.toneMapping,
-  toneMappingExposure: num(settings.toneMappingExposure, 1.0),
-  bloom: settings.bloom,
-  bloomIntensity: clampNumber(num(settings.bloomIntensity, 0.18), 0, 0.25),
-  bloomThreshold: clampNumber(num(settings.bloomThreshold, 0.9), 0.88, 1),
-  bloomRadius: clampNumber(num(settings.bloomRadius, 0.24), 0, 0.35),
-  colorGrading: true,
-  brightness: settings.colorGrading ? num(settings.brightness, 0) : 0,
-  contrast: settings.colorGrading ? num(settings.contrast, 0.04) : 0.04,
-  saturation: settings.colorGrading ? num(settings.saturation, 0.02) : 0.02,
-  hue: settings.colorGrading ? num(settings.hue, 0) : 0,
-});
+): RendererPostProcessingOptions => {
+  if (!enabled) {
+    return {
+      enabled: false,
+      toneMapping: 'none',
+      toneMappingExposure: 1,
+      bloom: false,
+      bloomIntensity: 0,
+      bloomThreshold: 1,
+      bloomRadius: 0,
+      colorGrading: false,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      hue: 0,
+    };
+  }
+
+  return {
+    enabled,
+    toneMapping: settings.toneMapping,
+    toneMappingExposure: num(settings.toneMappingExposure, 1.0),
+    bloom: settings.bloom,
+    bloomIntensity: clampNumber(num(settings.bloomIntensity, 0.18), 0, 0.25),
+    bloomThreshold: clampNumber(num(settings.bloomThreshold, 0.9), 0.88, 1),
+    bloomRadius: clampNumber(num(settings.bloomRadius, 0.24), 0, 0.35),
+    colorGrading: true,
+    brightness: settings.colorGrading ? num(settings.brightness, 0) : 0,
+    contrast: settings.colorGrading ? num(settings.contrast, 0.04) : 0.04,
+    saturation: settings.colorGrading ? num(settings.saturation, 0.02) : 0.02,
+    hue: settings.colorGrading ? num(settings.hue, 0) : 0,
+  };
+};
 
 export const getThreeNativePostProcessingEffects = (
   options: RendererPostProcessingOptions,

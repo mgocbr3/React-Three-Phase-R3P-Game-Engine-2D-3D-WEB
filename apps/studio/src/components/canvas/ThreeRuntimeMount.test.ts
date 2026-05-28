@@ -66,6 +66,36 @@ describe('ThreeRuntimeMount', () => {
     expect(getThreeNativePostProcessingEffects({ ...options, enabled: false })).toBe('off');
   });
 
+  it('keeps the native 3D editor scene free of runtime post-processing', () => {
+    const options = createThreeNativePostProcessingOptions({
+      toneMapping: 'aces',
+      toneMappingExposure: 1.3,
+      bloom: true,
+      bloomIntensity: 0.4,
+      bloomThreshold: 0.85,
+      bloomRadius: 0.4,
+      colorGrading: true,
+      brightness: 0.2,
+      contrast: 0.2,
+      saturation: 0.2,
+      hue: 0.1,
+      dpr: 1,
+      maxDpr: 2,
+    }, false);
+
+    expect(options).toMatchObject({
+      enabled: false,
+      toneMapping: 'none',
+      toneMappingExposure: 1,
+      bloom: false,
+      colorGrading: false,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      hue: 0,
+    });
+  });
+
   it('caps native Three pixel ratio for the selected quality preset', () => {
     expect(getThreeNativePixelRatio({ dpr: 1.25, maxDpr: 2 }, 2)).toBe(2);
     expect(getThreeNativePixelRatio({ dpr: 0.5, maxDpr: 3 }, 2)).toBe(1);
