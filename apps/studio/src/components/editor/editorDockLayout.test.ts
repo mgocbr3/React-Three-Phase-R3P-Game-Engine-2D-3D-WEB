@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDockPanelSize } from './editorDockLayout';
+import { getDockPanelSize, resolveDockTargetFromRects } from './editorDockLayout';
 import { defaultDockOrder, type EditorPanelId } from '@/stores/editorLayoutStore';
 
 const totalDefaultSize = (ids: EditorPanelId[]) => (
@@ -19,5 +19,21 @@ describe('editorDockLayout', () => {
     const inspector = getDockPanelSize('inspector', ['viewport', 'inspector', 'bottom']).defaultSize;
 
     expect(viewport).toBeGreaterThan(inspector);
+  });
+
+  it('uses panel halves to resolve live dock preview targets', () => {
+    const panels = [
+      { id: 'scene', zone: 'main', left: 0, top: 64, width: 240, height: 520 },
+      { id: 'viewport', zone: 'main', left: 240, top: 64, width: 680, height: 520 },
+      { id: 'inspector', zone: 'main', left: 920, top: 64, width: 280, height: 520 },
+    ] as const;
+
+    expect(resolveDockTargetFromRects({ x: 260, y: 120, viewportHeight: 900, panels })).toBe('viewport');
+    expect(resolveDockTargetFromRects({ x: 890, y: 120, viewportHeight: 900, panels })).toBe('inspector');
+    expect(resolveDockTargetFromRects({ x: 1180, y: 120, viewportHeight: 900, panels })).toBe('main-end');
+  });
+
+  it('keeps a broad bottom magnet for docking panels below', () => {
+    expect(resolveDockTargetFromRects({ x: 700, y: 760, viewportHeight: 900, panels: [] })).toBe('bottom-end');
   });
 });

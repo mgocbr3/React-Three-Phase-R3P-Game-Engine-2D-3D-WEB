@@ -11,7 +11,7 @@ import { InspectorPanel } from '@/components/editor/InspectorPanel';
 import { BottomPanel } from '@/components/editor/BottomPanel';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockPanelSize } from '@/components/editor/editorDockLayout';
+import { getDockPanelSize, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -35,6 +35,7 @@ const isPanelId = (id: string): id is EditorPanelId => (
 
 const DockFrame = ({
   id,
+  zone,
   label,
   children,
   onClose,
@@ -44,6 +45,7 @@ const DockFrame = ({
   onPointerDown,
 }: {
   id: EditorPanelId;
+  zone: EditorDockZone;
   label: string;
   children: ReactNode;
   onClose: () => void;
@@ -55,6 +57,8 @@ const DockFrame = ({
   <div
     data-testid={`dock-panel-${id}`}
     data-dock-drop-target={id}
+    data-dock-panel-id={id}
+    data-dock-zone={zone}
     className={cn(
       'editor-dock editor-dock-outline relative flex h-full min-w-0 flex-col overflow-hidden transition-[border-color,box-shadow,opacity,transform] duration-150',
       dragging && 'scale-[0.995] opacity-60',
@@ -322,7 +326,15 @@ const EditorPage = () => {
 
   useEffect(() => {
     const resolveTarget = (x: number, y: number): EditorDockTarget | null => {
-      if (y > window.innerHeight - Math.max(170, window.innerHeight * 0.34)) return 'bottom-end';
+      const panelRects = [...document.querySelectorAll<HTMLElement>('[data-dock-panel-id]')].flatMap((el): DockPanelRect[] => {
+        const id = el.dataset.dockPanelId;
+        const zone = el.dataset.dockZone;
+        if (!id || !zone || !isPanelId(id) || (zone !== 'main' && zone !== 'bottom')) return [];
+        const rect = el.getBoundingClientRect();
+        return [{ id, zone, left: rect.left, top: rect.top, width: rect.width, height: rect.height }];
+      });
+      const geometric = resolveDockTargetFromRects({ x, y, viewportHeight: window.innerHeight, panels: panelRects });
+      if (geometric) return geometric;
       const raw = document.elementFromPoint(x, y)
         ?.closest<HTMLElement>('[data-dock-drop-target]')
         ?.dataset.dockDropTarget;
@@ -406,6 +418,7 @@ const EditorPage = () => {
               <ResizablePanel id={`${zone}-${id}`} order={index} {...size}>
                 <DockFrame
                   id={id}
+                  zone={zone}
                   label={dockContent[id].label}
                   onClose={() => setPanelVisible(id, false)}
                   dragging={draggedDock === id}
