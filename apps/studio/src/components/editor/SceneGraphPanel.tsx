@@ -213,6 +213,60 @@ const ContextMenu = ({ x, y, object, onClose, onRename, onCopy, onCut, onPasteAs
   );
 };
 
+interface SceneRootContextMenuProps {
+  x: number;
+  y: number;
+  onClose: () => void;
+  onPasteToRoot: () => void;
+  canPasteObject: boolean;
+}
+
+const SceneRootContextMenu = ({ x, y, onClose, onPasteToRoot, canPasteObject }: SceneRootContextMenuProps) => {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={menuRef}
+      className="editor-menu-dropdown fixed z-50 w-52 py-1.5"
+      style={{
+        left: `${x}px`,
+        top: `${y}px`,
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+      }}
+    >
+      {canPasteObject ? (
+        <button
+          onClick={() => { onPasteToRoot(); onClose(); }}
+          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        >
+          <Clipboard className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground">Colar na raiz</span>
+        </button>
+      ) : (
+        <div className="px-3 py-2 text-[13px] text-muted-foreground">Clipboard vazio</div>
+      )}
+    </div>
+  );
+};
+
 const getTypeColor = (type: ObjectType): string => {
   return 'text-muted-foreground';
 };
@@ -586,13 +640,15 @@ const SceneObjectItem = ({
 };
 
 export const SceneGraphPanel = () => {
-  const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, reparentObject, reorderObject, deleteObject } = useEditorStore();
+  const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, reparentObject, reorderObject, deleteObject, pasteObject, hasObjectClipboard } = useEditorStore();
   const [expanded, setExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRootDropTarget, setIsRootDropTarget] = useState(false);
+  const [rootContextMenu, setRootContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [pointerDrag, setPointerDrag] = useState<ScenePointerDrag | null>(null);
   const suppressNextRootClickRef = useRef(false);
   const query = searchQuery.trim().toLowerCase();
+  const canPasteObject = hasObjectClipboard();
 
   const childrenByParent = useMemo(() => {
     const byParent = new Map<string, SceneObject[]>();
@@ -701,8 +757,24 @@ export const SceneGraphPanel = () => {
     setIsRootDropTarget(false);
   };
 
+  const handleRootContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setRootContextMenu({ x: event.clientX, y: event.clientY });
+  };
+
   return (
     <div className="editor-dock editor-dock-outline w-full h-full border-r flex flex-col overflow-hidden">
+      {rootContextMenu && (
+        <SceneRootContextMenu
+          x={rootContextMenu.x}
+          y={rootContextMenu.y}
+          onClose={() => setRootContextMenu(null)}
+          onPasteToRoot={() => pasteObject(null)}
+          canPasteObject={canPasteObject}
+        />
+      )}
+
       {/* Header */}
       <div className="panel-header">
         <div className="flex items-center gap-1">
@@ -753,6 +825,7 @@ export const SceneGraphPanel = () => {
             onPointerMove={handleRootPointerMove}
             onPointerLeave={() => setIsRootDropTarget(false)}
             onPointerUp={handleRootPointerUp}
+            onContextMenu={handleRootContextMenu}
           >
             {expanded ? (
               <ChevronDown className="w-3 h-3 text-muted-foreground" />

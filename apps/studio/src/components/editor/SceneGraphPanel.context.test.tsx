@@ -49,4 +49,19 @@ describe('SceneGraphPanel context menu', () => {
     expect(pastedChild?.parentId).toBe(pastedRoot?.id);
     expect(useEditorStore.getState().selectedObjectId).toBe(pastedRoot?.id);
   });
+
+  it('pastes the copied object subtree at the scene root from the root context menu', () => {
+    useEditorStore.getState().copyObject('child');
+
+    render(<SceneGraphPanel />);
+
+    fireEvent.contextMenu(screen.getByTestId('scene-root-drop-target'));
+    fireEvent.click(screen.getByRole('button', { name: 'Colar na raiz' }));
+
+    const objects = useEditorStore.getState().objects;
+    const pastedChild = objects.find((object) => object.name === 'child_copy');
+
+    expect(pastedChild?.parentId).toBeNull();
+    expect(useEditorStore.getState().selectedObjectId).toBe(pastedChild?.id);
+  });
 });
