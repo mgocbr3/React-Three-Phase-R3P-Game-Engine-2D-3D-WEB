@@ -161,6 +161,23 @@ export const getThreeSceneAxisView = (
   return { position: [position.x, position.y, position.z], up: ups[axis] };
 };
 
+export const getThreeAddObjectPosition = (
+  pivot: THREE.Vector3 | null | undefined,
+  camera: THREE.Camera | null | undefined,
+  distance = 6,
+): [number, number, number] | undefined => {
+  if (pivot && Number.isFinite(pivot.x) && Number.isFinite(pivot.y) && Number.isFinite(pivot.z)) {
+    return [pivot.x, pivot.y, pivot.z];
+  }
+  if (!camera) return undefined;
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+  if (!Number.isFinite(direction.lengthSq()) || direction.lengthSq() < 0.0001) return undefined;
+  const safeDistance = Math.max(1, Number.isFinite(distance) ? distance : 6);
+  const position = camera.position.clone().addScaledVector(direction.normalize(), safeDistance);
+  return [position.x, position.y, position.z];
+};
+
 export const createThreeEditorSceneHelpers = ({
   showGrid,
   showAxes,
@@ -363,15 +380,14 @@ export function ThreeRuntimeMount({
           : orbitTarget
             ? new THREE.Vector3(orbitTarget.x, orbitTarget.y, orbitTarget.z)
             : null;
-        if (!target) return undefined;
-        return [target.x, target.y, target.z];
+        return getThreeAddObjectPosition(target, camera);
       },
     };
     runtime.__pixlThreeEditor = placementApi;
     return () => {
       if (runtime.__pixlThreeEditor === placementApi) delete runtime.__pixlThreeEditor;
     };
-  }, [editorToolsEnabled, orbitControlsInstance, orbitTarget]);
+  }, [camera, editorToolsEnabled, orbitControlsInstance, orbitTarget]);
 
   const commitNativeGizmoTransform = useCallback((object: THREE.Object3D, transform: ThreeObjectTransform) => {
     const objectId = getPixlObjectIdFromThreeObject(object) ?? selectedObjectId;

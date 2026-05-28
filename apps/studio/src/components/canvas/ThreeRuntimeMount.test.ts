@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {
   createThreeEditorSceneHelpers,
   getEditorObjectIdForNativeSelection,
+  getThreeAddObjectPosition,
   getThreeSceneAxisView,
   getThreeEditorGridConfig,
   shouldEnableThreeEditorTools,
@@ -47,5 +48,19 @@ describe('ThreeRuntimeMount', () => {
       position: [1, 2, 13],
       up: [0, 1, 0],
     });
+  });
+
+  it('creates 3D objects at the orbit pivot or in front of the scene camera', () => {
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(0, 4, 10);
+    camera.lookAt(0, 1, 0);
+    camera.updateMatrixWorld();
+
+    expect(getThreeAddObjectPosition(new THREE.Vector3(2, 3, 4), camera)).toEqual([2, 3, 4]);
+
+    const position = getThreeAddObjectPosition(null, camera, 7);
+    expect(position).not.toBeUndefined();
+    expect(position?.[1]).toBeCloseTo(1.99, 2);
+    expect(position?.[2]).toBeCloseTo(3.30, 2);
   });
 });
