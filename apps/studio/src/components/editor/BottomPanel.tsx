@@ -691,7 +691,7 @@ export const BottomPanel = () => {
                   ? 'active' 
                   : 'text-muted-foreground',
                 draggedTab === tab.id && 'opacity-55',
-                tabDropTarget === tab.id && 'shadow-[inset_2px_0_0_hsl(var(--primary))]'
+                tabDropTarget === tab.id && 'shadow-[inset_2px_0_0_var(--editor-command-highlight)]'
               )}
             >
               <button
@@ -753,8 +753,8 @@ export const BottomPanel = () => {
             onDragLeave={() => setTabDropTarget((target) => target === 'end' ? null : target)}
             onDrop={handleTabDropEnd}
             className={cn(
-              'ml-1 h-7 w-10 border border-dashed border-primary/45 bg-primary/5 transition-colors',
-              tabDropTarget === 'end' && 'border-solid bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]'
+              'ml-1 h-7 w-10 border border-dashed border-[var(--editor-border-light)] bg-[rgba(38,38,38,0.4)] transition-colors',
+              tabDropTarget === 'end' && 'border-solid bg-[var(--editor-command-active)] shadow-[inset_0_0_0_1px_var(--editor-command-highlight)]'
             )}
             title="Solte aqui para mover a aba ao fim"
           />
@@ -843,12 +843,12 @@ export const BottomPanel = () => {
               onDoubleClick={() => setContentBrowserSidebarWidth(CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH)}
               className={cn(
                 'group relative z-10 h-full w-2 shrink-0 cursor-col-resize border-l border-r border-border bg-[var(--editor-panel-header)] touch-none transition-colors hover:bg-[var(--editor-row-hover)]',
-                isResizingFolderTree && 'bg-primary/25 border-primary/50'
+                isResizingFolderTree && 'border-[var(--editor-border-light)] bg-[var(--editor-command-active)]'
               )}
             >
               <div className={cn(
-                'absolute left-1/2 top-1/2 h-10 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground/25 transition-colors group-hover:bg-primary/70',
-                isResizingFolderTree && 'bg-primary'
+                'absolute left-1/2 top-1/2 h-10 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground/25 transition-colors group-hover:bg-foreground/70',
+                isResizingFolderTree && 'bg-foreground'
               )} />
             </div>
 
@@ -951,7 +951,7 @@ export const BottomPanel = () => {
                             onDragStart={(event) => handleDragStart(event, asset.name, asset.url, asset.type, asset.thumbnail, asset.id, asset.path)}
                             onDragEnd={handleDragEnd}
                             data-asset-id={asset.id}
-                            className="group relative flex h-[126px] min-w-0 cursor-pointer flex-col border border-border bg-[var(--editor-panel-raised)] p-2 transition-colors hover:border-primary/50 hover:bg-[var(--editor-row-hover)]"
+                            className="group relative flex h-[126px] min-w-0 cursor-pointer flex-col border border-border bg-[var(--editor-panel-raised)] p-2 transition-colors hover:border-[var(--editor-border-light)] hover:bg-[var(--editor-row-hover)]"
                             title={`${asset.name}\n${asset.url}`}
                           >
                             <AssetPreview asset={asset} />

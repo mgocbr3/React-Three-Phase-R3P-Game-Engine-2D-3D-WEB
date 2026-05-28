@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm text-sm font-medium ring-offset-background transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)]",
+        default: "border border-[var(--editor-command-border)] bg-[var(--editor-command)] text-foreground hover:bg-[var(--editor-command-hover)] active:bg-[var(--editor-command-active)]",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:border-primary",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-[0_0_20px_hsl(var(--secondary)/0.3)]",
+        outline: "border border-[var(--editor-border-light)] bg-transparent text-foreground hover:bg-[var(--editor-command-hover)]",
+        secondary: "border border-[var(--editor-command-border)] bg-[var(--editor-panel-raised)] text-foreground hover:bg-[var(--editor-row-hover)]",
         ghost: "hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        neon: "relative bg-gradient-to-r from-primary to-secondary text-primary-foreground font-display uppercase tracking-wider shadow-[0_0_25px_hsl(var(--primary)/0.5),0_0_50px_hsl(var(--secondary)/0.3)] hover:shadow-[0_0_35px_hsl(var(--primary)/0.7),0_0_70px_hsl(var(--secondary)/0.5)] hover:scale-105",
-        glass: "bg-card/60 backdrop-blur-xl border border-white/10 text-foreground hover:bg-card/80 hover:border-white/20",
+        neon: "border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] text-foreground hover:bg-[var(--editor-command-hover)]",
+        glass: "border border-[var(--editor-border-light)] bg-[var(--editor-panel-raised)] text-foreground hover:bg-[var(--editor-row-hover)]",
       },
       size: {
         default: "h-10 px-4 py-2",

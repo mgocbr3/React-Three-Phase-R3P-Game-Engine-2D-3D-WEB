@@ -49,12 +49,12 @@ const DockEndDrop = ({
     data-dock-drop-target={target}
     className={cn(
       'relative flex h-full shrink-0 items-center justify-center overflow-hidden border-l transition-[width,background,opacity] duration-150',
-      dragging ? 'w-14 border-primary/50 bg-primary/10 opacity-100' : 'w-2 border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]/70 opacity-40',
-      active && 'bg-primary/25 shadow-[inset_0_0_0_2px_hsl(var(--primary)),0_0_24px_rgba(75,160,255,0.32)]'
+      dragging ? 'w-14 border-[var(--editor-border-light)] bg-[var(--editor-command)] opacity-100' : 'w-2 border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]/70 opacity-40',
+      active && 'bg-[var(--editor-command-active)] shadow-[inset_0_0_0_2px_var(--editor-command-highlight),0_10px_24px_rgba(0,0,0,0.32)]'
     )}
     title={label}
   >
-    {dragging && <span className="rotate-90 whitespace-nowrap text-[10px] font-semibold text-primary/90">{label}</span>}
+    {dragging && <span className="rotate-90 whitespace-nowrap text-[10px] font-semibold text-foreground">{label}</span>}
   </div>
 );
 
@@ -67,8 +67,8 @@ const DockBottomMagnet = ({
     data-testid="dock-bottom-magnet"
     data-dock-drop-target="bottom-end"
     className={cn(
-      'pointer-events-none absolute bottom-3 left-3 right-3 z-50 flex h-[34%] min-h-36 items-center justify-center border-2 border-dashed border-primary/55 bg-[#121212]/88 text-xs font-semibold text-primary shadow-[0_0_28px_rgba(75,160,255,0.22)] backdrop-blur-sm transition-all duration-150',
-      active && 'h-[38%] border-solid border-primary bg-primary/15 shadow-[0_0_34px_rgba(75,160,255,0.45)]'
+      'pointer-events-none absolute bottom-3 left-3 right-3 z-50 flex h-[34%] min-h-36 items-center justify-center border-2 border-dashed border-[var(--editor-border-light)] bg-[#121212]/92 text-xs font-semibold text-foreground shadow-[0_12px_30px_rgba(0,0,0,0.45)] transition-all duration-150',
+      active && 'h-[38%] border-solid bg-[rgba(61,61,61,0.45)] shadow-[0_16px_36px_rgba(0,0,0,0.55)]'
     )}
   >
     Solte aqui para encaixar embaixo
@@ -86,12 +86,12 @@ const DockDragGhost = ({
 }) => (
   <div
     data-testid="dock-drag-ghost"
-    className="pointer-events-none fixed z-[70] h-[76px] w-56 overflow-hidden border border-primary/70 bg-[#1f1f1f]/95 text-foreground shadow-[0_12px_34px_rgba(0,0,0,0.46),0_0_24px_rgba(75,160,255,0.22)] backdrop-blur-sm transition-[left,top,opacity,transform] duration-100 ease-out"
+    className="pointer-events-none fixed z-[70] h-[76px] w-56 overflow-hidden border border-[var(--editor-border-light)] bg-[#1f1f1f]/95 text-foreground shadow-[0_12px_34px_rgba(0,0,0,0.52)] transition-[left,top,opacity,transform] duration-100 ease-out"
     style={{ left: position.left, top: position.top }}
   >
     <div className="panel-header h-7 px-2 text-xs font-semibold">{label}</div>
     <div className="flex h-[48px] items-center px-2.5 text-[11px] text-muted-foreground">
-      <span className="border border-primary/50 bg-primary/10 px-2 py-1 text-primary">{targetLabel}</span>
+      <span className="border border-[var(--editor-border-light)] bg-[var(--editor-command)] px-2 py-1 text-foreground">{targetLabel}</span>
     </div>
   </div>
 );
@@ -99,7 +99,7 @@ const DockDragGhost = ({
 const DockDropPreview = ({ rect }: { rect: { left: number; top: number; width: number; height: number } }) => (
   <div
     data-testid="dock-drop-preview"
-    className="pointer-events-none fixed z-[68] border-2 border-primary/85 bg-primary/[0.12] shadow-[0_0_22px_rgba(75,160,255,0.72)] transition-[left,top,width,height,opacity] duration-100 ease-out"
+    className="pointer-events-none fixed z-[68] border-2 border-[var(--editor-command-highlight)] bg-[rgba(61,61,61,0.18)] shadow-[0_12px_28px_rgba(0,0,0,0.46)] transition-[left,top,width,height,opacity] duration-100 ease-out"
     style={rect}
   />
 );

@@ -62,14 +62,14 @@ export const DockFrame = ({
       'editor-dock relative flex h-full min-w-0 flex-col overflow-hidden transition-[border-color,box-shadow,opacity,transform] duration-150',
       !chromeHidden && 'editor-dock-outline',
       dragging && 'scale-[0.995] opacity-60',
-      draggingAny && !dragging && 'shadow-[inset_0_0_0_1px_rgba(80,155,255,0.18)]',
-      dropActive && 'border-primary/80 bg-primary/[0.03] shadow-[inset_0_0_0_2px_hsl(var(--primary)),0_0_24px_rgba(75,160,255,0.28)]',
+      draggingAny && !dragging && 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]',
+      dropActive && 'border-[var(--editor-border-light)] bg-[rgba(61,61,61,0.08)] shadow-[inset_0_0_0_2px_var(--editor-command-highlight),0_12px_24px_rgba(0,0,0,0.35)]',
     )}
   >
     {dropActive && (
       <div
         data-testid={`dock-drop-before-${id}`}
-        className="pointer-events-none absolute inset-1 z-30 border-2 border-primary/80 bg-primary/10 shadow-[0_0_18px_rgba(75,160,255,0.75)]"
+        className="pointer-events-none absolute inset-1 z-30 border-2 border-[var(--editor-command-highlight)] bg-[rgba(61,61,61,0.18)] shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
       />
     )}
     {!chromeHidden && (
