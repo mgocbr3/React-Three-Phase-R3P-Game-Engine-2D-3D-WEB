@@ -180,6 +180,7 @@ export function ThreeRuntimeMount({
   // appeared to do nothing in the native engine path because the props chain
   // didn't reach this component.
   const storeTransformMode = useEditorStore((state) => state.transformMode);
+  const transformSpace = useEditorStore((state) => state.transformSpace);
   const snapEnabled = useEditorStore((state) => state.snapEnabled);
   const snapTranslate = useEditorStore((state) => state.snapTranslate);
   const snapRotate = useEditorStore((state) => state.snapRotate);
@@ -267,6 +268,7 @@ export function ThreeRuntimeMount({
     scene: threeScene,
     orbitControls: orbitControlsInstance,
     mode: effectiveGizmoMode,
+    space: transformSpace,
     enabled: visible,
     externalSelected: externalSelectedThree,
     onTransformCommit: commitNativeGizmoTransform,

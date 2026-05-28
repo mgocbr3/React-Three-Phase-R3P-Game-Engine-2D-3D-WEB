@@ -5,6 +5,7 @@ import {
   enlargeTransformPickerHitArea,
   findTransformPickerHitAxis,
   getNativeGizmoSnapConfig,
+  getNativeGizmoTransformSpace,
   getThreeObjectTransform,
   hasThreeObjectTransformChanged,
   rayHitsTransformHelper,
@@ -152,5 +153,11 @@ describe('resolveSelectableObject', () => {
       rotation: null,
       scale: null,
     });
+  });
+
+  it('normalizes editor transform space for native TransformControls', () => {
+    expect(getNativeGizmoTransformSpace('local')).toBe('local');
+    expect(getNativeGizmoTransformSpace('world')).toBe('world');
+    expect(getNativeGizmoTransformSpace(undefined)).toBe('world');
   });
 });

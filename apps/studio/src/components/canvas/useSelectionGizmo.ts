@@ -14,6 +14,7 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 
 export type GizmoMode = 'translate' | 'rotate' | 'scale';
+export type NativeGizmoSpace = 'world' | 'local';
 export type ThreeObjectTransform = {
   position: [number, number, number];
   rotation: [number, number, number];
@@ -41,6 +42,7 @@ export interface UseSelectionGizmoArgs {
   /** Pass `window.__pixlOrbitControls` once present — auto-suspends during drag. */
   orbitControls?: OrbitControls | null;
   mode?: GizmoMode;
+  space?: NativeGizmoSpace;
   enabled?: boolean;
   /**
    * Externally-driven selection (e.g. the editor's hierarchy panel sets this
@@ -70,6 +72,10 @@ export const getNativeGizmoSnapConfig = ({
     scale: validSnap(snapScale),
   };
 };
+
+export const getNativeGizmoTransformSpace = (
+  space: NativeGizmoSpace | null | undefined,
+): NativeGizmoSpace => (space === 'local' ? 'local' : 'world');
 
 export const getThreeObjectTransform = (object: THREE.Object3D): ThreeObjectTransform => ({
   position: [object.position.x, object.position.y, object.position.z],
@@ -180,6 +186,7 @@ export const useSelectionGizmo = ({
   scene,
   orbitControls,
   mode = 'translate',
+  space = 'world',
   enabled = true,
   externalSelected,
   onSelectionChange,
@@ -230,6 +237,12 @@ export const useSelectionGizmo = ({
     if (!t) return;
     t.setMode(mode);
   }, [mode]);
+
+  useEffect(() => {
+    const t = transformRef.current;
+    if (!t) return;
+    t.setSpace(getNativeGizmoTransformSpace(space));
+  }, [space]);
 
   useEffect(() => {
     const t = transformRef.current;
