@@ -11,7 +11,7 @@ import { BottomPanel } from '@/components/editor/BottomPanel';
 import { DockFrame } from '@/components/editor/DockFrame';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockRowKey, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -406,7 +406,7 @@ const EditorPage = () => {
     : null;
   const renderDockRow = (ids: EditorPanelId[], zone: EditorDockZone) => (
     ids.length ? (
-      <ResizablePanelGroup direction="horizontal" className="h-full">
+      <ResizablePanelGroup key={getDockRowKey(zone, ids)} direction="horizontal" className="h-full">
         {ids.map((id, index) => {
           const size = getDockPanelSize(id, ids);
           return (

@@ -41,10 +41,13 @@ export const getDockPanelLabels = (sceneKind: SceneKind): Record<EditorPanelId, 
 export const getDockPanelSize = (id: EditorPanelId, visibleIds: EditorPanelId[]) => {
   const total = visibleIds.reduce((sum, panel) => sum + weight(panel), 0) || weight(id);
   const only = visibleIds.length <= 1;
+  const defaultSize = only ? 100 : (weight(id) / total) * 100;
+  const minSize = only ? 100 : id === 'viewport' ? 30 : 12;
+  const maxSize = only ? 100 : id === 'viewport' ? 80 : 45;
   return {
-    defaultSize: only ? 100 : (weight(id) / total) * 100,
-    minSize: only ? 100 : id === 'viewport' ? 30 : 12,
-    maxSize: only ? 100 : id === 'viewport' ? 80 : 45,
+    defaultSize,
+    minSize: Math.min(minSize, defaultSize),
+    maxSize: Math.max(maxSize, defaultSize),
   };
 };
 
@@ -58,6 +61,10 @@ export const getDockZoneLayout = (mainIds: EditorPanelId[], bottomIds: EditorPan
     bottomDefaultSize: showBottom ? (showMain ? 28 : 100) : 0,
   };
 };
+
+export const getDockRowKey = (zone: EditorDockZone, ids: readonly EditorPanelId[]) => (
+  `${zone}:${ids.join('|') || 'empty'}`
+);
 
 export const resolveDockTargetFromRects = ({
   x,

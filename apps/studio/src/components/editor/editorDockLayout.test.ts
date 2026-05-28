@@ -5,6 +5,7 @@ import {
   getDockDragGhostPosition,
   getDockPanelLabels,
   getDockPanelSize,
+  getDockRowKey,
   getDockZoneLayout,
   resolveDockTargetFromRects,
 } from './editorDockLayout';
@@ -29,6 +30,30 @@ describe('editorDockLayout', () => {
     expect(totalDefaultSize(defaultDockOrder)).toBeCloseTo(100);
     expect(totalDefaultSize(['viewport', 'inspector', 'bottom'])).toBeCloseTo(100);
     expect(totalDefaultSize(['viewport'])).toBe(100);
+  });
+
+  it('keeps dock panel size constraints valid for every row mix', () => {
+    const rows: EditorPanelId[][] = [
+      ['scene', 'inspector'],
+      ['bottom', 'inspector'],
+      ['scene', 'bottom'],
+      ['viewport', 'inspector'],
+      defaultDockOrder,
+    ];
+
+    rows.flatMap((ids) => ids.map((id) => getDockPanelSize(id, ids))).forEach((size) => {
+      expect(size.defaultSize).toBeGreaterThanOrEqual(size.minSize);
+      expect(size.defaultSize).toBeLessThanOrEqual(size.maxSize);
+    });
+  });
+
+  it('changes dock row keys when live drag preview moves panels between rows', () => {
+    expect(getDockRowKey('main', ['scene', 'viewport', 'inspector'])).not.toBe(
+      getDockRowKey('main', ['scene', 'viewport']),
+    );
+    expect(getDockRowKey('bottom', ['bottom'])).not.toBe(
+      getDockRowKey('bottom', ['bottom', 'inspector']),
+    );
   });
 
   it('keeps the scene view dominant when side panels are visible', () => {
