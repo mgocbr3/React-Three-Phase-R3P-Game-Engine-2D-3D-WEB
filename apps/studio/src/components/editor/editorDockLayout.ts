@@ -70,12 +70,13 @@ export const resolveDockTargetFromRects = ({
   viewportHeight: number;
   panels: readonly DockPanelRect[];
 }): EditorDockTarget | null => {
-  if (y > viewportHeight - Math.max(170, viewportHeight * 0.34)) return 'bottom-end';
   const hit = panels.find((p) => x >= p.left && x <= p.left + p.width && y >= p.top && y <= p.top + p.height);
-  if (!hit) return null;
-  if (x < hit.left + hit.width / 2) return hit.id;
-  const row = panels.filter((p) => p.zone === hit.zone && y >= p.top && y <= p.top + p.height).sort((a, b) => a.left - b.left);
-  return row.find((p) => p.left > hit.left)?.id ?? (hit.zone === 'bottom' ? 'bottom-end' : 'main-end');
+  if (hit) {
+    if (x < hit.left + hit.width / 2) return hit.id;
+    const row = panels.filter((p) => p.zone === hit.zone && y >= p.top && y <= p.top + p.height).sort((a, b) => a.left - b.left);
+    return row.find((p) => p.left > hit.left)?.id ?? (hit.zone === 'bottom' ? 'bottom-end' : 'main-end');
+  }
+  return y > viewportHeight - Math.max(170, viewportHeight * 0.34) ? 'bottom-end' : null;
 };
 
 export const getDockDragGhostPosition = ({

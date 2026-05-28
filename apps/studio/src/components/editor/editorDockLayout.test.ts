@@ -69,6 +69,16 @@ describe('editorDockLayout', () => {
     expect(resolveDockTargetFromRects({ x: 700, y: 760, viewportHeight: 900, panels: [] })).toBe('bottom-end');
   });
 
+  it('still resolves panel slots inside the bottom dock row', () => {
+    const panels = [
+      { id: 'viewport', zone: 'main', left: 0, top: 64, width: 900, height: 520 },
+      { id: 'bottom', zone: 'bottom', left: 0, top: 600, width: 900, height: 260 },
+    ] as const;
+
+    expect(resolveDockTargetFromRects({ x: 120, y: 720, viewportHeight: 900, panels })).toBe('bottom');
+    expect(resolveDockTargetFromRects({ x: 760, y: 720, viewportHeight: 900, panels })).toBe('bottom-end');
+  });
+
   it('keeps the floating dock preview inside the viewport', () => {
     expect(getDockDragGhostPosition({ x: 900, y: 680, viewportWidth: 960, viewportHeight: 720 })).toEqual({
       left: 724,
