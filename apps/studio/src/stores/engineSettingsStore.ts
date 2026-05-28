@@ -203,16 +203,16 @@ const defaultSettings: EngineSettings = {
   maxDpr: 2,
   frameloop: 'always',
   
-  // Post-Processing - Basic — ULTRA REALISM defaults (all on)
+  // Post-Processing - Basic
   bloom: true,
-  bloomIntensity: 0.6,
-  bloomThreshold: 0.85,
-  bloomRadius: 0.5,
-  vignette: true,
-  vignetteIntensity: 0.4,
-  vignetteOffset: 0.3,
-  noise: true,
-  noiseIntensity: 0.04,
+  bloomIntensity: 0.18,
+  bloomThreshold: 0.9,
+  bloomRadius: 0.24,
+  vignette: false,
+  vignetteIntensity: 0,
+  vignetteOffset: 0.5,
+  noise: false,
+  noiseIntensity: 0,
 
   // Post-Processing - Advanced — HBAO on by default
   ssao: true,
@@ -232,10 +232,10 @@ const defaultSettings: EngineSettings = {
   motionBlurSamples: 16,
   
   // Color Grading
-  colorGrading: false,
+  colorGrading: true,
   brightness: 0,
-  contrast: 0,
-  saturation: 0,
+  contrast: 0.04,
+  saturation: 0.02,
   hue: 0,
   
   // Screen Space Global Illumination (re-purposed `ssr` toggle drives
@@ -248,7 +248,7 @@ const defaultSettings: EngineSettings = {
   
   // Chromatic Aberration
   chromaticAberration: false,
-  chromaticAberrationOffset: 0.002,
+  chromaticAberrationOffset: 0,
   
   // Lens Distortion
   lensDistortion: false,
@@ -295,6 +295,11 @@ export const normalizeUITheme = (theme: unknown): UITheme => (
   theme === 'light' ? 'light' : 'black'
 );
 
+const finite = (value: unknown, fallback: number): number => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 const sanitizePersistedSettings = (persistedState: unknown): Partial<EngineSettings> => {
   if (!persistedState || typeof persistedState !== 'object') {
     return {};
@@ -307,6 +312,16 @@ const sanitizePersistedSettings = (persistedState: unknown): Partial<EngineSetti
 
   return {
     ...settings,
+    bloomIntensity: Math.min(finite(settings.bloomIntensity, 0.18), 0.25),
+    bloomThreshold: Math.max(finite(settings.bloomThreshold, 0.9), 0.88),
+    bloomRadius: Math.min(finite(settings.bloomRadius, 0.24), 0.35),
+    vignette: false,
+    vignetteIntensity: 0,
+    vignetteOffset: 0.5,
+    noise: false,
+    noiseIntensity: 0,
+    chromaticAberration: false,
+    chromaticAberrationOffset: 0,
     uiTheme: normalizeUITheme(uiTheme),
   } as Partial<EngineSettings>;
 };
@@ -332,7 +347,7 @@ export const useEngineSettings = create<EngineSettingsStore>()(
     }),
     {
       name: 'pixl-engine-settings',
-      version: 2,
+      version: 3,
       migrate: (persistedState) => sanitizePersistedSettings(persistedState),
       merge: (persistedState, currentState) => ({
         ...currentState,

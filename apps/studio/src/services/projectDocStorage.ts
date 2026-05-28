@@ -12,9 +12,18 @@
  */
 import type { PixlProjectDocument, PixlSceneKind, PixlRuntimeKind } from '@/engine/project/schema';
 import { DEFAULT_PROJECT_FOLDERS } from '@/engine/project/schema';
+import { buildStarterProjectDocument, isStarterTemplateId } from '@/lib/starterTemplates';
 
 export const SINGLE_PROJECT_DOC_KEY = 'pixl-project-document';
 const PER_ID_PREFIX = 'pixl-project-doc:';
+export const MAX_LOCAL_STORAGE_DOC_CHARS = 900_000;
+
+export const serializeProjectDocForLocalStorage = (
+  doc: PixlProjectDocument,
+): string | null => {
+  const serialized = JSON.stringify(doc);
+  return serialized.length <= MAX_LOCAL_STORAGE_DOC_CHARS ? serialized : null;
+};
 
 export const perIdDocKey = (projectId: string) => `${PER_ID_PREFIX}${projectId}`;
 
@@ -47,7 +56,11 @@ const safeRemove = (key: string): void => {
 
 export const saveProjectDocSnapshot = (doc: PixlProjectDocument): void => {
   if (!doc?.id) return;
-  const serialized = JSON.stringify(doc);
+  const serialized = serializeProjectDocForLocalStorage(doc);
+  if (!serialized) {
+    safeRemove(perIdDocKey(doc.id));
+    return;
+  }
   safeSet(perIdDocKey(doc.id), serialized);
 };
 
@@ -79,6 +92,15 @@ export const createEmptyProjectDocument = (params: {
   createdAt?: number;
 }): PixlProjectDocument => {
   const kind: PixlSceneKind = params.kind ?? '3d';
+  if (kind === '3d' && isStarterTemplateId(params.templateId)) {
+    return buildStarterProjectDocument({
+      id: params.id,
+      name: params.name,
+      templateId: params.templateId,
+      createdAt: params.createdAt,
+    });
+  }
+
   const now = params.createdAt ?? Date.now();
   const slug = (params.name || 'untitled-project').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')

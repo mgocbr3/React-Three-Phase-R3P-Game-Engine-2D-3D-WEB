@@ -7,7 +7,7 @@
 // `/models/manequin/scene.gltf`). Combat/melee/ranged/projectile logic
 // from MinecraftPlayer was stripped; bring it back as a Script if needed.
 
-import { useRef, useEffect, forwardRef, useImperativeHandle, useMemo, Suspense } from 'react';
+import { useRef, useEffect, forwardRef, useImperativeHandle, useMemo, Suspense, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import type { RapierRigidBody } from '@react-three/rapier';
@@ -24,6 +24,7 @@ interface DefaultPlayerProps {
   cameraSettings?: Partial<CameraSettings>;
   cameraOffset?: [number, number, number];
   cameraLookOffset?: [number, number, number];
+  animationName?: string;
 }
 
 export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
@@ -35,6 +36,7 @@ export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
       cameraSettings,
       cameraOffset: propCameraOffset,
       cameraLookOffset: propCameraLookOffset,
+      animationName = 'Idle',
     },
     ref,
   ) => {
@@ -42,6 +44,9 @@ export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
     const meshRef = useRef<THREE.Group>(null);
     const { camera } = useThree();
     const cameraTargetPos = useRef(new THREE.Vector3());
+    const [motionAnimation, setMotionAnimation] = useState(animationName);
+
+    useEffect(() => setMotionAnimation(animationName), [animationName]);
 
     // Camera offset based on mode (kept identical to the old player so
     // existing camera config dialed in by the user still feels right).
@@ -236,6 +241,8 @@ export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
       }
 
       const isSprintingNow = canSprint && movement.current.sprint && isGrounded.current && moveLength > 0;
+      const nextAnimation = moveLength <= 0.05 ? animationName : isSprintingNow ? 'run' : 'walk';
+      setMotionAnimation((current) => current === nextAnimation ? current : nextAnimation);
       const currentSpeed = isSprintingNow ? sprintSpeed : speed;
       const controlMultiplier = isGrounded.current ? 1 : airControlMultiplier;
 
@@ -289,7 +296,7 @@ export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
         <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
         <group ref={meshRef}>
           <Suspense fallback={fallback}>
-            <PlayerGltfModel url={modelUrl} />
+            <PlayerGltfModel url={modelUrl} animationName={motionAnimation} animationSpeed={isGrounded.current ? 1 : 0.75} />
           </Suspense>
         </group>
       </RigidBody>

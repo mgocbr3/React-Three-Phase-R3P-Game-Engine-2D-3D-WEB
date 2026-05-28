@@ -83,16 +83,25 @@ describe('exportProjectToThree (pure)', () => {
     expect(result.mainJsSource).toContain('attachCanvas');
     expect(result.mainJsSource).toContain('threeJSRenderer');
     expect(result.mainJsSource).toContain('appendChild');
-    expect(result.mainJsSource).toContain('setSize');
-    expect(result.mainJsSource).toContain('window.innerWidth');
-    expect(result.mainJsSource).toContain('window.innerHeight');
+    expect(result.mainJsSource).toContain('game.renderer.setSize(window.innerWidth, window.innerHeight)');
     expect(result.mainJsSource).toContain("addEventListener('resize'");
+  });
+
+  it('exports with the native Three clean filmic post-processing profile enabled', () => {
+    const project = buildMinimalProject();
+    const result = exportProjectToThree(project);
+    expect(result.mainJsSource).toContain('postProcessing');
+    expect(result.mainJsSource).toContain('toneMapping: "aces"');
+    expect(result.mainJsSource).toContain('bloom: true');
+    expect(result.mainJsSource).not.toContain('chromaticAberration');
+    expect(result.mainJsSource).not.toContain('noise: true');
+    expect(result.mainJsSource).not.toContain('vignette: true');
   });
 
   it('passes assetSourceBase through to new Game(...)', () => {
     const project = buildMinimalProject();
     const result = exportProjectToThree(project, { assetSourceBase: './Assets' });
-    expect(result.mainJsSource).toContain('new Game("./Assets")');
+    expect(result.mainJsSource).toContain('new Game("./Assets", { rendererOptions })');
   });
 
   it('collects unique asset paths from project.assets.entries', () => {

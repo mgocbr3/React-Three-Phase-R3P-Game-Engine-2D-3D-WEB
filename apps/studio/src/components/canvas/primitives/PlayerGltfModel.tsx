@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { clone as cloneGltfScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 /**
  * Loads + clones a GLTF asset to render as the player visual. Default
@@ -19,13 +21,19 @@ import * as THREE from 'three';
 export const PlayerGltfModel = ({
   url,
   targetHeight = 1.8,
+  animationName = 'Idle',
+  animationSpeed = 1,
 }: {
   url: string;
   targetHeight?: number;
+  animationName?: string;
+  animationSpeed?: number;
 }) => {
-  const { scene } = useGLTF(url);
+  const { scene, animations } = useGLTF(url);
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const actionRef = useRef<THREE.AnimationAction | null>(null);
   const cloned = useMemo(() => {
-    const clone = scene.clone(true);
+    const clone = cloneGltfScene(scene);
     const bbox = new THREE.Box3().setFromObject(clone);
     const size = new THREE.Vector3();
     bbox.getSize(size);
@@ -37,6 +45,31 @@ export const PlayerGltfModel = ({
     }
     return clone;
   }, [scene, targetHeight]);
+
+  useEffect(() => {
+    mixerRef.current?.stopAllAction();
+    actionRef.current = null;
+    mixerRef.current = animations.length ? new THREE.AnimationMixer(cloned) : null;
+    return () => {
+      mixerRef.current?.stopAllAction();
+    };
+  }, [animations.length, cloned]);
+
+  useEffect(() => {
+    const mixer = mixerRef.current;
+    if (!mixer || !animations.length) return;
+    const wanted = animationName.toLowerCase();
+    const clip = animations.find((item) => item.name.toLowerCase() === wanted)
+      ?? animations.find((item) => item.name.toLowerCase().includes(wanted))
+      ?? animations.find((item) => item.name.toLowerCase().includes('idle'))
+      ?? animations[0];
+    const next = mixer.clipAction(clip);
+    if (actionRef.current && actionRef.current !== next) actionRef.current.fadeOut(0.15);
+    next.reset().setEffectiveTimeScale(animationSpeed).fadeIn(0.15).play();
+    actionRef.current = next;
+  }, [animations, animationName, animationSpeed]);
+
+  useFrame((_, delta) => mixerRef.current?.update(delta));
 
   return <primitive object={cloned} />;
 };

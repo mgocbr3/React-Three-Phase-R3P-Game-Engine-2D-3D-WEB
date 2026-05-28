@@ -78,6 +78,24 @@ export interface RendererOptions {
   setupFullScreenCanvas?: boolean;
   canvas?: HTMLCanvasElement;
   beforeRender?: (args: { deltaTimeInSec: number; time: number }) => void;
+  postProcessing?: RendererPostProcessingOptions;
+}
+
+export type RendererToneMapping = 'aces' | 'cineon' | 'reinhard' | 'linear' | 'none';
+
+export interface RendererPostProcessingOptions {
+  enabled?: boolean;
+  toneMapping?: RendererToneMapping;
+  toneMappingExposure?: number;
+  bloom?: boolean;
+  bloomIntensity?: number;
+  bloomThreshold?: number;
+  bloomRadius?: number;
+  colorGrading?: boolean;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  hue?: number;
 }
 
 export interface CameraOptions {

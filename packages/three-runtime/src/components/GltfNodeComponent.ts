@@ -1,22 +1,8 @@
-// GDD §6.6 / Phase 6B step 2 — Pixl-style node picking.
-//
-// Pixl-format projects (eg. Harvest Rush) ship ONE shared GLB (Farm.glb)
-// that contains many named nodes; each scene object references a specific
-// node by name. Wes' ModelComponent clones the whole GLB scene — wrong
-// for this pattern (would duplicate 11k+ nodes per object).
-//
-// GltfNodeComponent: load the GLB once via the AssetStore cache, find the
-// child by name, clone JUST that subtree, and add it under this
-// gameObject's threeJSGroup.
-//
-// Adapted from the legacy R3F path's StaticGltfScene.tsx node-picking
-// pattern (which we'll delete in Phase 6B's final cleanup).
-
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 import Component, { type ComponentJSON } from '../Component.js';
 import GLTFAsset from '../assets/GLTFAsset.js';
-import { setObject3DProps } from '../util/ThreeJSHelpers.js';
+import { optimizeStaticObject3D, setObject3DProps } from '../util/ThreeJSHelpers.js';
 
 export interface GltfNodeComponentJSON extends ComponentJSON {
   assetPath: string;
@@ -72,9 +58,11 @@ class GltfNodeComponent extends Component {
     delete (objectProps as { type?: unknown }).type;
     delete (objectProps as { name?: unknown }).name;
     setObject3DProps(cloned, objectProps);
+    optimizeStaticObject3D(cloned);
 
     cloned.userData.glbNodeRef = { url: json.assetPath, name: json.nodeName };
     this.gameObject.threeJSGroup.add(cloned);
+    this.gameObject.threeJSGroup.updateMatrixWorld(true);
   }
 }
 

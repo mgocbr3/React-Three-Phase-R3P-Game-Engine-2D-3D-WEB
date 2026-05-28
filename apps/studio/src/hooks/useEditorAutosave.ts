@@ -25,6 +25,7 @@ import {
 import {
   SINGLE_PROJECT_DOC_KEY,
   saveProjectDocSnapshot,
+  serializeProjectDocForLocalStorage,
 } from '@/services/projectDocStorage';
 
 interface UseEditorAutosaveArgs {
@@ -94,7 +95,8 @@ export const useEditorAutosave = ({
         lastWriteSignatureRef.current = snapshot.signature;
 
         const doc = snapshot.document;
-        const serialized = JSON.stringify(doc);
+        const serialized = serializeProjectDocForLocalStorage(doc);
+        if (!serialized) return;
         safeWrite(SINGLE_PROJECT_DOC_KEY, serialized);
         saveProjectDocSnapshot(doc);
 

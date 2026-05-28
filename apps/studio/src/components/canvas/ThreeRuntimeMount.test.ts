@@ -3,13 +3,18 @@ import * as THREE from 'three';
 
 import {
   createThreeEditorSceneHelpers,
+  createThreeNativePostProcessingOptions,
   getEditorObjectIdForNativeSelection,
   getThreeAddObjectPosition,
   getThreeCameraTarget,
+  getThreeNativePixelRatio,
+  getThreeNativePostProcessingEffects,
   getThreeSceneAxisView,
   getThreeSceneViewShortcut,
   getThreeEditorGridConfig,
   shouldEnableThreeEditorTools,
+  shouldRunThreeEditorRenderLoop,
+  shouldRunThreeRuntimeSimulation,
 } from './ThreeRuntimeMount';
 
 describe('ThreeRuntimeMount', () => {
@@ -17,6 +22,52 @@ describe('ThreeRuntimeMount', () => {
     expect(shouldEnableThreeEditorTools({ visible: true, isRuntimePreview: true })).toBe(false);
     expect(shouldEnableThreeEditorTools({ visible: true, isRuntimePreview: false })).toBe(true);
     expect(shouldEnableThreeEditorTools({ visible: false, isRuntimePreview: false })).toBe(false);
+  });
+
+  it('separates 3D editor rendering from Play Mode simulation', () => {
+    expect(shouldRunThreeRuntimeSimulation({ visible: true, isRuntimePreview: true, loadStatus: 'ready' })).toBe(true);
+    expect(shouldRunThreeRuntimeSimulation({ visible: true, isRuntimePreview: false, loadStatus: 'ready' })).toBe(false);
+    expect(shouldRunThreeRuntimeSimulation({ visible: true, isRuntimePreview: true, loadStatus: 'loading' })).toBe(false);
+
+    expect(shouldRunThreeEditorRenderLoop({ visible: true, editorToolsEnabled: true, loadStatus: 'ready' })).toBe(true);
+    expect(shouldRunThreeEditorRenderLoop({ visible: true, editorToolsEnabled: false, loadStatus: 'ready' })).toBe(false);
+    expect(shouldRunThreeEditorRenderLoop({ visible: false, editorToolsEnabled: true, loadStatus: 'ready' })).toBe(false);
+  });
+
+  it('maps engine render settings into a clean native Three realism profile', () => {
+    const options = createThreeNativePostProcessingOptions({
+      toneMapping: 'aces',
+      toneMappingExposure: 1.1,
+      bloom: true,
+      bloomIntensity: 0.5,
+      bloomThreshold: 0.85,
+      bloomRadius: 0.45,
+      colorGrading: false,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      hue: 0,
+      dpr: 1,
+      maxDpr: 2,
+    });
+
+    expect(options).toMatchObject({
+      enabled: true,
+      toneMapping: 'aces',
+      bloom: true,
+      colorGrading: true,
+      bloomIntensity: 0.25,
+      bloomThreshold: 0.88,
+      bloomRadius: 0.35,
+      contrast: 0.04,
+      saturation: 0.02,
+    });
+    expect(getThreeNativePostProcessingEffects(options)).toBe('tone:aces,bloom,grade');
+  });
+
+  it('caps native Three pixel ratio for the selected quality preset', () => {
+    expect(getThreeNativePixelRatio({ dpr: 1.25, maxDpr: 2 }, 2)).toBe(2);
+    expect(getThreeNativePixelRatio({ dpr: 0.5, maxDpr: 3 }, 2)).toBe(1);
   });
 
   it('maps native canvas selection back to the editor object id', () => {

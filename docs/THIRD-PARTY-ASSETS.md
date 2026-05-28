@@ -17,6 +17,22 @@ Arquivos de terceiros embutidos no studio (`apps/studio/public/`) com suas licen
 
 A licença original também vive em `apps/studio/public/models/manequin/license.txt` e é embarcada nos builds — quem servir o studio ou um export do projeto também serve essa atribuição automaticamente.
 
+## three.js Soldier / Mixamo sample
+
+- **Caminho no repo**: `apps/studio/public/models/manequin/mixamo/soldier.glb`
+- **Uso**: fallback rigado de referência, com clipes `Idle`, `Walk`, `Run` e `TPose`.
+- **Fonte**: https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Soldier.glb
+- **Autor/licença do repositório**: three.js authors, MIT (https://github.com/mrdoob/three.js/blob/dev/LICENSE)
+- **Observação**: asset de exemplo com esqueleto `mixamorig`, usado para deixar o template jogável com animação imediatamente enquanto o manequin estático baixado não tiver rig/retarget.
+
+## three.js X Bot / Mixamo sample
+
+- **Caminho no repo**: `apps/studio/public/models/manequin/mixamo/xbot.glb`
+- **Uso**: mannequin principal dos templates 3D de primeira e terceira pessoa, com clipes `idle`, `walk`, `run`, `agree`, `headShake`, `sad_pose` e `sneak_pose`.
+- **Fonte**: https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Xbot.glb
+- **Autor/licença do repositório**: three.js authors, MIT (https://github.com/mrdoob/three.js/blob/dev/LICENSE)
+- **Observação**: X Bot é o rig Mixamo usado como base web pronta; `apps/studio/public/models/manequin/mixamo/manifest.json` registra a fila de animações oficiais extras para baixar pela sessão Adobe do usuário.
+
 ## Kloofendal 43d Clear (Pure Sky) — HDRI Haven / Polyhaven
 
 - **Caminho no repo**: `apps/studio/public/models/skybox/clear-sky.hdr`
@@ -41,5 +57,3 @@ A versão anterior (Unreal Engine 4 Sky em GLB, CC-BY-4.0) tinha textura 1:1 (10
 - **Sponsor**: https://buymeacoffee.com/0beqz
 
 Tentamos adotar nesta engine (SSGI/HBAO/SSR/TRAA/MotionBlur). A versão npm `1.1.2` declara peer dep `three >= 0.148` mas internamente importa `WebGLMultipleRenderTargets`, removida do Three.js em ~0.162. Nosso `three@0.184` rejeita o import e o build quebra. A entrada está aqui como **referência de crédito** caso futuramente seja forkado/portado — quem fizer o port deve preservar o crédito ao autor original. Veja `docs/REALISM-SHADERS-EVAL.md` para a história completa e o caminho de port.
-
-

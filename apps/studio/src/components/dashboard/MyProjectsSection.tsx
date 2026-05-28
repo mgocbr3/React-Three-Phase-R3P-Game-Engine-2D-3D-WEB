@@ -28,6 +28,8 @@ import { Input } from '@/components/ui/input';
 import { useEditorStore } from '@/stores/editorStore';
 import { SavedProject, useProjectStore } from '@/stores/projectStore';
 
+const HIDDEN_PLACEHOLDER_PROJECTS = new Set(['Primitive Demo (3D)', 'Sample 2D']);
+
 interface MyProjectsSectionProps {
   onCreateNew: () => void;
   onOpenProjectFolder?: () => void;
@@ -36,6 +38,7 @@ interface MyProjectsSectionProps {
 export const MyProjectsSection = ({ onCreateNew, onOpenProjectFolder }: MyProjectsSectionProps) => {
   const navigate = useNavigate();
   const localProjects = useProjectStore((s) => s.projects);
+  const visibleLocalProjects = localProjects.filter((project) => !HIDDEN_PLACEHOLDER_PROJECTS.has(project.name));
   const deleteLocalProject = useProjectStore((s) => s.deleteProject);
   const renameLocalProject = useProjectStore((s) => s.renameProject);
   const hasSavedProject = useEditorStore((s) => s.hasSavedProject);
@@ -83,7 +86,7 @@ export const MyProjectsSection = ({ onCreateNew, onOpenProjectFolder }: MyProjec
     setDeleteDialogOpen(true);
   };
 
-  const hasLocalWork = hasSavedProject() || localProjects.length > 0;
+  const hasLocalWork = hasSavedProject() || visibleLocalProjects.length > 0;
 
   return (
     <section className="mb-7">
@@ -120,7 +123,7 @@ export const MyProjectsSection = ({ onCreateNew, onOpenProjectFolder }: MyProjec
             </Card>
           )}
 
-          {localProjects.map((project) => (
+          {visibleLocalProjects.map((project) => (
             <Card
               key={project.id}
               className="group flex h-20 cursor-pointer items-center gap-3 rounded-lg border-border bg-card p-3 transition-colors hover:border-primary/50 hover:bg-secondary/50"

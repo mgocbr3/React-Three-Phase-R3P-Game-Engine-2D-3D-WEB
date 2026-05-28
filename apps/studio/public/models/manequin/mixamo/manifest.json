@@ -1,0 +1,6 @@
+{
+  "primary": "/models/manequin/mixamo/xbot.glb",
+  "fallback": "/models/manequin/mixamo/soldier.glb",
+  "readyClips": ["idle", "walk", "run", "agree", "headShake", "sad_pose", "sneak_pose"],
+  "mixamoQueue": ["Idle", "Run", "Jump", "Roll", "Crouch", "Rifle Idle", "Rifle Aiming Idle", "Punch", "Kick"]
+}

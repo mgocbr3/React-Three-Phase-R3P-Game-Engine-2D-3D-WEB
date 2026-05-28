@@ -5,6 +5,7 @@ import type { TerrainSettings } from './terrainStore';
 import { storageManager } from '@/services/storageManager';
 import type { PixlComponentInstance } from '@/engine/project/schema';
 import { isComponentAllowedForScene } from '@/services/componentCatalog';
+import { createStarterTemplateObjects, isStarterTemplateId } from '@/lib/starterTemplates';
 
 export type ObjectType =
   | 'box'
@@ -1188,26 +1189,16 @@ const createSceneObject = (
   ...extraProps,
 });
 
-// Returns the default starting scene — sun light, camera, player, and a
-// generic ground plane. The Lovable starter had a large switch here that
-// seeded "Adventure", "FPS Horror", "Racing", etc. scenes with bespoke
-// trees / zombies / barriers / NPCs. That whole catalogue is gone: new
-// projects open empty, and samples (Harvest Rush 3D, Magic Battleground 2D,
-// etc.) are loaded as full .pixlproject documents from disk, not seeded
-// here. The templateId param is accepted only as a label for backward
-// compatibility with callers that still pass one.
-const getTemplateObjects = (_templateId?: string | null): SceneObject[] => {
-  const camera = createCameraObject('third-person');
-  const player = createPlayerObject();
-  const sunLight = createSunLightObject();
-
-  return [
-    sunLight,
-    camera,
-    player,
-    createSceneObject('ground-1', 'Chão', 'plane', [0, 0, 0], [100, 1, 100], '#3d3d3d'),
-  ];
-};
+const getTemplateObjects = (templateId?: string | null): SceneObject[] => (
+  isStarterTemplateId(templateId)
+    ? createStarterTemplateObjects(templateId)
+    : [
+        createSunLightObject(),
+        createCameraObject('third-person'),
+        createPlayerObject(),
+        createSceneObject('ground-1', 'Ground', 'plane', [0, 0, 0], [100, 1, 100], '#3d3d3d'),
+      ]
+);
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   isEditMode: true,

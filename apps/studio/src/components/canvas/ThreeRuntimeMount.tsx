@@ -1,32 +1,13 @@
-// GDD §6.6 — Phase 6B in progress.
-// 3D mount that owns one <canvas>, instantiates @pixlland/three-runtime's
-// Game, and bridges engine-api WS broadcasts so non-editor agents (CLI,
-// MCP, HTTP) hot-reload the studio view in <500 ms.
-//
-// Loading flow (Phase 6B):
-//   1. fetch `${assetBaseUrl}/project.pixlproject.json` (Pixl format on disk)
-//   2. game.loadFromPixlProject(doc) — adapter converts Pixl → Wes GameJSON
-//      in memory, primes the asset cache, runs Scene.load() normally
-//   3. GLB / textures / audio resolved by the runtime's AssetSource off
-//      `${assetBaseUrl}` as usual
-//
-// What this component *does not* try to replicate from the legacy R3F
-// editor (intentional — see GDD §0 and §6.6):
-//   - Built-in gameplay controllers (FPSController, VehicleController…)
-//   - Built-in templates (Minecraft, racing, platformer)
-//   - PostProcessing effects, AdaptivePerformance, AutoInstancer
-//
-// Per GDD §7, gameplay belongs in agent-written scripts that the runtime
-// hot-loads, NOT in the engine's React tree.
+// Native Three.js editor/runtime mount.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Game } from '@pixlland/three-runtime';
+import { Game, type RendererPostProcessingOptions } from '@pixlland/three-runtime';
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { useEditorStore } from '@/stores/editorStore';
-import { useEngineSettings } from '@/stores/engineSettingsStore';
+import { useEngineSettings, type EngineSettings } from '@/stores/engineSettingsStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
@@ -47,7 +28,7 @@ export interface ThreeRuntimeMountProps {
   assetBaseUrl?: string;
   /** Initial scene name to load. */
   initialScene?: string;
-  /** Transform gizmo mode. Phase 6B step 4. */
+  /** Transform gizmo mode. */
   gizmoMode?: GizmoMode;
 }
 
@@ -64,6 +45,22 @@ type SceneAxisPose = { position: [number, number, number]; up: [number, number, 
 type SceneViewShortcutInput = Pick<KeyboardEvent, 'code' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey'>;
 type ThreeEditorPlacementApi = { getAddObjectPosition: () => [number, number, number] | undefined };
 type ThreeCameraTarget = { x: number; y: number; z: number };
+type ThreeNativeRenderSettings = Pick<
+  EngineSettings,
+  | 'toneMapping'
+  | 'toneMappingExposure'
+  | 'bloom'
+  | 'bloomIntensity'
+  | 'bloomThreshold'
+  | 'bloomRadius'
+  | 'colorGrading'
+  | 'brightness'
+  | 'contrast'
+  | 'saturation'
+  | 'hue'
+  | 'dpr'
+  | 'maxDpr'
+>;
 
 const sceneViewShortcuts: Record<string, SceneAxisView> = {
   Digit1: 'z',
@@ -114,6 +111,45 @@ const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => 
   });
 };
 
+const num = (value: number | undefined, fallback: number): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback
+);
+const clampNumber = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+export const getThreeNativePixelRatio = (
+  settings: Pick<EngineSettings, 'dpr' | 'maxDpr'>,
+  devicePixelRatio = 1,
+): number => {
+  const dpr = clampNumber(num(settings.dpr, 1), 0.5, 2);
+  const maxDpr = clampNumber(num(settings.maxDpr, 2), 0.5, 3);
+  return clampNumber(devicePixelRatio * dpr, 0.5, maxDpr);
+};
+
+export const createThreeNativePostProcessingOptions = (
+  settings: ThreeNativeRenderSettings,
+): RendererPostProcessingOptions => ({
+  enabled: true,
+  toneMapping: settings.toneMapping,
+  toneMappingExposure: num(settings.toneMappingExposure, 1.0),
+  bloom: settings.bloom,
+  bloomIntensity: clampNumber(num(settings.bloomIntensity, 0.18), 0, 0.25),
+  bloomThreshold: clampNumber(num(settings.bloomThreshold, 0.9), 0.88, 1),
+  bloomRadius: clampNumber(num(settings.bloomRadius, 0.24), 0, 0.35),
+  colorGrading: true,
+  brightness: settings.colorGrading ? num(settings.brightness, 0) : 0,
+  contrast: settings.colorGrading ? num(settings.contrast, 0.04) : 0.04,
+  saturation: settings.colorGrading ? num(settings.saturation, 0.02) : 0.02,
+  hue: settings.colorGrading ? num(settings.hue, 0) : 0,
+});
+
+export const getThreeNativePostProcessingEffects = (
+  options: RendererPostProcessingOptions,
+): string => [
+  options.toneMapping && options.toneMapping !== 'none' ? `tone:${options.toneMapping}` : null,
+  options.bloom ? 'bloom' : null,
+  options.colorGrading ? 'grade' : null,
+].filter(Boolean).join(',');
+
 const fetchPixlProject = async (baseUrl: string): Promise<unknown> => {
   const url = `${baseUrl.replace(/\/$/, '')}/project.pixlproject.json`;
   const response = await fetch(url, { headers: { accept: 'application/json' } });
@@ -135,6 +171,26 @@ export const shouldEnableThreeEditorTools = ({
   visible: boolean;
   isRuntimePreview: boolean;
 }) => visible && !isRuntimePreview;
+
+export const shouldRunThreeRuntimeSimulation = ({
+  visible,
+  isRuntimePreview,
+  loadStatus,
+}: {
+  visible: boolean;
+  isRuntimePreview: boolean;
+  loadStatus: LoadState['status'];
+}) => visible && isRuntimePreview && loadStatus === 'ready';
+
+export const shouldRunThreeEditorRenderLoop = ({
+  visible,
+  editorToolsEnabled,
+  loadStatus,
+}: {
+  visible: boolean;
+  editorToolsEnabled: boolean;
+  loadStatus: LoadState['status'];
+}) => visible && editorToolsEnabled && loadStatus === 'ready';
 
 export const findThreeObjectForEditorSelection = (
   threeScene: THREE.Scene | null,
@@ -309,6 +365,7 @@ export function ThreeRuntimeMount({
   // runs) when the canvas mounts. A pure ref doesn't trigger renders.
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const gameRef = useRef<Game | null>(null);
+  const editorRenderFrameRef = useRef<number>(0);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
   const [sceneAxisView, setSceneAxisView] = useState<SceneAxisView>('free');
   // Captured once the runtime's renderer is constructed. The orbit
@@ -318,6 +375,14 @@ export function ThreeRuntimeMount({
   const [orbitControlsInstance, setOrbitControlsInstance] = useState<OrbitControls | null>(null);
   const isRuntimePreview = useRuntimeGameStore((state) => state.isPlaying || Boolean(state.previewSession));
   const editorToolsEnabled = shouldEnableThreeEditorTools({ visible, isRuntimePreview });
+  const requestEditorRender = useCallback(() => {
+    if (!shouldRunThreeEditorRenderLoop({ visible, editorToolsEnabled, loadStatus: load.status })) return;
+    if (editorRenderFrameRef.current) return;
+    editorRenderFrameRef.current = requestAnimationFrame(() => {
+      editorRenderFrameRef.current = 0;
+      gameRef.current?.renderStillFrame();
+    });
+  }, [editorToolsEnabled, load.status, visible]);
 
   useOrbitControls({
     canvas: canvasEl,
@@ -325,6 +390,7 @@ export function ThreeRuntimeMount({
     target: orbitTarget,
     enabled: editorToolsEnabled,
     onReady: setOrbitControlsInstance,
+    onChange: requestEditorRender,
   });
 
   // Three scene reference for raycasting; captured from game.scene.threeJSScene
@@ -333,6 +399,15 @@ export function ThreeRuntimeMount({
   const showGrid = useEngineSettings((state) => state.showGrid);
   const showAxes = useEngineSettings((state) => state.showGizmo);
   const gridSize = useEngineSettings((state) => state.gridSize);
+  const renderSettings = useEngineSettings();
+  const nativePostProcessing = useMemo(
+    () => createThreeNativePostProcessingOptions(renderSettings),
+    [renderSettings],
+  );
+  const nativePostProcessingEffects = useMemo(
+    () => getThreeNativePostProcessingEffects(nativePostProcessing),
+    [nativePostProcessing],
+  );
 
   // Subscribe directly to the editor store so the toolbar's
   // Move(W)/Rotate(E)/Scale(R) buttons reach the native runtime gizmo. Prior
@@ -412,7 +487,8 @@ export function ThreeRuntimeMount({
     camera.lookAt(center);
     orbitControlsInstance.target?.copy?.(center);
     orbitControlsInstance.update?.();
-  }, [camera, externalSelectedThree, focusTarget, orbitControlsInstance, selectedObjectId, threeScene]);
+    requestEditorRender();
+  }, [camera, externalSelectedThree, focusTarget, orbitControlsInstance, requestEditorRender, selectedObjectId, threeScene]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !editorToolsEnabled) return;
@@ -462,7 +538,8 @@ export function ThreeRuntimeMount({
     camera.lookAt(target);
     orbitControlsInstance?.target?.copy?.(target);
     orbitControlsInstance?.update?.();
-  }, [camera, orbitControlsInstance]);
+    requestEditorRender();
+  }, [camera, orbitControlsInstance, requestEditorRender]);
 
   useEffect(() => {
     if (!editorToolsEnabled) return;
@@ -487,13 +564,44 @@ export function ThreeRuntimeMount({
     externalSelected: externalSelectedThree,
     onSelectionChange: handleNativeSelectionChange,
     onTransformCommit: commitNativeGizmoTransform,
+    onChange: requestEditorRender,
     snapSettings: { snapEnabled, snapTranslate, snapRotate, snapScale },
   });
+
+  const runSimulation = shouldRunThreeRuntimeSimulation({ visible, isRuntimePreview, loadStatus: load.status });
+
+  useEffect(() => {
+    const game = gameRef.current;
+    if (!game || load.status !== 'ready') return;
+    if (runSimulation) {
+      void game.play().catch((error) => console.error('[ThreeRuntimeMount] play failed:', error));
+      return;
+    }
+    game.pause();
+    requestEditorRender();
+  }, [load.status, requestEditorRender, runSimulation]);
+
+  useEffect(() => {
+    const game = gameRef.current;
+    if (!game) return;
+    game.setPostProcessingOptions(nativePostProcessing);
+    if (load.status === 'ready' && !runSimulation) requestEditorRender();
+  }, [load.status, nativePostProcessing, requestEditorRender, runSimulation]);
+
+  useEffect(() => {
+    requestEditorRender();
+    return () => {
+      if (!editorRenderFrameRef.current) return;
+      cancelAnimationFrame(editorRenderFrameRef.current);
+      editorRenderFrameRef.current = 0;
+    };
+  }, [requestEditorRender]);
 
   useEffect(() => {
     if (!threeScene || !editorToolsEnabled || (!showGrid && !showAxes)) return;
     const helpers = createThreeEditorSceneHelpers({ showGrid, showAxes, gridSize });
     threeScene.add(helpers);
+    requestEditorRender();
     return () => {
       threeScene.remove(helpers);
       helpers.traverse((object) => {
@@ -503,8 +611,9 @@ export function ThreeRuntimeMount({
         if (Array.isArray(material)) material.forEach((item) => item.dispose?.());
         else material?.dispose?.();
       });
+      requestEditorRender();
     };
-  }, [editorToolsEnabled, gridSize, showAxes, showGrid, threeScene]);
+  }, [editorToolsEnabled, gridSize, requestEditorRender, showAxes, showGrid, threeScene]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -513,8 +622,18 @@ export function ThreeRuntimeMount({
     let disposed = false;
     setLoad({ status: 'loading' });
 
+    const initialRenderSettings = useEngineSettings.getState();
     const game = new Game(assetBaseUrl, {
-      rendererOptions: { canvas, width: canvas.clientWidth || 800, height: canvas.clientHeight || 600 },
+      rendererOptions: {
+        canvas,
+        width: canvas.clientWidth || 800,
+        height: canvas.clientHeight || 600,
+        pixelRatio: getThreeNativePixelRatio(
+          initialRenderSettings,
+          typeof window !== 'undefined' ? window.devicePixelRatio : 1,
+        ),
+        postProcessing: createThreeNativePostProcessingOptions(initialRenderSettings),
+      },
     });
     gameRef.current = game;
 
@@ -537,16 +656,17 @@ export function ThreeRuntimeMount({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await game.loadFromPixlProject(project as any, initialScene);
         if (disposed) return;
-        game.play();
-        // Phase 6B debug — expose game instance for inspection. Strip later.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).__pixlGame = game;
         // Activate OrbitControls now that the renderer has a camera.
         setCamera(game.renderer.threeJSCamera);
         setThreeScene(game.scene?.threeJSScene ?? null);
         // Aim the orbit target at the scene's camera target if present,
         // else fall back to scene origin.
         setOrbitTarget(getThreeCameraTarget(game.scene?.sceneJSONAsset?.data?.camera?.target));
+        if (useRuntimeGameStore.getState().isPlaying || useRuntimeGameStore.getState().previewSession) {
+          await game.play();
+        } else {
+          game.renderStillFrame();
+        }
         setLoad({ status: 'ready' });
       } catch (error: unknown) {
         if (disposed) return;
@@ -558,7 +678,7 @@ export function ThreeRuntimeMount({
     return () => {
       disposed = true;
       try {
-        gameRef.current?.pause();
+        gameRef.current?.dispose();
         gameRef.current = null;
       } catch {
         // ignore
@@ -569,6 +689,11 @@ export function ThreeRuntimeMount({
   return (
     <div
       data-runtime="three"
+      data-three-mode={isRuntimePreview ? 'play' : 'edit'}
+      data-three-simulation={runSimulation ? 'running' : 'paused'}
+      data-three-editor-rendering={editorToolsEnabled && !runSimulation ? 'ondemand' : 'continuous'}
+      data-three-postprocessing={nativePostProcessing.enabled ? 'filmic-realism' : 'off'}
+      data-three-postprocessing-effects={nativePostProcessingEffects}
       style={{
         display: visible ? 'block' : 'none',
         width: '100%',

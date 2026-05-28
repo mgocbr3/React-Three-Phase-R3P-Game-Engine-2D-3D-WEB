@@ -4,16 +4,18 @@ import { toast } from 'sonner';
 
 import { Header } from '@/components/dashboard/Header';
 import { CreateProjectDialog } from '@/components/dashboard/CreateProjectDialog';
+import { HubLegalFooter } from '@/components/dashboard/HubLegalFooter';
 import { MyProjectsSection } from '@/components/dashboard/MyProjectsSection';
 import { NewProjectSection } from '@/components/dashboard/NewProjectSection';
-import { SamplesSection } from '@/components/dashboard/SamplesSection';
 import { SectionErrorBoundary } from '@/components/dashboard/SectionErrorBoundary';
 import { openProjectDocumentFromDirectory } from '@/services/localProjectFiles';
 import { useViewportStore } from '@/stores/viewportStore';
+import type { PixlSceneKind } from '@/engine/project/schema';
 
 const Index = () => {
   const navigate = useNavigate();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createKind, setCreateKind] = useState<PixlSceneKind | null>(null);
 
   // Returning to the Hub means "no project active" — clear the viewport
   // lock so a future project (or a direct `/editor?kind=` URL) can pick
@@ -22,7 +24,8 @@ const Index = () => {
     useViewportStore.getState().setLockedKind(null);
   }, []);
 
-  const handleCreateBlank = () => {
+  const handleCreateKind = (kind: PixlSceneKind | null) => {
+    setCreateKind(kind);
     setCreateDialogOpen(true);
   };
 
@@ -46,31 +49,33 @@ const Index = () => {
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl font-semibold text-foreground">Hub</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Projetos e samples.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Projetos e templates.</p>
             </div>
           </div>
 
           <NewProjectSection
-            onCreateBlank={handleCreateBlank}
+            onCreateKind={handleCreateKind}
             onOpenProjectFolder={handleOpenProjectFolder}
           />
 
           <SectionErrorBoundary sectionName="Projetos recentes">
             <MyProjectsSection
-              onCreateNew={handleCreateBlank}
+              onCreateNew={() => handleCreateKind(null)}
               onOpenProjectFolder={handleOpenProjectFolder}
             />
           </SectionErrorBoundary>
 
-          <SectionErrorBoundary sectionName="Samples">
-            <SamplesSection />
-          </SectionErrorBoundary>
+          <HubLegalFooter />
         </div>
       </main>
 
       <CreateProjectDialog
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) setCreateKind(null);
+        }}
+        initialKind={createKind}
       />
     </div>
   );

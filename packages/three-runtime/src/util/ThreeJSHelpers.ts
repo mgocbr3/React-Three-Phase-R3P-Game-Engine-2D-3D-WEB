@@ -9,6 +9,7 @@ import type { SceneLightJSON, SceneSoundJSON } from '../types.js';
 type Vec3Like = { x?: number; y?: number; z?: number };
 type EulerLike = Vec3Like & { order?: string };
 type ColorLike = THREE.ColorRepresentation;
+type ShadowedLight = THREE.Light & { shadow?: THREE.LightShadow };
 
 const hasNumberAxis = (value: unknown): value is Vec3Like => {
   if (!value || typeof value !== 'object') return false;
@@ -58,14 +59,15 @@ export const setObject3DProps = (object3D: THREE.Object3D, props: Record<string,
         }
         break;
       }
-      case 'color': {
-        const lightWithColor = object3D as { color?: THREE.Color };
+      case 'color':
+      case 'groundColor': {
+        const lightWithColor = object3D as unknown as Record<string, unknown>;
         if (value instanceof THREE.Color) {
-          lightWithColor.color = value;
+          lightWithColor[prop] = value;
         } else if (typeof value === 'number' || typeof value === 'string') {
-          lightWithColor.color = new THREE.Color(value as ColorLike);
+          lightWithColor[prop] = new THREE.Color(value as ColorLike);
         } else {
-          throw new Error('GameObject: object3D color must be set to either a THREE.Color instance or a string/number (which will be passed to the THREE.Color() constructor)');
+          throw new Error(`GameObject: object3D ${prop} must be set to either a THREE.Color instance or a string/number`);
         }
         break;
       }
@@ -73,6 +75,45 @@ export const setObject3DProps = (object3D: THREE.Object3D, props: Record<string,
         (object3D as unknown as Record<string, unknown>)[prop] = value;
       }
     }
+  }
+};
+
+export const optimizeStaticObject3D = (object3D: THREE.Object3D): void => {
+  object3D.traverse((object) => {
+    if (object instanceof THREE.Bone || (object as THREE.SkinnedMesh).isSkinnedMesh) return;
+    object.updateMatrix();
+    object.matrixAutoUpdate = false;
+    object.matrixWorldNeedsUpdate = true;
+
+    const geometry = (object as THREE.Mesh).geometry;
+    if (geometry && !geometry.boundingSphere) geometry.computeBoundingSphere();
+  });
+};
+
+const finite = (value: unknown, fallback: number): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback
+);
+
+export const configureLightQuality = (light: THREE.Light, data: Record<string, unknown>): void => {
+  const shadowed = light as ShadowedLight;
+  if (!shadowed.shadow) return;
+  shadowed.castShadow = data.castShadow === true;
+  if (!shadowed.castShadow) return;
+  const mapSize = finite(data.shadowMapSize, 2048);
+  shadowed.shadow.mapSize.set(mapSize, mapSize);
+  shadowed.shadow.bias = finite(data.shadowBias, -0.00015);
+  shadowed.shadow.normalBias = finite(data.shadowNormalBias, 0.025);
+  shadowed.shadow.radius = finite(data.shadowRadius, 2);
+  if (light instanceof THREE.DirectionalLight) {
+    const size = finite(data.shadowCameraSize, 120);
+    const camera = light.shadow.camera as THREE.OrthographicCamera;
+    camera.left = -size;
+    camera.right = size;
+    camera.top = size;
+    camera.bottom = -size;
+    camera.near = 0.5;
+    camera.far = finite(data.shadowCameraFar, 500);
+    camera.updateProjectionMatrix();
   }
 };
 
@@ -98,6 +139,7 @@ export const createLight = (lightData: SceneLightJSON): THREE.Light => {
   const objectProps: Record<string, unknown> = { ...lightData };
   delete objectProps.type;
   setObject3DProps(light, objectProps);
+  configureLightQuality(light, objectProps);
 
   return light;
 };

@@ -26,6 +26,7 @@ import {
   loadProjectDocSnapshot,
   removeProjectDocSnapshot,
   createEmptyProjectDocument,
+  serializeProjectDocForLocalStorage,
 } from './projectDocStorage';
 import type { PixlSceneKind } from '@/engine/project/schema';
 
@@ -976,8 +977,14 @@ export const applyProjectDocumentToEditor = (
   });
 
   try {
-    localStorage.setItem(SINGLE_PROJECT_DOC_KEY, JSON.stringify(portableProject));
-    localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableProject)));
+    const serialized = serializeProjectDocForLocalStorage(portableProject);
+    if (serialized) {
+      localStorage.setItem(SINGLE_PROJECT_DOC_KEY, serialized);
+      localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableProject)));
+    } else {
+      localStorage.removeItem(SINGLE_PROJECT_DOC_KEY);
+      localStorage.removeItem('pixl-project-save');
+    }
   } catch (error) {
     console.warn('[localProjectFiles] Failed to persist singleton document keys:', error);
   }
@@ -1052,8 +1059,14 @@ export const saveProjectDocumentToDirectory = async (document: PixlProjectDocume
     createdAt: portableDocument.createdAt,
     updatedAt: portableDocument.savedAt,
   });
-  localStorage.setItem('pixl-project-document', JSON.stringify(portableDocument));
-  localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableDocument)));
+  const serialized = serializeProjectDocForLocalStorage(portableDocument);
+  if (serialized) {
+    localStorage.setItem(SINGLE_PROJECT_DOC_KEY, serialized);
+    localStorage.setItem('pixl-project-save', JSON.stringify(createLegacyEditorSave(portableDocument)));
+  } else {
+    localStorage.removeItem(SINGLE_PROJECT_DOC_KEY);
+    localStorage.removeItem('pixl-project-save');
+  }
 
   return getCurrentProjectWorkspace();
 };

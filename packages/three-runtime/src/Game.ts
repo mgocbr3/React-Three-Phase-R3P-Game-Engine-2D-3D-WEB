@@ -11,7 +11,7 @@ import JSONAsset from './assets/JSONAsset.js';
 import InputManager from './input/InputManager.js';
 import Renderer from './Renderer.js';
 import Scene from './Scene.js';
-import type { GameJSON, GameOptions, SceneJSON } from './types.js';
+import type { GameJSON, GameOptions, RendererPostProcessingOptions, SceneJSON } from './types.js';
 import {
   pixlProjectToWesGame,
   type PixlProjectDocument,
@@ -109,6 +109,34 @@ class Game {
 
   pause(): void {
     if (this.renderer) this.renderer.pause();
+  }
+
+  dispose(): void {
+    this.pause();
+    this.scene?.beforeUnloaded();
+    this.scene?.gameObjects.forEach((g) => g.destroy());
+    this.scene = null;
+    this.inputManager?.dispose();
+    this.inputManager = null;
+    this.assetStore.unloadAll();
+    this.renderer?.dispose();
+    this.initialized = false;
+  }
+
+  isPlaying(): boolean {
+    return this.renderer?.isPlaying() ?? false;
+  }
+
+  renderStillFrame(): void {
+    this.renderer?.renderStillFrame();
+  }
+
+  setPostProcessingOptions(options?: RendererPostProcessingOptions): void {
+    this.gameOptions.rendererOptions = {
+      ...(this.gameOptions.rendererOptions ?? {}),
+      postProcessing: options,
+    };
+    this.renderer?.setPostProcessingOptions(options);
   }
 
   getAssetSourceInput(): AssetSourceInput {

@@ -25,6 +25,8 @@ export interface SampleProjectMeta {
   kind: SampleKind;
   /** Accent color for the Hub card. Optional — defaults to neutral. */
   accent?: SampleAccent;
+  /** Keep direct URLs working without surfacing internal demos in the Hub. */
+  hidden?: boolean;
 }
 
 const SAMPLE_PROJECTS: Record<string, SampleProjectMeta> = {
@@ -44,6 +46,7 @@ const SAMPLE_PROJECTS: Record<string, SampleProjectMeta> = {
     description: 'Demonstração do componente pixl.primitive — box, sphere, cone, torus, plane',
     kind: '3d',
     accent: 'purple',
+    hidden: true,
   },
   'magic-battleground-2d': {
     projectUrl: '/sample-projects/magic-battleground-2d/project.pixlproject.json',
@@ -58,6 +61,7 @@ const SAMPLE_PROJECTS: Record<string, SampleProjectMeta> = {
     description: 'Cena 2D mínima — player, inimigo, plataforma, moeda. Boilerplate de teste',
     kind: '2d',
     accent: 'cyan',
+    hidden: true,
   },
   'where-angels-die': {
     projectUrl: '/sample-projects/where-angels-die/project.pixlproject.json',
@@ -80,7 +84,9 @@ export interface SampleProjectEntry extends SampleProjectMeta {
 
 /** Snapshot of every registered sample. Used by the Hub to render cards. */
 export const listSampleProjects = (): SampleProjectEntry[] =>
-  Object.entries(SAMPLE_PROJECTS).map(([slug, meta]) => ({ slug, ...meta }));
+  Object.entries(SAMPLE_PROJECTS).flatMap(([slug, meta]) => (
+    meta.hidden ? [] : [{ slug, ...meta }]
+  ));
 
 /** Build the editor URL that opens a sample directly into its right viewport. */
 export const buildSampleEditorUrl = (slug: string): string | null => {

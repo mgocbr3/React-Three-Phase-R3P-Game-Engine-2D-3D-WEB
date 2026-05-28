@@ -336,11 +336,18 @@ const synthesizeEnvironmentLights = (
 ): import('../types.js').SceneLightJSON[] => {
   if (!env) return [];
   const lights: import('../types.js').SceneLightJSON[] = [];
+  const ambient = typeof env.ambientIntensity === 'number' ? env.ambientIntensity : 0.7;
   if (env.ambientLight || typeof env.ambientIntensity === 'number') {
+    lights.push({
+      type: 'HemisphereLight',
+      color: env.background ?? env.ambientLight ?? '#9fd5df',
+      groundColor: '#3d4637',
+      intensity: Math.max(0.2, ambient * 0.65),
+    });
     lights.push({
       type: 'AmbientLight',
       color: env.ambientLight ?? '#ffffff',
-      intensity: typeof env.ambientIntensity === 'number' ? env.ambientIntensity : 0.7,
+      intensity: Math.min(0.22, ambient * 0.18),
     });
   }
   if (env.sunColor || typeof env.sunIntensity === 'number') {
@@ -348,7 +355,13 @@ const synthesizeEnvironmentLights = (
       type: 'DirectionalLight',
       color: env.sunColor ?? '#fffaf0',
       intensity: typeof env.sunIntensity === 'number' ? env.sunIntensity : 0.85,
-      position: { x: 100, y: 200, z: 100 },
+      position: { x: -80, y: 160, z: 90 },
+      castShadow: true,
+      shadowMapSize: 2048,
+      shadowBias: -0.00015,
+      shadowNormalBias: 0.025,
+      shadowRadius: 2,
+      shadowCameraSize: 120,
     });
   }
   return lights;

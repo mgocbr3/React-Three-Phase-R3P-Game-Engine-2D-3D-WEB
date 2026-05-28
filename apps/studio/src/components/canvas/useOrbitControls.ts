@@ -7,7 +7,8 @@
 // built-in controllers" stance).
 //
 // Defaults match the legacy editor: orbit on left-drag, pan on right-
-// drag, zoom on wheel. Damping on. Auto-cancels its own RAF on unmount.
+// drag, zoom on wheel. Damping on. Renders on demand so idle editor
+// viewports do not burn frames on large 3D scenes.
 
 import { useEffect } from 'react';
 
@@ -20,6 +21,7 @@ export interface UseOrbitControlsArgs {
   target?: { x: number; y: number; z: number };
   enabled?: boolean;
   onReady?: (controls: OrbitControls | null) => void;
+  onChange?: () => void;
 }
 
 export const useOrbitControls = ({
@@ -28,6 +30,7 @@ export const useOrbitControls = ({
   target,
   enabled = true,
   onReady,
+  onChange,
 }: UseOrbitControlsArgs): void => {
   const targetKey = target ? `${target.x},${target.y},${target.z}` : '';
   useEffect(() => {
@@ -40,16 +43,37 @@ export const useOrbitControls = ({
     controls.maxDistance = 5000;
     controls.update();
     onReady?.(controls);
+    onChange?.();
 
     let raf = 0;
+    let settleFrames = 0;
     const tick = (): void => {
-      controls.update();
-      raf = requestAnimationFrame(tick);
+      raf = 0;
+      if (controls.update()) onChange?.();
+      if (settleFrames > 0) {
+        settleFrames -= 1;
+        raf = requestAnimationFrame(tick);
+      }
     };
-    raf = requestAnimationFrame(tick);
+    const schedule = (frames: number): void => {
+      settleFrames = Math.max(settleFrames, frames);
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    const handleChange = (): void => {
+      onChange?.();
+      schedule(4);
+    };
+    const handleStart = (): void => schedule(24);
+    const handleEnd = (): void => schedule(12);
+    controls.addEventListener('change', handleChange);
+    controls.addEventListener('start', handleStart);
+    controls.addEventListener('end', handleEnd);
 
     return () => {
       cancelAnimationFrame(raf);
+      controls.removeEventListener('change', handleChange);
+      controls.removeEventListener('start', handleStart);
+      controls.removeEventListener('end', handleEnd);
       controls.dispose();
       onReady?.(null);
     };

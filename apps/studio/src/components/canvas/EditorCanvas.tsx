@@ -545,6 +545,7 @@ const EditorScene = () => {
               modelUrl={playerObject?.animationSettings?.modelUrl ?? '/models/manequin/scene.gltf'}
               playerSettings={playerSettings}
               cameraSettings={cameraSettings}
+              animationName={playerObject?.animationSettings?.currentAnimation ?? 'Idle'}
             />
           )}
           

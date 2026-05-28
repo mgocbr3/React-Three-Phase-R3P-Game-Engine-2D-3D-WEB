@@ -1,12 +1,4 @@
-// GDD §6.6 Phase 6B step 4 — selection + transform gizmo for the native
-// runtime mount.
-//
-// Lightweight wrapper around three/examples/jsm raycaster + TransformControls
-// (MIT). Click on the canvas → raycast against the active scene → attach a
-// gizmo to the hit object. Drag the gizmo to translate/rotate/scale.
-// OrbitControls is suspended while the gizmo is being dragged so the camera
-// doesn't fight the user.
-//
+// Native scene selection + TransformControls bridge.
 import { useEffect, useRef, useState } from 'react';
 
 import * as THREE from 'three';
@@ -52,6 +44,7 @@ export interface UseSelectionGizmoArgs {
   externalSelected?: THREE.Object3D | null;
   onSelectionChange?: (object: THREE.Object3D | null) => void;
   onTransformCommit?: (object: THREE.Object3D, transform: ThreeObjectTransform) => void;
+  onChange?: () => void;
   snapSettings?: NativeGizmoSnapSettings;
 }
 
@@ -205,10 +198,12 @@ export const useSelectionGizmo = ({
   externalSelected,
   onSelectionChange,
   onTransformCommit,
+  onChange,
   snapSettings,
 }: UseSelectionGizmoArgs): void => {
   const transformRef = useRef<TransformControls | null>(null);
   const onTransformCommitRef = useRef(onTransformCommit);
+  const onChangeRef = useRef(onChange);
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const [selected, setSelected] = useState<THREE.Object3D | null>(null);
 
@@ -216,28 +211,35 @@ export const useSelectionGizmo = ({
     onTransformCommitRef.current = onTransformCommit;
   }, [onTransformCommit]);
 
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   // Set up the gizmo (created once per canvas/camera pair).
   useEffect(() => {
     if (!canvas || !camera || !scene || !enabled) return;
     const transform = new TransformControls(camera, canvas);
     const transformWithPickers = transform as TransformControlsWithPickers;
     enlargeTransformPickerHitArea(Object.values(transformWithPickers._gizmo?.picker ?? {}));
-    // Phase 6B debug — strip later alongside __pixlGame.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__pixlGizmo = transform;
     scene.add(transform.getHelper());
 
     const onDraggingChanged = (event: { value: unknown }): void => {
       if (orbitControls) orbitControls.enabled = !event.value;
+      onChangeRef.current?.();
       if (!event.value && transform.object) {
         onTransformCommitRef.current?.(transform.object, getThreeObjectTransform(transform.object));
       }
     };
+    const requestRender = (): void => onChangeRef.current?.();
     transform.addEventListener('dragging-changed', onDraggingChanged);
+    transform.addEventListener('change', requestRender);
+    transform.addEventListener('objectChange', requestRender);
 
     transformRef.current = transform;
     return () => {
       transform.removeEventListener('dragging-changed', onDraggingChanged);
+      transform.removeEventListener('change', requestRender);
+      transform.removeEventListener('objectChange', requestRender);
       transform.detach();
       scene.remove(transform.getHelper());
       transform.dispose();
@@ -250,12 +252,14 @@ export const useSelectionGizmo = ({
     const t = transformRef.current;
     if (!t) return;
     t.setMode(mode);
+    onChangeRef.current?.();
   }, [mode]);
 
   useEffect(() => {
     const t = transformRef.current;
     if (!t) return;
     t.setSpace(getNativeGizmoTransformSpace(space));
+    onChangeRef.current?.();
   }, [space]);
 
   useEffect(() => {
@@ -265,6 +269,7 @@ export const useSelectionGizmo = ({
     t.setTranslationSnap(snap.translation);
     t.setRotationSnap(snap.rotation);
     t.setScaleSnap(snap.scale);
+    onChangeRef.current?.();
   }, [snapSettings?.snapEnabled, snapSettings?.snapTranslate, snapSettings?.snapRotate, snapSettings?.snapScale]);
 
   // Click-to-select via raycast against the scene root.
@@ -320,6 +325,7 @@ export const useSelectionGizmo = ({
       const first = hits.find((h) => h.object.visible && !isNativeEditorHelperObject(h.object, scene));
       const newSelection = resolveSelectableObject(first?.object, scene);
       setSelected(newSelection);
+      onChangeRef.current?.();
     };
 
     canvas.addEventListener('pointerdown', onPointerDownCapture, { capture: true });
@@ -339,6 +345,7 @@ export const useSelectionGizmo = ({
   useEffect(() => {
     if (externalSelected === undefined) return; // arg not used by this caller
     setSelected(externalSelected);
+    onChangeRef.current?.();
   }, [externalSelected]);
 
   // Wire selection state → transform attach/detach + onSelectionChange.
@@ -348,5 +355,6 @@ export const useSelectionGizmo = ({
     if (selected) t.attach(selected);
     else t.detach();
     onSelectionChange?.(selected);
+    onChangeRef.current?.();
   }, [selected, onSelectionChange]);
 };

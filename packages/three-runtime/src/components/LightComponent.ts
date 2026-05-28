@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 
 import Component, { type ComponentJSON } from '../Component.js';
-import { setObject3DProps } from '../util/ThreeJSHelpers.js';
+import { configureLightQuality, setObject3DProps } from '../util/ThreeJSHelpers.js';
 import type { Vector3Data } from '../types.js';
 
 export interface LightComponentJSON extends ComponentJSON {
@@ -38,6 +38,7 @@ class LightComponent extends Component {
     delete (objectProps as { type?: unknown }).type;
     delete (objectProps as { name?: unknown }).name;
     setObject3DProps(light, objectProps);
+    configureLightQuality(light, objectProps);
 
     this.light = light;
     this.gameObject.threeJSGroup.add(this.light);

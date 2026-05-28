@@ -1,34 +1,7 @@
-// PrimitiveComponent — renders a built-in THREE geometry (box, sphere, cone,
-// cylinder, torus, plane) with a MeshStandardMaterial. Lets projects describe
-// a scene in the project document using primitive shapes, without requiring
-// every entity to ship as a GLB.
-//
-// Mirrors the LightComponent shape: load() builds a THREE.Mesh and adds it
-// to `gameObject.threeJSGroup`; unload() removes it. Position/rotation/scale
-// are inherited from the parent group (the GameObject's transform).
-//
-// Component JSON shape (added by exportProjectToThree's adapter under
-// `type: 'primitive'`):
-//   {
-//     type: 'primitive',
-//     shape: 'box' | 'sphere' | 'cone' | 'cylinder' | 'torus' | 'plane',
-//     size?: { x: number, y: number, z: number },  // box / plane (xy used)
-//     radius?: number,                              // sphere / cone / cylinder / torus
-//     height?: number,                              // cone / cylinder
-//     tube?: number,                                // torus inner radius
-//     radialSegments?: number,
-//     color?: string,                               // hex e.g. "#3878ff"
-//     emissive?: string,
-//     emissiveIntensity?: number,
-//     metalness?: number,
-//     roughness?: number,
-//     castShadow?: boolean,
-//     receiveShadow?: boolean,
-//   }
-
 import * as THREE from 'three';
 
 import Component, { type ComponentJSON } from '../Component.js';
+import { optimizeStaticObject3D } from '../util/ThreeJSHelpers.js';
 
 export type PrimitiveShape = 'box' | 'sphere' | 'cone' | 'cylinder' | 'torus' | 'plane';
 
@@ -122,9 +95,11 @@ class PrimitiveComponent extends Component {
     if ((json.shape ?? 'box') === 'plane') {
       mesh.rotation.x = -Math.PI / 2;
     }
+    optimizeStaticObject3D(mesh);
 
     this.mesh = mesh;
     this.gameObject.threeJSGroup.add(mesh);
+    this.gameObject.threeJSGroup.updateMatrixWorld(true);
   }
 
   unload(): void {
