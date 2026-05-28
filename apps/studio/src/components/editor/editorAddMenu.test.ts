@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getEditorAddMenuSections } from './editorAddMenu';
+import { getEditorAddMenuSections, getEditorAddObjectPosition } from './editorAddMenu';
 
 describe('editor add menu', () => {
   it('uses 2D object labels and hides 3D-only entries in 2D scenes', () => {
@@ -20,5 +20,23 @@ describe('editor add menu', () => {
     expect(labels).toContain('Point Light');
     expect(labels).not.toContain('Pixlland Terrain');
     expect(labels).not.toContain('Square');
+  });
+
+  it('creates 2D objects at the current viewport center', () => {
+    expect(getEditorAddObjectPosition('2d', {
+      scene: {
+        scenes: [{
+          cameras: {
+            main: {
+              width: 800,
+              height: 600,
+              getWorldPoint: (x: number, y: number) => ({ x: x + 12.4, y: y - 8.6 }),
+            },
+          },
+        }],
+      },
+    })).toEqual([412, 291, 0]);
+
+    expect(getEditorAddObjectPosition('3d')).toBeUndefined();
   });
 });

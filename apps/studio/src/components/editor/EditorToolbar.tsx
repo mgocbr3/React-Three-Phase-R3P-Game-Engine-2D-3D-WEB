@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useTerrainStore } from '@/stores/terrainStore';
 import { useViewportStore } from '@/stores/viewportStore';
-import { getEditorAddMenuSections } from './editorAddMenu';
+import { getEditorAddMenuSections, getEditorAddObjectPosition } from './editorAddMenu';
 
 const transformTools: { mode: TransformMode; icon: typeof Move3D; label: string; shortcut: string }[] = [
   { mode: 'select', icon: MousePointer2, label: 'Select (Free Camera)', shortcut: 'Q' },
@@ -270,7 +270,7 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
                           key={`${section.label}-${item.label}`}
                           onClick={() => {
                             if (item.kind === 'terrain') setTerrainModalOpen(true);
-                            else addObject(item.objectType, addMenuKind === '2d' ? [400, 300, 0] : undefined);
+                            else addObject(item.objectType, getEditorAddObjectPosition(addMenuKind));
                             setShowAddMenu(false);
                           }}
                           className="group flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"

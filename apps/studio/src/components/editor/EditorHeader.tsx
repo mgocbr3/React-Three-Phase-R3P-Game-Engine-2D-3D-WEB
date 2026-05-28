@@ -81,7 +81,7 @@ import {
 import { FilePickerBusyError } from '@/services/filePickerLock';
 import { EditorToolbar } from './EditorToolbar';
 import { getDockPanelLabels } from './editorDockLayout';
-import { getEditorAddMenuSections } from './editorAddMenu';
+import { getEditorAddMenuSections, getEditorAddObjectPosition } from './editorAddMenu';
 import { toggleRuntimePreviewFromEditor } from '@/engine/runtime/runtimePreviewControls';
 import { getRuntimeAdapterLabel } from '@/engine/runtime/runtimePreview';
 
@@ -459,7 +459,7 @@ export const EditorHeader = () => {
         icon: sceneAddIcons[action],
         action: () => {
           if (item.kind === 'terrain') setTerrainModalOpen(true);
-          else addObject(item.objectType, activeSceneKind === '2d' ? [400, 300, 0] : undefined);
+          else addObject(item.objectType, getEditorAddObjectPosition(activeSceneKind));
         },
       };
     }),

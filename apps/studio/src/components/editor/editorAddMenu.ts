@@ -9,6 +9,14 @@ export interface AddMenuSection {
   items: AddMenuItem[];
 }
 
+type ViewportGameLike = {
+  scene?: { scenes?: Array<{ cameras?: { main?: {
+    width?: number;
+    height?: number;
+    getWorldPoint?: (x: number, y: number) => { x?: number; y?: number };
+  } } }> };
+};
+
 const primitives3d: AddMenuItem[] = [
   { kind: 'object', objectType: 'box', label: 'Cube' },
   { kind: 'object', objectType: 'sphere', label: 'Sphere' },
@@ -38,3 +46,18 @@ export const getEditorAddMenuSections = (kind: SceneKind): AddMenuSection[] => (
       { label: 'Lights', items: lights3d },
     ]
 );
+
+export const getEditorAddObjectPosition = (
+  kind: SceneKind,
+  game: ViewportGameLike | null | undefined = typeof window === 'undefined'
+    ? null
+    : (window as Window & { __pixlPhaserGame?: ViewportGameLike }).__pixlPhaserGame,
+): [number, number, number] | undefined => {
+  if (kind !== '2d') return undefined;
+  const camera = game?.scene?.scenes?.[0]?.cameras?.main;
+  const width = camera?.width ?? 800;
+  const height = camera?.height ?? 600;
+  const point = camera?.getWorldPoint?.(width / 2, height / 2);
+  if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return [400, 300, 0];
+  return [Math.round(point.x as number), Math.round(point.y as number), 0];
+};
