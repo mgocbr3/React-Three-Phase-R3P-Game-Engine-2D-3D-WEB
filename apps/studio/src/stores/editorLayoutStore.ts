@@ -8,18 +8,26 @@ export type EditorDockTarget = EditorPanelId | 'main-end' | 'bottom-end';
 
 type PanelVisibility = Record<EditorPanelId, boolean>;
 type PanelZones = Record<EditorPanelId, EditorDockZone>;
+type EditorLayoutSnapshot = {
+  panels: PanelVisibility;
+  panelZones: PanelZones;
+  dockOrder: EditorPanelId[];
+};
 
 interface EditorLayoutState {
   panels: PanelVisibility;
   panelZones: PanelZones;
   dockOrder: EditorPanelId[];
   preset: EditorLayoutPreset;
+  savedLayout: EditorLayoutSnapshot | null;
   setPanelVisible: (panel: EditorPanelId, visible: boolean) => void;
   togglePanel: (panel: EditorPanelId) => void;
   movePanelBefore: (panel: EditorPanelId, target: EditorPanelId) => void;
   movePanelToEnd: (panel: EditorPanelId) => void;
   movePanelToZone: (panel: EditorPanelId, zone: EditorDockZone) => void;
   restorePanel: (panel: EditorPanelId) => void;
+  saveCurrentLayout: () => void;
+  loadSavedLayout: () => void;
   showAllPanels: () => void;
   applyPreset: (preset: EditorLayoutPreset) => void;
   resetLayout: () => void;
@@ -54,6 +62,16 @@ export const normalizePanelZones = (zones?: Partial<PanelZones>): PanelZones => 
   ...defaultPanelZones,
   ...zones,
 });
+
+const normalizeLayoutSnapshot = (snapshot?: Partial<EditorLayoutSnapshot> | null): EditorLayoutSnapshot | null => (
+  snapshot
+    ? {
+      panels: { ...defaultPanels, ...snapshot.panels },
+      panelZones: normalizePanelZones(snapshot.panelZones),
+      dockOrder: normalizeDockOrder(snapshot.dockOrder),
+    }
+    : null
+);
 
 const defaultPanelSlot = (panel: EditorPanelId) => defaultDockOrder.indexOf(panel);
 
@@ -106,6 +124,7 @@ export const useEditorLayoutStore = create<EditorLayoutState>()(
       panelZones: defaultPanelZones,
       dockOrder: defaultDockOrder,
       preset: 'default',
+      savedLayout: null,
       setPanelVisible: (panel, visible) =>
         set((state) => ({
           panels: { ...state.panels, [panel]: visible },
@@ -145,6 +164,19 @@ export const useEditorLayoutStore = create<EditorLayoutState>()(
           ...restoreDockPanel(state.dockOrder, state.panelZones, panel),
           preset: 'default',
         })),
+      saveCurrentLayout: () =>
+        set((state) => ({
+          savedLayout: {
+            panels: { ...state.panels },
+            panelZones: normalizePanelZones(state.panelZones),
+            dockOrder: normalizeDockOrder(state.dockOrder),
+          },
+        })),
+      loadSavedLayout: () =>
+        set((state) => {
+          const savedLayout = normalizeLayoutSnapshot(state.savedLayout);
+          return savedLayout ? { ...savedLayout, savedLayout, preset: 'default' } : state;
+        }),
       showAllPanels: () =>
         set((state) => ({
           panels: { ...defaultPanels },
@@ -177,6 +209,7 @@ export const useEditorLayoutStore = create<EditorLayoutState>()(
           panelZones: normalizePanelZones(saved?.panelZones),
           dockOrder: normalizeDockOrder(saved?.dockOrder),
           preset: saved?.preset ?? current.preset,
+          savedLayout: normalizeLayoutSnapshot(saved?.savedLayout),
         };
       },
     },

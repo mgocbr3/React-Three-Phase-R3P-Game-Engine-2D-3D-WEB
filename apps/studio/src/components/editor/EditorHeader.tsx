@@ -148,6 +148,9 @@ export const EditorHeader = () => {
   const panels = useEditorLayoutStore((s) => s.panels);
   const togglePanel = useEditorLayoutStore((s) => s.togglePanel);
   const restorePanel = useEditorLayoutStore((s) => s.restorePanel);
+  const saveCurrentLayout = useEditorLayoutStore((s) => s.saveCurrentLayout);
+  const loadSavedLayout = useEditorLayoutStore((s) => s.loadSavedLayout);
+  const hasSavedLayout = useEditorLayoutStore((s) => Boolean(s.savedLayout));
   const showAllPanels = useEditorLayoutStore((s) => s.showAllPanels);
   const resetLayout = useEditorLayoutStore((s) => s.resetLayout);
   const applyLayoutPreset = useEditorLayoutStore((s) => s.applyPreset);
@@ -205,6 +208,16 @@ export const EditorHeader = () => {
     restorePanel('bottom');
     restoreBottomTab(tab);
   }, [restoreBottomTab, restorePanel]);
+
+  const saveWindowLayout = useCallback(() => {
+    saveCurrentLayout();
+    toast.success('Layout salvo.', { duration: 1200 });
+  }, [saveCurrentLayout]);
+
+  const loadWindowLayout = useCallback(() => {
+    loadSavedLayout();
+    toast.success('Layout carregado.', { duration: 1200 });
+  }, [loadSavedLayout]);
 
   const openBuildSettings = useCallback(() => {
     try {
@@ -461,6 +474,9 @@ export const EditorHeader = () => {
       { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },
       { label: 'Viewport Focus', icon: Maximize2, action: () => applyLayoutPreset('viewport-focus') },
       { label: 'Inspect Layout', icon: PanelLeft, action: () => applyLayoutPreset('inspect') },
+      { label: '', divider: true },
+      { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
+      { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
     ],
     Help: [
       { label: 'Documentation', icon: Book },

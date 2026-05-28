@@ -86,6 +86,20 @@ describe('editorLayoutStore dock layout', () => {
     expect(state.dockOrder).toEqual(['scene', 'viewport', 'inspector', 'bottom']);
   });
 
+  it('saves and reloads a custom dock layout', () => {
+    useEditorLayoutStore.getState().movePanelBefore('bottom', 'scene');
+    useEditorLayoutStore.getState().setPanelVisible('inspector', false);
+    useEditorLayoutStore.getState().saveCurrentLayout();
+
+    useEditorLayoutStore.getState().resetLayout();
+    useEditorLayoutStore.getState().loadSavedLayout();
+
+    const state = useEditorLayoutStore.getState();
+    expect(state.panels.inspector).toBe(false);
+    expect(state.panelZones.bottom).toBe('main');
+    expect(state.dockOrder).toEqual(['bottom', 'scene', 'viewport', 'inspector']);
+  });
+
   it('shows every panel from Window without resetting the custom dock order', () => {
     useEditorLayoutStore.getState().movePanelToEnd('scene');
     useEditorLayoutStore.getState().setPanelVisible('viewport', false);
