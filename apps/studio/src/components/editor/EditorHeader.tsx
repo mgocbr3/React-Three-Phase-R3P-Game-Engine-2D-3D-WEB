@@ -32,6 +32,7 @@ import {
   Save,
   Settings,
   Sun,
+  Terminal,
   Trash2,
   Undo,
   Wrench,
@@ -50,6 +51,7 @@ import { defaultTerrainSettings, useTerrainStore, TerrainSettings } from '@/stor
 import { TerrainSettingsModal } from '@/components/terrain/TerrainSettingsModal';
 import { toast } from 'sonner';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
+import { useBottomPanelTabsStore, type BottomTabId } from '@/stores/bottomPanelTabsStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAssetStore } from '@/stores/assetStore';
 import { cn } from '@/lib/utils';
@@ -149,6 +151,8 @@ export const EditorHeader = () => {
   const showAllPanels = useEditorLayoutStore((s) => s.showAllPanels);
   const resetLayout = useEditorLayoutStore((s) => s.resetLayout);
   const applyLayoutPreset = useEditorLayoutStore((s) => s.applyPreset);
+  const restoreBottomTab = useBottomPanelTabsStore((s) => s.restoreTab);
+  const restoreAllBottomTabs = useBottomPanelTabsStore((s) => s.restoreAllTabs);
 
   const projectName = localProject?.name || 'Untitled Project';
   const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
@@ -196,6 +200,11 @@ export const EditorHeader = () => {
       toast.error(message);
     }
   }, [projectName]);
+
+  const openBottomTab = useCallback((tab: BottomTabId) => {
+    restorePanel('bottom');
+    restoreBottomTab(tab);
+  }, [restoreBottomTab, restorePanel]);
 
   const openBuildSettings = useCallback(() => {
     try {
@@ -441,6 +450,12 @@ export const EditorHeader = () => {
       { label: 'Dock Scene View Center', icon: Monitor, action: () => restorePanel('viewport') },
       { label: 'Dock Inspector Right', icon: PanelLeft, action: () => restorePanel('inspector') },
       { label: 'Dock Project Below', icon: PanelBottom, action: () => restorePanel('bottom') },
+      { label: '', divider: true },
+      { label: 'Open Content Browser', icon: FolderOpen, action: () => openBottomTab('assets') },
+      { label: 'Open UI Editor', icon: LayoutGrid, action: () => openBottomTab('ui') },
+      { label: 'Open Timeline', icon: History, action: () => openBottomTab('timeline') },
+      { label: 'Open Console', icon: Terminal, action: () => openBottomTab('console') },
+      { label: 'Restore Project Tabs', icon: LayoutGrid, action: () => { restorePanel('bottom'); restoreAllBottomTabs(); } },
       { label: '', divider: true },
       { label: 'Show All Panels', icon: LayoutGrid, action: showAllPanels },
       { label: 'Default Layout', icon: LayoutGrid, action: resetLayout },

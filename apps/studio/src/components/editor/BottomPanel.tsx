@@ -3,7 +3,7 @@ import {
   FolderOpen, Terminal, Package,
   Search, Filter, RefreshCw, Download, FolderPlus, Trash2,
   AlertCircle, AlertTriangle, Info, ChevronRight, Play, Grid, List,
-  Upload, FileBox, Image, Music, Code, Clock, Layout,
+  Upload, FileBox, Image, Music, Code, Clock, Layout, X,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,12 @@ import {
   createProjectDiagnosticConsoleMessages,
   type ProjectDiagnosticConsoleMessage,
 } from '@/services/projectDiagnostics';
+import {
+  getVisibleBottomTabs,
+  normalizeBottomTabOrder as normalizeBottomTabOrderState,
+  useBottomPanelTabsStore,
+  type BottomTabId,
+} from '@/stores/bottomPanelTabsStore';
 
 interface ConsoleMessage {
   id: string;
@@ -73,9 +79,6 @@ const INITIAL_CONSOLE: ConsoleMessage[] = [
   { id: '1', type: 'info', message: 'React 3 Phase inicializado', timestamp: new Date().toLocaleTimeString() },
 ];
 
-type BottomTabId = 'assets' | 'ui' | 'console' | 'store' | 'timeline';
-
-const BOTTOM_TAB_ORDER_KEY = 'pixlplayground.bottomTabOrder';
 const CONTENT_BROWSER_SIDEBAR_WIDTH_KEY = 'pixlplayground.contentBrowserSidebarWidth';
 const CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH = 188;
 const CONTENT_BROWSER_SIDEBAR_MIN_WIDTH = 132;
@@ -96,19 +99,11 @@ export const normalizeBottomTabOrder = (
   savedOrder: unknown,
   availableTabs = getAvailableBottomTabs(),
 ): BottomTabId[] => {
-  const validIds = new Set(availableTabs.map((tab) => tab.id));
-  const ordered = Array.isArray(savedOrder)
-    ? savedOrder.filter((id): id is BottomTabId => typeof id === 'string' && validIds.has(id as BottomTabId))
-    : [];
-  const missing = availableTabs
-    .map((tab) => tab.id)
-    .filter((id) => !ordered.includes(id));
-
-  return [...ordered, ...missing];
+  return normalizeBottomTabOrderState(savedOrder, availableTabs.map((tab) => tab.id));
 };
 
 export const shouldRenderStorePane = (
-  _activeTab: BottomTabId,
+  _activeTab: BottomTabId | 'store',
   _cloudEnabled = false,
 ): boolean => false;
 
@@ -273,8 +268,12 @@ const AssetPreview = ({ asset, size = 'md' }: { asset: ProjectAsset; size?: 'sm'
 
 export const BottomPanel = () => {
   const availableBottomTabs = useMemo(() => getAvailableBottomTabs(), []);
-  const [activeTab, setActiveTab] = useState<BottomTabId>('assets');
-  const [tabOrder, setTabOrder] = useState<BottomTabId[]>(() => availableBottomTabs.map((tab) => tab.id));
+  const activeTab = useBottomPanelTabsStore((s) => s.activeTab);
+  const tabOrder = useBottomPanelTabsStore((s) => s.tabOrder);
+  const closedTabs = useBottomPanelTabsStore((s) => s.closedTabs);
+  const setActiveTab = useBottomPanelTabsStore((s) => s.setActiveTab);
+  const moveTabBefore = useBottomPanelTabsStore((s) => s.moveTabBefore);
+  const closeBottomTab = useBottomPanelTabsStore((s) => s.closeTab);
   const [draggedTab, setDraggedTab] = useState<BottomTabId | null>(null);
   const draggedTabRef = useRef<BottomTabId | null>(null);
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
@@ -339,29 +338,10 @@ export const BottomPanel = () => {
     [diagnosticMessages],
   );
   useEffect(() => {
-    try {
-      const savedOrder = JSON.parse(localStorage.getItem(BOTTOM_TAB_ORDER_KEY) || '[]') as BottomTabId[];
-      setTabOrder(normalizeBottomTabOrder(savedOrder, availableBottomTabs));
-    } catch {
-      localStorage.removeItem(BOTTOM_TAB_ORDER_KEY);
-      setTabOrder(availableBottomTabs.map((tab) => tab.id));
-    }
-  }, [availableBottomTabs]);
-
-  useEffect(() => {
-    localStorage.setItem(BOTTOM_TAB_ORDER_KEY, JSON.stringify(tabOrder));
-  }, [tabOrder]);
-
-  useEffect(() => {
-    if (tabOrder.includes(activeTab)) return;
-    setActiveTab(tabOrder[0] ?? 'assets');
-  }, [activeTab, tabOrder]);
-
-  useEffect(() => {
     localStorage.setItem(CONTENT_BROWSER_SIDEBAR_WIDTH_KEY, String(contentBrowserSidebarWidth));
   }, [contentBrowserSidebarWidth]);
 
-  const tabs = tabOrder
+  const tabs = getVisibleBottomTabs(tabOrder, closedTabs)
     .map((id) => availableBottomTabs.find((tab) => tab.id === id))
     .filter((tab): tab is BottomTabDefinition => Boolean(tab));
 
@@ -414,12 +394,7 @@ export const BottomPanel = () => {
     const sourceTab = draggedTabRef.current;
     if (!sourceTab || sourceTab === targetTab) return;
 
-    setTabOrder((current) => {
-      const next = current.filter((id) => id !== sourceTab);
-      const targetIndex = next.indexOf(targetTab);
-      next.splice(targetIndex, 0, sourceTab);
-      return next;
-    });
+    moveTabBefore(sourceTab, targetTab);
     draggedTabRef.current = null;
     setDraggedTab(null);
   };
@@ -657,31 +632,53 @@ export const BottomPanel = () => {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
-            <button
+            <div
               key={tab.id}
               draggable
-              onClick={() => setActiveTab(tab.id)}
               onDragStart={() => handleTabDragStart(tab.id)}
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => handleTabDrop(tab.id)}
               onDragEnd={handleTabDragEnd}
               className={cn(
-                'editor-panel-tab flex h-7 cursor-grab items-center gap-1.5 px-3 text-xs transition-colors active:cursor-grabbing',
+                'editor-panel-tab flex h-7 cursor-grab items-center gap-1.5 px-2 text-xs transition-colors active:cursor-grabbing',
                 activeTab === tab.id 
                   ? 'active' 
                   : 'text-muted-foreground',
                 draggedTab === tab.id && 'opacity-55'
               )}
             >
-              <Icon className="w-3.5 h-3.5" />
-              {tab.label}
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className="flex h-full min-w-0 items-center gap-1.5"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{tab.label}</span>
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  closeBottomTab(tab.id);
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="ml-1 rounded-sm p-0.5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                title={`Fechar ${tab.label}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
           );
         })}
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
+        {!activeTab && (
+          <div className="flex h-full items-center justify-center bg-[var(--editor-bg)] text-xs text-muted-foreground">
+            Reabra abas em Window.
+          </div>
+        )}
         {/* Assets Browser */}
         {activeTab === 'assets' && (
           <div className="h-full flex">
