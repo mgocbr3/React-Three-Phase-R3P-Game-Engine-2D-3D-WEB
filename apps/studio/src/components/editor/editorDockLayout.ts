@@ -44,6 +44,14 @@ export const shouldUseNativeRuntimeViewport = (requestedNative: boolean, isRunti
 
 export const shouldShowEditorOverlays = (isRuntimePreview: boolean) => !isRuntimePreview;
 
+export const getVisibleDockPanelIds = (
+  dockOrder: readonly EditorPanelId[],
+  panels: Record<EditorPanelId, boolean>,
+  isRuntimePreview: boolean,
+): EditorPanelId[] => (
+  isRuntimePreview ? ['viewport'] : dockOrder.filter((id) => panels[id])
+);
+
 export const getDockPanelSize = (id: EditorPanelId, visibleIds: EditorPanelId[]) => {
   const total = visibleIds.reduce((sum, panel) => sum + weight(panel), 0) || weight(id);
   const only = visibleIds.length <= 1;

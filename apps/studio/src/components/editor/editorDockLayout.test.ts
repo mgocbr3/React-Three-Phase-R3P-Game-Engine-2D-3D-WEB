@@ -7,6 +7,7 @@ import {
   getDockPanelSize,
   getDockRowKey,
   getDockZoneLayout,
+  getVisibleDockPanelIds,
   resolveDockTargetFromRects,
   shouldShowEditorOverlays,
   shouldUseNativeRuntimeViewport,
@@ -35,6 +36,13 @@ describe('editorDockLayout', () => {
     expect(shouldUseNativeRuntimeViewport(false, false)).toBe(false);
     expect(shouldShowEditorOverlays(true)).toBe(false);
     expect(shouldShowEditorOverlays(false)).toBe(true);
+  });
+
+  it('focuses the game viewport without mutating the saved dock layout during runtime preview', () => {
+    const panels = { scene: true, viewport: true, inspector: true, bottom: true };
+
+    expect(getVisibleDockPanelIds(defaultDockOrder, panels, false)).toEqual(defaultDockOrder);
+    expect(getVisibleDockPanelIds(defaultDockOrder, panels, true)).toEqual(['viewport']);
   });
 
   it('keeps visible dock panel default sizes normalized to 100%', () => {

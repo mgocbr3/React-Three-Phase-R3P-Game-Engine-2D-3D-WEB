@@ -11,7 +11,7 @@ import { BottomPanel } from '@/components/editor/BottomPanel';
 import { DockFrame } from '@/components/editor/DockFrame';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockRowKey, getDockZoneLayout, resolveDockTargetFromRects, shouldShowEditorOverlays, shouldUseNativeRuntimeViewport, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockRowKey, getDockZoneLayout, getVisibleDockPanelIds, resolveDockTargetFromRects, shouldShowEditorOverlays, shouldUseNativeRuntimeViewport, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -372,7 +372,7 @@ const EditorPage = () => {
       {previewSession && <RuntimeGameFrame session={previewSession} />}
     </>
   );
-  const visibleDockIds = previewDock.dockOrder.filter((id) => panels[id]);
+  const visibleDockIds = getVisibleDockPanelIds(previewDock.dockOrder, panels, isRuntimePreview);
   const idsInZone = (zone: EditorDockZone) => visibleDockIds.filter((id) => (
     (previewDock.panelZones[id] ?? (id === 'bottom' ? 'bottom' : 'main')) === zone
   ));
@@ -384,7 +384,14 @@ const EditorPage = () => {
     scene: { label: dockPanelLabels.scene, content: <SceneGraphPanel /> },
     viewport: {
       label: dockPanelLabels.viewport,
-      content: <div className="relative h-full border-x border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]">{editorRuntimeSurface}</div>,
+      content: (
+        <div className={cn(
+          'relative h-full',
+          isRuntimePreview ? 'bg-[#080808]' : 'border-x border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]',
+        )}>
+          {editorRuntimeSurface}
+        </div>
+      ),
     },
     inspector: { label: dockPanelLabels.inspector, content: <InspectorPanel /> },
     bottom: { label: dockPanelLabels.bottom, content: <BottomPanel /> },
@@ -424,6 +431,7 @@ const EditorPage = () => {
                   dragging={draggedDock === id}
                   draggingAny={Boolean(draggedDock)}
                   dropActive={dockDropTarget === id && draggedDock !== id}
+                  chromeHidden={isRuntimePreview && id === 'viewport'}
                   onPointerDown={(event) => {
                     if (event.button !== 0) return;
                     event.preventDefault();
