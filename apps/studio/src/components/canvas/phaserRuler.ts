@@ -118,6 +118,25 @@ export const getWheelZoomCamera = (
   };
 };
 
+export const getPannedCamera = (
+  camera: { scrollX: number; scrollY: number; zoom: number },
+  delta: { x: number; y: number },
+) => ({
+  scrollX: Number((camera.scrollX - delta.x / camera.zoom).toFixed(2)),
+  scrollY: Number((camera.scrollY - delta.y / camera.zoom).toFixed(2)),
+});
+
+export const getWorldBackgroundFrame = (
+  bounds: ViewportWorldBounds | null,
+  fallback = { width: 800, height: 600 },
+) => {
+  const minX = bounds?.minX ?? 0;
+  const minY = bounds?.minY ?? 0;
+  const width = Math.max(1, bounds ? bounds.maxX - bounds.minX : fallback.width);
+  const height = Math.max(1, bounds ? bounds.maxY - bounds.minY : fallback.height);
+  return { x: minX + width / 2, y: minY + height / 2, width, height };
+};
+
 export const getFittedViewportCamera = (
   bounds: ViewportWorldBounds,
   viewport: { width: number; height: number },

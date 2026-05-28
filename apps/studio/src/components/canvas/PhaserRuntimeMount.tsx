@@ -15,7 +15,13 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
-import { getWheelZoomCamera, setFittedViewportCamera, type ViewportWorldBounds } from './phaserRuler';
+import {
+  getPannedCamera,
+  getWheelZoomCamera,
+  getWorldBackgroundFrame,
+  setFittedViewportCamera,
+  type ViewportWorldBounds,
+} from './phaserRuler';
 import { Viewport2DOverlay } from './Viewport2DOverlay';
 
 export interface PhaserRuntimeMountProps {
@@ -31,6 +37,7 @@ interface LoadState {
 
 const DEFAULT_BASE_URL = '/sample-projects/sample-2d';
 const FALLBACK_VIEWPORT_SIZE = { width: 800, height: 600 };
+const EDITOR_VOID_COLOR = 0x101822;
 
 export const readPhaserViewportSize = (
   host: Pick<HTMLElement, 'clientWidth' | 'clientHeight' | 'getBoundingClientRect'>,
@@ -279,6 +286,7 @@ export function PhaserRuntimeMount({
   const gameRef = useRef<any>(null);
   const autoFitBoundsRef = useRef<ViewportWorldBounds | null>(null);
   const autoFitCameraRef = useRef(false);
+  const editorPanRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
 
   // Subscribe to the editor's Play/Stop button via the existing
@@ -371,7 +379,7 @@ export function PhaserRuntimeMount({
           parent: container,
           width: initialSize.width,
           height: initialSize.height,
-          backgroundColor: bg,
+          backgroundColor: EDITOR_VOID_COLOR,
           pixelArt,
           roundPixels: pixelArt,
           scale: {
@@ -408,6 +416,12 @@ export function PhaserRuntimeMount({
                 } catch { /* depends on Phaser version */ }
               }
 
+              const sceneBounds = getSceneBounds(phaserScene.rootObjects);
+              const frame = getWorldBackgroundFrame(sceneBounds);
+              this.add.rectangle(frame.x, frame.y, frame.width, frame.height, bg)
+                .setDepth(-100000)
+                .setName('__pixl_scene_background');
+
               for (const obj of phaserScene.rootObjects) {
                 drawObject(this, obj);
               }
@@ -420,6 +434,7 @@ export function PhaserRuntimeMount({
               for (const go of this.children.list) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const anyGo = go as any;
+                if (String(anyGo.name ?? '').startsWith('__pixl_')) continue;
                 if (typeof anyGo.setInteractive === 'function') {
                   try { anyGo.setInteractive(); } catch { /* some types can't be interactive */ }
                 }
@@ -1383,10 +1398,14 @@ export function PhaserRuntimeMount({
     }
   }, [isPlaying, load.status]);
 
+  const getEditorCamera = useCallback(() => {
+    const scene = gameRef.current?.scene?.scenes?.[0] as import('phaser').Scene | undefined;
+    return scene?.cameras?.main ?? null;
+  }, []);
+
   const handleEditorWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     if (!visible || isPlaying || load.status !== 'ready') return;
-    const scene = gameRef.current?.scene?.scenes?.[0] as import('phaser').Scene | undefined;
-    const camera = scene?.cameras?.main;
+    const camera = getEditorCamera();
     if (!camera) return;
     autoFitCameraRef.current = false;
     event.preventDefault();
@@ -1395,13 +1414,48 @@ export function PhaserRuntimeMount({
     const next = getWheelZoomCamera(camera, { x: event.clientX - rect.left, y: event.clientY - rect.top }, event.deltaY);
     camera.setScroll(next.scrollX, next.scrollY);
     camera.setZoom(next.zoom);
-  }, [isPlaying, load.status, visible]);
+  }, [getEditorCamera, isPlaying, load.status, visible]);
+
+  const handleEditorPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!visible || isPlaying || load.status !== 'ready' || (event.button !== 1 && event.button !== 2)) return;
+    if (!getEditorCamera()) return;
+    autoFitCameraRef.current = false;
+    editorPanRef.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  }, [getEditorCamera, isPlaying, load.status, visible]);
+
+  const handleEditorPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const pan = editorPanRef.current;
+    if (!pan || event.pointerId !== pan.pointerId) return;
+    const camera = getEditorCamera();
+    if (!camera) return;
+    const next = getPannedCamera(camera, { x: event.clientX - pan.x, y: event.clientY - pan.y });
+    camera.setScroll(next.scrollX, next.scrollY);
+    editorPanRef.current = { ...pan, x: event.clientX, y: event.clientY };
+    event.preventDefault();
+    event.stopPropagation();
+  }, [getEditorCamera]);
+
+  const handleEditorPointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorPanRef.current?.pointerId !== event.pointerId) return;
+    editorPanRef.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }, []);
 
   return (
     <div
       data-runtime="phaser"
       ref={containerRef}
       onWheel={handleEditorWheel}
+      onPointerDown={handleEditorPointerDown}
+      onPointerMove={handleEditorPointerMove}
+      onPointerUp={handleEditorPointerUp}
+      onPointerCancel={handleEditorPointerUp}
+      onContextMenu={(event) => {
+        if (!isPlaying) event.preventDefault();
+      }}
       style={{
         display: visible ? 'block' : 'none',
         width: '100%',

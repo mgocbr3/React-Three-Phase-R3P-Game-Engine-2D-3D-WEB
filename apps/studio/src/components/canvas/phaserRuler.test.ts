@@ -8,9 +8,11 @@ import {
   getFittedViewportCamera,
   setFittedViewportCamera,
   getViewportGridLines,
+  getWorldBackgroundFrame,
   getRulerMarks,
   getViewportRulerTicks,
   getWheelZoomCamera,
+  getPannedCamera,
   getZoomedScroll,
 } from './phaserRuler';
 
@@ -57,6 +59,22 @@ describe('phaserRuler', () => {
       scrollX: 118.18,
       scrollY: 60.91,
       zoom: 1.1,
+    });
+  });
+
+  it('pans the 2D editor camera in screen-space scaled by zoom', () => {
+    expect(getPannedCamera({ scrollX: 100, scrollY: 50, zoom: 2 }, { x: 20, y: -10 })).toEqual({
+      scrollX: 90,
+      scrollY: 55,
+    });
+  });
+
+  it('keeps the 2D scene background finite inside the editor grid', () => {
+    expect(getWorldBackgroundFrame({ minX: 0, minY: 0, maxX: 800, maxY: 600 })).toEqual({
+      x: 400,
+      y: 300,
+      width: 800,
+      height: 600,
     });
   });
 
