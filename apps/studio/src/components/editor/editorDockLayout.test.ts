@@ -8,6 +8,7 @@ import {
   getDockRowKey,
   getDockZoneLayout,
   resolveDockTargetFromRects,
+  shouldUseNativeRuntimeViewport,
 } from './editorDockLayout';
 import { defaultDockOrder, type EditorPanelId } from '@/stores/editorLayoutStore';
 
@@ -24,6 +25,13 @@ describe('editorDockLayout', () => {
       bottom: 'Project',
     });
     expect(getDockPanelLabels('3d').viewport).toBe('Scene 3D');
+  });
+
+  it('switches the dock viewport to game mode while previewing', () => {
+    expect(getDockPanelLabels('2d', true).viewport).toBe('Game 2D');
+    expect(getDockPanelLabels('3d', true).viewport).toBe('Game 3D');
+    expect(shouldUseNativeRuntimeViewport(false, true)).toBe(true);
+    expect(shouldUseNativeRuntimeViewport(false, false)).toBe(false);
   });
 
   it('keeps visible dock panel default sizes normalized to 100%', () => {

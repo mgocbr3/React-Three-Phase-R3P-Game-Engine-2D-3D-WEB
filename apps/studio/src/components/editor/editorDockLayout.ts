@@ -31,12 +31,16 @@ export type DockDropPreviewRectInput = {
 const weight = (id: EditorPanelId) => (id === 'viewport' ? 46 : 18);
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-export const getDockPanelLabels = (sceneKind: SceneKind): Record<EditorPanelId, string> => ({
+export const getDockPanelLabels = (sceneKind: SceneKind, isRuntimePreview = false): Record<EditorPanelId, string> => ({
   scene: 'Hierarchy',
-  viewport: sceneKind === '2d' ? 'Preview 2D' : 'Scene 3D',
+  viewport: isRuntimePreview ? (sceneKind === '2d' ? 'Game 2D' : 'Game 3D') : (sceneKind === '2d' ? 'Preview 2D' : 'Scene 3D'),
   inspector: 'Inspector',
   bottom: 'Project',
 });
+
+export const shouldUseNativeRuntimeViewport = (requestedNative: boolean, isRuntimePreview: boolean) => (
+  requestedNative || isRuntimePreview
+);
 
 export const getDockPanelSize = (id: EditorPanelId, visibleIds: EditorPanelId[]) => {
   const total = visibleIds.reduce((sum, panel) => sum + weight(panel), 0) || weight(id);

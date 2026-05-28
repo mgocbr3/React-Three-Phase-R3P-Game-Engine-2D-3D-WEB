@@ -11,7 +11,7 @@ import { BottomPanel } from '@/components/editor/BottomPanel';
 import { DockFrame } from '@/components/editor/DockFrame';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockRowKey, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockRowKey, getDockZoneLayout, resolveDockTargetFromRects, shouldUseNativeRuntimeViewport, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -361,10 +361,12 @@ const EditorPage = () => {
     );
   }
 
+  const isRuntimePreview = Boolean(previewSession);
   const shouldRenderEditorViewport = previewSession?.launchTarget.kind !== 'web-runtime';
+  const useRuntimeViewport = shouldUseNativeRuntimeViewport(useNativeViewport, isRuntimePreview);
   const editorRuntimeSurface = (
     <>
-      {shouldRenderEditorViewport && (useNativeViewport ? <Viewport /> : <EditorCanvas />)}
+      {shouldRenderEditorViewport && (useRuntimeViewport ? <Viewport /> : <EditorCanvas />)}
       {shouldRenderEditorViewport && <CameraSpeedIndicator />}
       {previewSession && <RuntimeGameFrame session={previewSession} />}
     </>
@@ -376,7 +378,7 @@ const EditorPage = () => {
   const mainDockIds = idsInZone('main');
   const bottomDockIds = idsInZone('bottom');
   const dockZoneLayout = getDockZoneLayout(mainDockIds, bottomDockIds);
-  const dockPanelLabels = getDockPanelLabels(activeSceneKind);
+  const dockPanelLabels = getDockPanelLabels(activeSceneKind, isRuntimePreview);
   const dockContent: Record<EditorPanelId, { label: string; content: ReactNode }> = {
     scene: { label: dockPanelLabels.scene, content: <SceneGraphPanel /> },
     viewport: {
