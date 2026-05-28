@@ -62,6 +62,7 @@ const HELPER_USER_DATA = { pixlEditorHelper: true };
 type SceneAxisView = 'x' | 'y' | 'z' | 'free';
 type SceneAxisPose = { position: [number, number, number]; up: [number, number, number] };
 type ThreeEditorPlacementApi = { getAddObjectPosition: () => [number, number, number] | undefined };
+type ThreeCameraTarget = { x: number; y: number; z: number };
 
 const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => {
   const material = (object as THREE.LineSegments).material as THREE.Material | THREE.Material[] | undefined;
@@ -177,6 +178,19 @@ export const getThreeAddObjectPosition = (
   const safeDistance = Math.max(1, Number.isFinite(distance) ? distance : 6);
   const position = camera.position.clone().addScaledVector(direction.normalize(), safeDistance);
   return [position.x, position.y, position.z];
+};
+
+export const getThreeCameraTarget = (value: unknown): ThreeCameraTarget => {
+  const source = Array.isArray(value)
+    ? { x: value[0], y: value[1], z: value[2] }
+    : value && typeof value === 'object'
+      ? value as Partial<ThreeCameraTarget>
+      : {};
+  return {
+    x: Number.isFinite(source.x) ? source.x as number : 0,
+    y: Number.isFinite(source.y) ? source.y as number : 0,
+    z: Number.isFinite(source.z) ? source.z as number : 0,
+  };
 };
 
 export const createThreeEditorSceneHelpers = ({
@@ -479,16 +493,7 @@ export function ThreeRuntimeMount({
         setThreeScene(game.scene?.threeJSScene ?? null);
         // Aim the orbit target at the scene's camera target if present,
         // else fall back to scene origin.
-        const sceneTarget = game.scene?.sceneJSONAsset?.data?.camera?.target;
-        if (sceneTarget) {
-          setOrbitTarget({
-            x: sceneTarget.x ?? 0,
-            y: sceneTarget.y ?? 0,
-            z: sceneTarget.z ?? 0,
-          });
-        } else {
-          setOrbitTarget({ x: 0, y: 0, z: 0 });
-        }
+        setOrbitTarget(getThreeCameraTarget(game.scene?.sceneJSONAsset?.data?.camera?.target));
         setLoad({ status: 'ready' });
       } catch (error: unknown) {
         if (disposed) return;

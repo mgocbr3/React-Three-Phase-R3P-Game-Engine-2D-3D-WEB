@@ -5,6 +5,7 @@ import {
   createThreeEditorSceneHelpers,
   getEditorObjectIdForNativeSelection,
   getThreeAddObjectPosition,
+  getThreeCameraTarget,
   getThreeSceneAxisView,
   getThreeEditorGridConfig,
   shouldEnableThreeEditorTools,
@@ -62,5 +63,11 @@ describe('ThreeRuntimeMount', () => {
     expect(position).not.toBeUndefined();
     expect(position?.[1]).toBeCloseTo(1.99, 2);
     expect(position?.[2]).toBeCloseTo(3.30, 2);
+  });
+
+  it('reads camera targets from Pixl array and object formats', () => {
+    expect(getThreeCameraTarget([0, 1, -2])).toEqual({ x: 0, y: 1, z: -2 });
+    expect(getThreeCameraTarget({ x: 3, y: 4, z: 5 })).toEqual({ x: 3, y: 4, z: 5 });
+    expect(getThreeCameraTarget([0, Number.NaN, 2])).toEqual({ x: 0, y: 0, z: 2 });
   });
 });
