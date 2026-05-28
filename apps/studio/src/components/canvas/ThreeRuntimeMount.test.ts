@@ -63,6 +63,7 @@ describe('ThreeRuntimeMount', () => {
       saturation: 0.02,
     });
     expect(getThreeNativePostProcessingEffects(options)).toBe('tone:aces,bloom,grade');
+    expect(getThreeNativePostProcessingEffects({ ...options, enabled: false })).toBe('off');
   });
 
   it('caps native Three pixel ratio for the selected quality preset', () => {

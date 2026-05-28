@@ -127,8 +127,9 @@ export const getThreeNativePixelRatio = (
 
 export const createThreeNativePostProcessingOptions = (
   settings: ThreeNativeRenderSettings,
+  enabled = true,
 ): RendererPostProcessingOptions => ({
-  enabled: true,
+  enabled,
   toneMapping: settings.toneMapping,
   toneMappingExposure: num(settings.toneMappingExposure, 1.0),
   bloom: settings.bloom,
@@ -144,11 +145,15 @@ export const createThreeNativePostProcessingOptions = (
 
 export const getThreeNativePostProcessingEffects = (
   options: RendererPostProcessingOptions,
-): string => [
-  options.toneMapping && options.toneMapping !== 'none' ? `tone:${options.toneMapping}` : null,
-  options.bloom ? 'bloom' : null,
-  options.colorGrading ? 'grade' : null,
-].filter(Boolean).join(',');
+): string => (
+  options.enabled === false
+    ? 'off'
+    : [
+      options.toneMapping && options.toneMapping !== 'none' ? `tone:${options.toneMapping}` : null,
+      options.bloom ? 'bloom' : null,
+      options.colorGrading ? 'grade' : null,
+    ].filter(Boolean).join(',')
+);
 
 const fetchPixlProject = async (baseUrl: string): Promise<unknown> => {
   const url = `${baseUrl.replace(/\/$/, '')}/project.pixlproject.json`;
@@ -400,9 +405,10 @@ export function ThreeRuntimeMount({
   const showAxes = useEngineSettings((state) => state.showGizmo);
   const gridSize = useEngineSettings((state) => state.gridSize);
   const renderSettings = useEngineSettings();
+  const runSimulation = shouldRunThreeRuntimeSimulation({ visible, isRuntimePreview, loadStatus: load.status });
   const nativePostProcessing = useMemo(
-    () => createThreeNativePostProcessingOptions(renderSettings),
-    [renderSettings],
+    () => createThreeNativePostProcessingOptions(renderSettings, runSimulation),
+    [renderSettings, runSimulation],
   );
   const nativePostProcessingEffects = useMemo(
     () => getThreeNativePostProcessingEffects(nativePostProcessing),
@@ -568,8 +574,6 @@ export function ThreeRuntimeMount({
     snapSettings: { snapEnabled, snapTranslate, snapRotate, snapScale },
   });
 
-  const runSimulation = shouldRunThreeRuntimeSimulation({ visible, isRuntimePreview, loadStatus: load.status });
-
   useEffect(() => {
     const game = gameRef.current;
     if (!game || load.status !== 'ready') return;
@@ -632,7 +636,7 @@ export function ThreeRuntimeMount({
           initialRenderSettings,
           typeof window !== 'undefined' ? window.devicePixelRatio : 1,
         ),
-        postProcessing: createThreeNativePostProcessingOptions(initialRenderSettings),
+        postProcessing: createThreeNativePostProcessingOptions(initialRenderSettings, false),
       },
     });
     gameRef.current = game;
