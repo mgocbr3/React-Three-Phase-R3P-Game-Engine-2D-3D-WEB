@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, Unlock, Trash2, Search, MoreHorizontal, Link, Unlink, Layers, Copy, Edit3, Focus, Play, Clipboard, Scissors } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, Unlock, Trash2, Search, Link, Unlink, Layers, Copy, Edit3, Focus, Play, Clipboard, Scissors } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useEditorStore, ObjectType, SceneObject } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { cn } from '@/lib/utils';
 import { getEditorObjectIcon } from './editorObjectIcon';
+import { DockFrameMenu, useDockChrome } from './DockFrame';
 
 // Helper to check if an object has movement/scripts attached
 const hasMovementAttached = (object: SceneObject): boolean => {
@@ -639,6 +640,7 @@ const SceneObjectItem = ({
 };
 
 export const SceneGraphPanel = () => {
+  const dockChrome = useDockChrome();
   const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, reparentObject, reorderObject, deleteObject, pasteObject, hasObjectClipboard, isEditMode } = useEditorStore();
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const [expanded, setExpanded] = useState(true);
@@ -769,7 +771,7 @@ export const SceneGraphPanel = () => {
   };
 
   return (
-    <div className="editor-dock editor-dock-outline w-full h-full border-r flex flex-col overflow-hidden">
+    <div className="h-full w-full flex flex-col overflow-hidden bg-[var(--editor-panel)]">
       {rootContextMenu && (
         <SceneRootContextMenu
           x={rootContextMenu.x}
@@ -781,15 +783,17 @@ export const SceneGraphPanel = () => {
         />
       )}
 
-      {/* Header */}
-      <div className="panel-header">
-        <div className="flex items-center gap-1">
-          <button className="editor-panel-tab active">Scene</button>
-          <button className="editor-panel-tab">Import</button>
+      <div
+        className="panel-header panel-tabs-left gap-0.5 px-1 pt-1"
+        onPointerDown={(event) => dockChrome?.onPointerDown(event)}
+        title="Arraste para reorganizar"
+      >
+        <div className="flex min-w-0 flex-1 items-end gap-0.5">
+          <button className="editor-panel-tab active">{dockChrome?.label ?? 'Hierarchy'}</button>
+          <button className="editor-panel-tab text-muted-foreground">Scene</button>
+          <button className="editor-panel-tab text-muted-foreground">Import</button>
         </div>
-        <button className="editor-panel-action flex h-6 w-6 items-center justify-center text-muted-foreground" title="Opções">
-          <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
-        </button>
+        <DockFrameMenu label={dockChrome?.label ?? 'Hierarchy'} />
       </div>
 
       {/* Search */}

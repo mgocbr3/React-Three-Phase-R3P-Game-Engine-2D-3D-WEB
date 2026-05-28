@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { MoreVertical } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -18,7 +18,66 @@ interface DockFrameProps {
   dropActive: boolean;
   onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
   chromeHidden?: boolean;
+  customChrome?: boolean;
 }
+
+interface DockChromeContextValue {
+  label: string;
+  onClose: () => void;
+  onDockMain: () => void;
+  onDockBottom: () => void;
+  onResetDock: () => void;
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+}
+
+const DockChromeContext = createContext<DockChromeContextValue | null>(null);
+
+export const useDockChrome = () => useContext(DockChromeContext);
+
+export const DockFrameMenu = ({ label: labelOverride }: { label?: string }) => {
+  const chrome = useDockChrome();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpen]);
+
+  if (!chrome) return null;
+
+  const label = labelOverride ?? chrome.label;
+  const runMenuAction = (action: () => void) => {
+    action();
+    setMenuOpen(false);
+  };
+
+  return (
+    <div ref={menuRef} className="relative flex items-center gap-0.5">
+      <button
+        aria-label={`Menu ${label}`}
+        className="editor-panel-action flex h-6 w-6 items-center justify-center text-muted-foreground"
+        onClick={() => setMenuOpen((open) => !open)}
+        onPointerDown={(event) => event.stopPropagation()}
+        title={`Menu ${label}`}
+      >
+        <MoreVertical className="h-3.5 w-3.5" />
+      </button>
+      {menuOpen && (
+        <div className="editor-menu-dropdown absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden py-1">
+          <DockMenuButton label="Dock Main" onClick={() => runMenuAction(chrome.onDockMain)} />
+          <DockMenuButton label="Dock Below" onClick={() => runMenuAction(chrome.onDockBottom)} />
+          <DockMenuButton label="Reset Dock" onClick={() => runMenuAction(chrome.onResetDock)} />
+          <DockMenuButton label="Close Tab" onClick={() => runMenuAction(chrome.onClose)} />
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const DockFrame = ({
   id,
@@ -34,25 +93,10 @@ export const DockFrame = ({
   dropActive,
   onPointerDown,
   chromeHidden = false,
+  customChrome = false,
 }: DockFrameProps) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [menuOpen]);
-
-  const runMenuAction = (action: () => void) => {
-    action();
-    setMenuOpen(false);
-  };
-
   return (
+  <DockChromeContext.Provider value={{ label, onClose, onDockMain, onDockBottom, onResetDock, onPointerDown }}>
   <div
     data-testid={`dock-panel-${id}`}
     data-dock-drop-target={id}
@@ -72,7 +116,7 @@ export const DockFrame = ({
         className="pointer-events-none absolute inset-1 z-30 border-2 border-[var(--editor-command-highlight)] bg-[rgba(61,61,61,0.18)] shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
       />
     )}
-    {!chromeHidden && (
+    {!chromeHidden && !customChrome && (
       <div
         data-testid={`dock-tab-${id}`}
         draggable={false}
@@ -87,29 +131,12 @@ export const DockFrame = ({
         title="Arraste para reorganizar"
       >
         <span className="editor-panel-tab active flex min-w-0 max-w-[136px] items-center truncate px-2 text-[11px] font-medium">{label}</span>
-        <div ref={menuRef} className="relative flex items-center gap-0.5">
-          <button
-            aria-label={`Menu ${label}`}
-            className="editor-panel-action flex h-6 w-6 items-center justify-center text-muted-foreground"
-            onClick={() => setMenuOpen((open) => !open)}
-            onPointerDown={(event) => event.stopPropagation()}
-            title={`Menu ${label}`}
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </button>
-          {menuOpen && (
-            <div className="editor-menu-dropdown absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden py-1">
-              <DockMenuButton label="Dock Main" onClick={() => runMenuAction(onDockMain)} />
-              <DockMenuButton label="Dock Below" onClick={() => runMenuAction(onDockBottom)} />
-              <DockMenuButton label="Reset Dock" onClick={() => runMenuAction(onResetDock)} />
-              <DockMenuButton label="Close Tab" onClick={() => runMenuAction(onClose)} />
-            </div>
-          )}
-        </div>
+        <DockFrameMenu />
       </div>
     )}
     <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
   </div>
+  </DockChromeContext.Provider>
   );
 };
 

@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScriptEditorPanel } from './ScriptEditorPanel';
 import { VibeCodePanel } from './VibeCodePanel';
+import { DockFrameMenu, useDockChrome } from './DockFrame';
 import { AnimationSection, getDefaultAnimationSettings } from './AnimationSection';
 import { ParticleSection } from './ParticleSection';
 import { TerrainSection } from './TerrainSection';
@@ -61,6 +62,7 @@ type EntityAIType = EntitySettings['aiType'];
 type EntityPickupType = NonNullable<EntitySettings['pickupType']>;
 
 export const InspectorPanel = () => {
+  const dockChrome = useDockChrome();
   const {
     objects,
     selectedObjectId,
@@ -86,34 +88,42 @@ export const InspectorPanel = () => {
   }, [isRuntimePreviewActive, mainTab]);
 
   return (
-    <div className="editor-dock editor-dock-outline w-full h-full flex flex-col overflow-hidden">
+    <div className="w-full h-full flex flex-col overflow-hidden bg-[var(--editor-panel)]">
       {/* Professional Tab Navigation */}
-      <div className="panel-header panel-tabs-left gap-0.5 px-1 pt-1">
-        {mainTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = mainTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              aria-label={tab.label}
-              aria-pressed={isActive}
-              disabled={isRuntimePreviewActive && tab.id !== 'inspector'}
-              onClick={() => setMainTab(tab.id)}
-              title={tab.label}
-              className={cn(
-                'editor-panel-tab flex h-6 flex-1 min-w-0 items-center justify-center gap-1 px-1.5 text-[11px] transition-colors',
-                isRuntimePreviewActive && tab.id !== 'inspector'
-                  ? 'cursor-not-allowed opacity-35'
-                  : isActive
-                  ? 'active' 
-                  : 'text-muted-foreground'
-              )}
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 truncate whitespace-nowrap">{tab.shortLabel}</span>
-            </button>
-          );
-        })}
+      <div
+        className="panel-header panel-tabs-left gap-0.5 px-1 pt-1"
+        onPointerDown={(event) => dockChrome?.onPointerDown(event)}
+        title="Arraste para reorganizar"
+      >
+        <div className="flex min-w-0 flex-1 items-end gap-0.5">
+          {mainTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = mainTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                aria-label={tab.label}
+                aria-pressed={isActive}
+                disabled={isRuntimePreviewActive && tab.id !== 'inspector'}
+                onClick={() => setMainTab(tab.id)}
+                onPointerDown={(event) => event.stopPropagation()}
+                title={tab.label}
+                className={cn(
+                  'editor-panel-tab flex h-6 flex-1 min-w-0 items-center justify-center gap-1 px-1.5 text-[11px] transition-colors',
+                  isRuntimePreviewActive && tab.id !== 'inspector'
+                    ? 'cursor-not-allowed opacity-35'
+                    : isActive
+                    ? 'active'
+                    : 'text-muted-foreground'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 truncate whitespace-nowrap">{tab.shortLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+        <DockFrameMenu label={dockChrome?.label ?? 'Inspector'} />
       </div>
 
       {/* Content */}

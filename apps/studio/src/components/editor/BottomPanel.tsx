@@ -13,6 +13,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { TimelinePanel } from './TimelinePanel';
 import { UIEditorPanel } from './UIEditorPanel';
+import { DockFrameMenu, useDockChrome } from './DockFrame';
 import { toast } from 'sonner';
 import {
   ensureProjectAssetFolder,
@@ -284,6 +285,7 @@ const BottomTabMenuItem = ({ label, onClick }: { label: string; onClick: () => v
 );
 
 export const BottomPanel = () => {
+  const dockChrome = useDockChrome();
   const availableBottomTabs = useMemo(() => getAvailableBottomTabs(), []);
   const activeTab = useBottomPanelTabsStore((s) => s.activeTab);
   const tabOrder = useBottomPanelTabsStore((s) => s.tabOrder);
@@ -665,9 +667,13 @@ export const BottomPanel = () => {
   };
 
   return (
-    <div className="editor-dock editor-dock-outline w-full h-full flex flex-col border-t overflow-hidden">
+    <div className="w-full h-full flex flex-col overflow-hidden bg-[var(--editor-panel)]">
       {/* Tab Bar */}
-      <div className="panel-header panel-tabs-left gap-0.5 px-1 pt-1">
+      <div
+        className="panel-header panel-tabs-left gap-0.5 px-1 pt-1"
+        onPointerDown={(event) => dockChrome?.onPointerDown(event)}
+        title="Arraste para reorganizar"
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -685,6 +691,7 @@ export const BottomPanel = () => {
               onDragLeave={() => setTabDropTarget((target) => target === tab.id ? null : target)}
               onDrop={handleTabDrop}
               onDragEnd={handleTabDragEnd}
+              onPointerDown={(event) => event.stopPropagation()}
               className={cn(
                 'editor-panel-tab relative flex h-6 max-w-[160px] cursor-grab items-center gap-1 px-1.5 text-[11px] transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
                 activeTab === tab.id 
@@ -729,6 +736,9 @@ export const BottomPanel = () => {
             </div>
           );
         })}
+        <div className="ml-auto">
+          <DockFrameMenu label={dockChrome?.label ?? 'Project'} />
+        </div>
         {draggedTab && (
           <div
             data-testid="bottom-tab-end-drop"

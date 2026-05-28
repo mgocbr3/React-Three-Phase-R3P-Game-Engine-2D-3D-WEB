@@ -435,6 +435,7 @@ const EditorPage = () => {
                   dragging={draggedDock === id}
                   draggingAny={Boolean(draggedDock)}
                   dropActive={dockDropTarget === id && draggedDock !== id}
+                  customChrome={id === 'scene' || id === 'inspector' || id === 'bottom'}
                   chromeHidden={isRuntimePreview && id === 'viewport'}
                   onPointerDown={(event) => {
                     if (event.button !== 0) return;

@@ -48,10 +48,12 @@ describe('InspectorPanel object icons', () => {
   });
 
   it('keeps inspector tabs compact while preserving full labels for tools', () => {
-    render(<InspectorPanel />);
+    const { container } = render(<InspectorPanel />);
 
     const vibeTab = screen.getByRole('button', { name: 'Vibe Code' });
 
+    expect(container.querySelector('.editor-dock-outline')).toBeNull();
+    expect(container.querySelectorAll('.panel-header')).toHaveLength(1);
     expect(vibeTab).toHaveAttribute('title', 'Vibe Code');
     expect(vibeTab).toHaveTextContent('Vibe');
     expect(vibeTab).not.toHaveTextContent('Vibe Code');

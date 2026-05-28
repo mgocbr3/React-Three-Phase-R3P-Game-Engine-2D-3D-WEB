@@ -80,8 +80,10 @@ describe('BottomPanel tab availability', () => {
   });
 
   it('opens compact tab actions from the ellipsis menu', () => {
-    render(createElement(BottomPanel));
+    const { container } = render(createElement(BottomPanel));
 
+    expect(container.querySelector('.editor-dock-outline')).toBeNull();
+    expect(container.querySelectorAll('.panel-header')).toHaveLength(1);
     fireEvent.pointerDown(screen.getByTitle('Menu Project'));
     fireEvent.click(screen.getByTitle('Menu Project'));
 
