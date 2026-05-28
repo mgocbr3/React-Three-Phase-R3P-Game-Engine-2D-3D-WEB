@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   defaultDockOrder,
   normalizeDockOrder,
+  previewDockMove,
   useEditorLayoutStore,
   type EditorPanelId,
 } from './editorLayoutStore';
@@ -27,6 +28,26 @@ describe('editorLayoutStore dock layout', () => {
     useEditorLayoutStore.getState().movePanelToEnd('scene');
 
     expect(useEditorLayoutStore.getState().dockOrder).toEqual(['viewport', 'inspector', 'bottom', 'scene']);
+  });
+
+  it('can dock the content browser back into the bottom zone', () => {
+    useEditorLayoutStore.getState().movePanelBefore('bottom', 'scene');
+    expect(useEditorLayoutStore.getState().panelZones.bottom).toBe('main');
+
+    useEditorLayoutStore.getState().movePanelToZone('bottom', 'bottom');
+
+    const state = useEditorLayoutStore.getState();
+    expect(state.panelZones.bottom).toBe('bottom');
+    expect(state.panels.bottom).toBe(true);
+  });
+
+  it('previews a dock move before the mouse is released', () => {
+    useEditorLayoutStore.getState().movePanelBefore('bottom', 'scene');
+    const state = useEditorLayoutStore.getState();
+    const preview = previewDockMove(state.dockOrder, state.panelZones, 'bottom', 'bottom-end');
+
+    expect(preview.panelZones.bottom).toBe('bottom');
+    expect(preview.dockOrder).toEqual(['scene', 'viewport', 'inspector', 'bottom']);
   });
 
   it('keeps hidden panels in the dock order so Window can insert them again', () => {

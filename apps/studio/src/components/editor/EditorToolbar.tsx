@@ -17,6 +17,9 @@ import {
   Cone,
   Globe,
   Crosshair,
+  Square,
+  Type,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useEditorStore, TransformMode, ObjectType } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
@@ -24,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useTerrainStore } from '@/stores/terrainStore';
 import { useViewportStore } from '@/stores/viewportStore';
+import { getEditorAddMenuSections } from './editorAddMenu';
 
 const transformTools: { mode: TransformMode; icon: typeof Move3D; label: string; shortcut: string }[] = [
   { mode: 'select', icon: MousePointer2, label: 'Select (Free Camera)', shortcut: 'Q' },
@@ -32,19 +36,20 @@ const transformTools: { mode: TransformMode; icon: typeof Move3D; label: string;
   { mode: 'scale', icon: Maximize2, label: 'Scale', shortcut: 'R' },
 ];
 
-const primitives: { type: ObjectType; icon: typeof Box; label: string }[] = [
-  { type: 'box', icon: Box, label: 'Cube' },
-  { type: 'sphere', icon: Circle, label: 'Sphere' },
-  { type: 'cylinder', icon: Layers, label: 'Cylinder' },
-  { type: 'plane', icon: Grid3X3, label: 'Plane' },
-];
-
-// Light types for ultra-realistic illumination
-const lights: { type: ObjectType; icon: typeof Sun; label: string; description: string }[] = [
-  { type: 'light', icon: Lightbulb, label: 'Point Light', description: 'Omnidirectional light source' },
-  { type: 'sunlight', icon: Sun, label: 'Sun Light', description: 'Directional light with shadows' },
-  { type: 'spotlight', icon: Cone, label: 'Spot Light', description: 'Focused cone of light' },
-];
+const addIcons: Partial<Record<ObjectType | 'terrain', typeof Box>> = {
+  box: Box,
+  sphere: Circle,
+  cylinder: Layers,
+  plane: Grid3X3,
+  rectangle: Square,
+  circle: Circle,
+  text: Type,
+  sprite: ImageIcon,
+  light: Lightbulb,
+  sunlight: Sun,
+  spotlight: Cone,
+  terrain: Mountain,
+};
 
 interface EditorToolbarProps {
   variant?: 'floating' | 'inline';
@@ -54,6 +59,7 @@ interface EditorToolbarProps {
 export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbarProps) => {
   const { 
     isEditMode, 
+    activeSceneKind,
     transformMode, 
     setTransformMode, 
     transformSpace,
@@ -121,6 +127,8 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
   }, [undo, redo, canUndo, canRedo, setTransformMode, toggleTransformSpace]);
 
   const isInline = variant === 'inline';
+  const addMenuKind = lockedKind ?? activeSceneKind ?? viewportMode;
+  const addMenuSections = getEditorAddMenuSections(addMenuKind);
 
   return (
     <div
@@ -248,60 +256,32 @@ export const EditorToolbar = ({ variant = 'floating', className }: EditorToolbar
               <div 
                 className="editor-menu-dropdown absolute left-0 top-full z-20 mt-1.5 w-48 overflow-hidden py-1.5"
               >
-                <div className="px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
-                  Terrain
-                </div>
-                <button
-                  onClick={() => {
-                    setTerrainModalOpen(true);
-                    setShowAddMenu(false);
-                  }}
-                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
-                >
-                  <Mountain className="w-4 h-4 text-muted-foreground" />
-                  Pixlland Terrain
-                </button>
-                <div className="my-1 mx-2 h-px bg-border" />
-                <div className="px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
-                  Primitives
-                </div>
-                {primitives.map((prim) => {
-                  const Icon = prim.icon;
-                  return (
-                    <button
-                      key={prim.type}
-                      onClick={() => {
-                        addObject(prim.type);
-                        setShowAddMenu(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
-                    >
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                      {prim.label}
-                    </button>
-                  );
-                })}
-                <div className="my-1 mx-2 h-px bg-border" />
-                <div className="px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
-                  Lights
-                </div>
-                {lights.map((light) => {
-                  const Icon = light.icon;
-                  return (
-                    <button
-                      key={light.type}
-                      onClick={() => {
-                        addObject(light.type);
-                        setShowAddMenu(false);
-                      }}
-                      className="group flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
-                      title={light.description}
-                    >
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                      <span className="flex-1 text-left">{light.label}</span>
-                    </button>
-                  );
-                })}
+                {addMenuSections.map((section, sectionIndex) => (
+                  <div key={section.label}>
+                    {sectionIndex > 0 && <div className="my-1 mx-2 h-px bg-border" />}
+                    <div className="px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
+                      {section.label}
+                    </div>
+                    {section.items.map((item) => {
+                      const action = item.kind === 'terrain' ? 'terrain' : item.objectType;
+                      const Icon = addIcons[action] ?? Box;
+                      return (
+                        <button
+                          key={`${section.label}-${item.label}`}
+                          onClick={() => {
+                            if (item.kind === 'terrain') setTerrainModalOpen(true);
+                            else addObject(item.objectType, addMenuKind === '2d' ? [400, 300, 0] : undefined);
+                            setShowAddMenu(false);
+                          }}
+                          className="group flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
+                        >
+                          <Icon className="w-4 h-4 text-muted-foreground" />
+                          <span className="flex-1 text-left">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </>
           )}

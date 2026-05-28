@@ -996,7 +996,12 @@ const getDefaultLogicSettings = (): LogicSettings => ({
 
 const getDefaultObject = (type: ObjectType, position: [number, number, number]): SceneObject => {
   const id = generateId();
-  const baseName = type.charAt(0).toUpperCase() + type.slice(1);
+  const baseName = ({
+    rectangle: 'Square',
+    circle: 'Circle',
+    text: 'Text',
+    sprite: 'Sprite',
+  } as Partial<Record<ObjectType, string>>)[type] ?? type.charAt(0).toUpperCase() + type.slice(1);
   
   // Set appropriate color based on light type
   const getColor = () => {
@@ -1032,6 +1037,21 @@ const getDefaultObject = (type: ObjectType, position: [number, number, number]):
 
   if (type === 'camera') {
     base.cameraSettings = getDefaultCameraSettings('third-person');
+  }
+
+  if (type === 'rectangle') {
+    base.color = '#4aa3ff';
+    base.data = { width: 64, height: 64, color: '#4aa3ff' };
+  }
+
+  if (type === 'circle') {
+    base.color = '#ffcc66';
+    base.data = { radius: 32, color: '#ffcc66' };
+  }
+
+  if (type === 'text') {
+    base.color = '#ffffff';
+    base.data = { text: 'Text', fontSize: 24, color: '#ffffff' };
   }
 
   if (type === 'player') {

@@ -1,4 +1,4 @@
-import { Fragment, type DragEvent, type PointerEvent, type ReactNode, useEffect, useCallback, useRef, useState } from 'react';
+import { Fragment, type PointerEvent, type ReactNode, useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { X } from 'lucide-react';
@@ -17,7 +17,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
 import { useEditorArrowNudge } from '@/hooks/useEditorArrowNudge';
-import { defaultDockOrder, useEditorLayoutStore, type EditorPanelId } from '@/stores/editorLayoutStore';
+import { defaultDockOrder, previewDockMove, useEditorLayoutStore, type EditorDockTarget, type EditorDockZone, type EditorPanelId } from '@/stores/editorLayoutStore';
 import { useViewportStore } from '@/stores/viewportStore';
 import { hasSampleProject, openSampleProject } from '@/services/sampleProjects';
 import {
@@ -29,8 +29,6 @@ import { FilePickerBusyError } from '@/services/filePickerLock';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-const DOCK_MIME = 'application/x-pixl-dock';
-
 const isPanelId = (id: string): id is EditorPanelId => (
   (defaultDockOrder as string[]).includes(id)
 );
@@ -41,12 +39,8 @@ const DockFrame = ({
   children,
   onClose,
   dragging,
+  draggingAny,
   dropActive,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDragLeave,
-  onDrop,
   onPointerDown,
 }: {
   id: EditorPanelId;
@@ -54,44 +48,35 @@ const DockFrame = ({
   children: ReactNode;
   onClose: () => void;
   dragging: boolean;
+  draggingAny: boolean;
   dropActive: boolean;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onDragOver: (event: DragEvent<HTMLDivElement>) => void;
-  onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
-  onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
 }) => (
   <div
     data-testid={`dock-panel-${id}`}
     data-dock-drop-target={id}
-    onDragOver={onDragOver}
-    onDragLeave={onDragLeave}
-    onDrop={onDrop}
     className={cn(
       'editor-dock editor-dock-outline relative flex h-full min-w-0 flex-col overflow-hidden transition-[border-color,box-shadow,opacity,transform] duration-150',
       dragging && 'scale-[0.995] opacity-60',
-      dropActive && 'border-primary/70 shadow-[inset_4px_0_0_hsl(var(--primary))]'
+      draggingAny && !dragging && 'shadow-[inset_0_0_0_1px_rgba(80,155,255,0.18)]',
+      dropActive && 'border-primary/80 bg-primary/[0.03] shadow-[inset_0_0_0_2px_hsl(var(--primary)),0_0_24px_rgba(75,160,255,0.28)]'
     )}
   >
     {dropActive && (
       <div
         data-testid={`dock-drop-before-${id}`}
-        className="pointer-events-none absolute inset-y-0 left-0 z-30 w-1 bg-primary shadow-[0_0_16px_rgba(75,160,255,0.75)]"
+        className="pointer-events-none absolute inset-1 z-30 border-2 border-primary/80 bg-primary/10 shadow-[0_0_18px_rgba(75,160,255,0.75)]"
       />
     )}
     <div
       data-testid={`dock-tab-${id}`}
-      draggable
-      onDragStart={(event) => {
-        event.dataTransfer.setData(DOCK_MIME, id);
-        event.dataTransfer.effectAllowed = 'move';
-        onDragStart();
+      draggable={false}
+      onPointerDown={(event) => {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        onPointerDown(event);
       }}
-      onDragEnd={onDragEnd}
-      onPointerDown={onPointerDown}
       className={cn(
-        'panel-header h-8 cursor-grab select-none justify-between px-2 active:cursor-grabbing',
+        'panel-header h-8 cursor-grab touch-none select-none justify-between px-2 active:cursor-grabbing',
         dragging && 'bg-[var(--editor-row-selected)]'
       )}
       title="Arraste para reorganizar"
@@ -111,32 +96,44 @@ const DockFrame = ({
 );
 
 const DockEndDrop = ({
+  target,
+  label,
   dragging,
   active,
-  onDragOver,
-  onDragLeave,
-  onDrop,
 }: {
+  target: 'main-end' | 'bottom-end';
+  label: string;
   dragging: boolean;
   active: boolean;
-  onDragOver: (event: DragEvent<HTMLDivElement>) => void;
-  onDragLeave: () => void;
-  onDrop: (event: DragEvent<HTMLDivElement>) => void;
 }) => (
   <div
-    data-testid="dock-end-drop"
-    data-dock-drop-target="end"
-    onDragOver={onDragOver}
-    onDragLeave={onDragLeave}
-    onDrop={onDrop}
+    data-testid={`dock-end-drop-${target}`}
+    data-dock-drop-target={target}
     className={cn(
-      'relative h-full shrink-0 border-l transition-[width,background,opacity] duration-150',
-      dragging ? 'w-8 border-primary/50 bg-primary/10 opacity-100' : 'w-2 border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]/70 opacity-40',
-      active && 'bg-primary/25'
+      'relative flex h-full shrink-0 items-center justify-center overflow-hidden border-l transition-[width,background,opacity] duration-150',
+      dragging ? 'w-14 border-primary/50 bg-primary/10 opacity-100' : 'w-2 border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]/70 opacity-40',
+      active && 'bg-primary/25 shadow-[inset_0_0_0_2px_hsl(var(--primary)),0_0_24px_rgba(75,160,255,0.32)]'
     )}
-    title="Solte aqui para mover o painel ao fim"
+    title={label}
   >
-    {active && <div className="absolute inset-y-0 right-0 w-1 bg-primary shadow-[0_0_16px_rgba(75,160,255,0.75)]" />}
+    {dragging && <span className="rotate-90 whitespace-nowrap text-[10px] font-semibold text-primary/90">{label}</span>}
+  </div>
+);
+
+const DockBottomMagnet = ({
+  active,
+}: {
+  active: boolean;
+}) => (
+  <div
+    data-testid="dock-bottom-magnet"
+    data-dock-drop-target="bottom-end"
+    className={cn(
+      'pointer-events-none absolute bottom-3 left-3 right-3 z-50 flex h-[34%] min-h-36 items-center justify-center border-2 border-dashed border-primary/55 bg-[#121212]/88 text-xs font-semibold text-primary shadow-[0_0_28px_rgba(75,160,255,0.22)] backdrop-blur-sm transition-all duration-150',
+      active && 'h-[38%] border-solid border-primary bg-primary/15 shadow-[0_0_34px_rgba(75,160,255,0.45)]'
+    )}
+  >
+    Solte aqui para encaixar embaixo
   </div>
 );
 
@@ -147,18 +144,19 @@ const EditorPage = () => {
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const previewDisplayMode = useRuntimeGameStore((s) => s.previewDisplayMode);
   const panels = useEditorLayoutStore((s) => s.panels);
+  const panelZones = useEditorLayoutStore((s) => s.panelZones);
   const dockOrder = useEditorLayoutStore((s) => s.dockOrder);
   const setPanelVisible = useEditorLayoutStore((s) => s.setPanelVisible);
   const movePanelBefore = useEditorLayoutStore((s) => s.movePanelBefore);
-  const movePanelToEnd = useEditorLayoutStore((s) => s.movePanelToEnd);
+  const movePanelToZone = useEditorLayoutStore((s) => s.movePanelToZone);
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
   const [draggedDock, setDraggedDock] = useState<EditorPanelId | null>(null);
-  const [dockDropTarget, setDockDropTarget] = useState<EditorPanelId | 'end' | null>(null);
+  const [dockDropTarget, setDockDropTarget] = useState<EditorDockTarget | null>(null);
   const pointerDockRef = useRef<{
     source: EditorPanelId;
     startX: number;
     startY: number;
-    target: EditorPanelId | 'end' | null;
+    target: EditorDockTarget | null;
     dragging: boolean;
   } | null>(null);
 
@@ -311,38 +309,24 @@ const EditorPage = () => {
     }
   }, [templateId, loadTemplate, hasSavedProject, loadSavedProject, sampleProjectSlug, localProjectId]);
 
-  const clearDockDrag = () => {
+  const clearDockDrag = useCallback(() => {
     setDraggedDock(null);
     setDockDropTarget(null);
-  };
-  const readDockSource = (event: DragEvent<HTMLDivElement>) => {
-    const source = event.dataTransfer.getData(DOCK_MIME) || draggedDock || '';
-    return isPanelId(source) ? source : null;
-  };
-  const markDockDrop = (event: DragEvent<HTMLDivElement>, target: EditorPanelId | 'end') => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    if (draggedDock) setDockDropTarget(target);
-  };
-  const dropDockBefore = (event: DragEvent<HTMLDivElement>, target: EditorPanelId) => {
-    event.preventDefault();
-    const source = readDockSource(event);
-    if (source && source !== target) movePanelBefore(source, target);
-    clearDockDrag();
-  };
-  const dropDockToEnd = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const source = readDockSource(event);
-    if (source) movePanelToEnd(source);
-    clearDockDrag();
-  };
+  }, []);
+  const moveDockToTarget = useCallback((source: EditorPanelId, target: EditorDockTarget) => {
+    if (source === target) return;
+    if (target === 'main-end') movePanelToZone(source, 'main');
+    else if (target === 'bottom-end') movePanelToZone(source, 'bottom');
+    else movePanelBefore(source, target);
+  }, [movePanelBefore, movePanelToZone]);
 
   useEffect(() => {
-    const resolveTarget = (x: number, y: number) => {
+    const resolveTarget = (x: number, y: number): EditorDockTarget | null => {
+      if (y > window.innerHeight - Math.max(170, window.innerHeight * 0.34)) return 'bottom-end';
       const raw = document.elementFromPoint(x, y)
         ?.closest<HTMLElement>('[data-dock-drop-target]')
         ?.dataset.dockDropTarget;
-      return raw === 'end' || isPanelId(raw ?? '') ? raw as EditorPanelId | 'end' : null;
+      return raw === 'main-end' || raw === 'bottom-end' || isPanelId(raw ?? '') ? raw as EditorDockTarget : null;
     };
     const finish = (event: globalThis.PointerEvent) => {
       const drag = pointerDockRef.current;
@@ -350,7 +334,7 @@ const EditorPage = () => {
       const target = drag.target ?? resolveTarget(event.clientX, event.clientY);
       pointerDockRef.current = null;
       if (drag.dragging && target && target !== drag.source) {
-        target === 'end' ? movePanelToEnd(drag.source) : movePanelBefore(drag.source, target);
+        moveDockToTarget(drag.source, target);
       }
       clearDockDrag();
     };
@@ -372,7 +356,13 @@ const EditorPage = () => {
       window.removeEventListener('pointerup', finish);
       window.removeEventListener('pointercancel', finish);
     };
-  }, [movePanelBefore, movePanelToEnd]);
+  }, [clearDockDrag, moveDockToTarget]);
+
+  const previewDock = useMemo(() => (
+    draggedDock && dockDropTarget
+      ? previewDockMove(dockOrder, panelZones, draggedDock, dockDropTarget)
+      : { dockOrder, panelZones }
+  ), [dockDropTarget, dockOrder, draggedDock, panelZones]);
 
   if (isOpeningDiskProject) {
     return (
@@ -390,7 +380,12 @@ const EditorPage = () => {
       {previewSession && <RuntimeGameFrame session={previewSession} />}
     </>
   );
-  const visibleDockIds = dockOrder.filter((id) => panels[id]);
+  const visibleDockIds = previewDock.dockOrder.filter((id) => panels[id]);
+  const idsInZone = (zone: EditorDockZone) => visibleDockIds.filter((id) => (
+    (previewDock.panelZones[id] ?? (id === 'bottom' ? 'bottom' : 'main')) === zone
+  ));
+  const mainDockIds = idsInZone('main');
+  const bottomDockIds = idsInZone('bottom');
   const dockContent: Record<EditorPanelId, { label: string; content: ReactNode }> = {
     scene: { label: 'Hierarchy', content: <SceneGraphPanel /> },
     viewport: {
@@ -400,6 +395,53 @@ const EditorPage = () => {
     inspector: { label: 'Inspector', content: <InspectorPanel /> },
     bottom: { label: 'Project', content: <BottomPanel /> },
   };
+  const renderDockRow = (ids: EditorPanelId[], zone: EditorDockZone) => (
+    ids.length ? (
+      <ResizablePanelGroup direction="horizontal" className="h-full">
+        {ids.map((id, index) => {
+          const size = getDockPanelSize(id, ids);
+          return (
+            <Fragment key={id}>
+              {index > 0 && <ResizableHandle withHandle />}
+              <ResizablePanel id={`${zone}-${id}`} order={index} {...size}>
+                <DockFrame
+                  id={id}
+                  label={dockContent[id].label}
+                  onClose={() => setPanelVisible(id, false)}
+                  dragging={draggedDock === id}
+                  draggingAny={Boolean(draggedDock)}
+                  dropActive={dockDropTarget === id && draggedDock !== id}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return;
+                    event.preventDefault();
+                    pointerDockRef.current = {
+                      source: id,
+                      startX: event.clientX,
+                      startY: event.clientY,
+                      target: null,
+                      dragging: false,
+                    };
+                  }}
+                >
+                  {dockContent[id].content}
+                </DockFrame>
+              </ResizablePanel>
+            </Fragment>
+          );
+        })}
+        <DockEndDrop
+          target={zone === 'bottom' ? 'bottom-end' : 'main-end'}
+          label={zone === 'bottom' ? 'Fim embaixo' : 'Fim da linha'}
+          dragging={Boolean(draggedDock)}
+          active={dockDropTarget === (zone === 'bottom' ? 'bottom-end' : 'main-end')}
+        />
+      </ResizablePanelGroup>
+    ) : (
+      <div className="flex h-full items-center justify-center bg-[var(--editor-bg)] text-xs text-muted-foreground">
+        Reabra painéis em Window.
+      </div>
+    )
+  );
 
   return (
     <div className="editor-shell fixed inset-0 flex flex-col">
@@ -407,57 +449,33 @@ const EditorPage = () => {
       <EditorHeader />
 
       {/* Main Content with Resizable Panels */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="relative flex-1 flex flex-col overflow-hidden">
         {isRuntimeFullscreen ? (
           <div className="relative h-full bg-[#080808]">
             {editorRuntimeSurface}
           </div>
         ) : (
           visibleDockIds.length ? (
-            <ResizablePanelGroup direction="horizontal" className="flex-1">
-              {visibleDockIds.map((id, index) => {
-                const size = getDockPanelSize(id, visibleDockIds);
-                return (
-                  <Fragment key={id}>
-                    {index > 0 && <ResizableHandle withHandle />}
-                    <ResizablePanel id={id} order={index} {...size}>
-                      <DockFrame
-                        id={id}
-                        label={dockContent[id].label}
-                        onClose={() => setPanelVisible(id, false)}
-                        dragging={draggedDock === id}
-                        dropActive={dockDropTarget === id && draggedDock !== id}
-                        onDragStart={() => setDraggedDock(id)}
-                        onDragEnd={clearDockDrag}
-                        onDragOver={(event) => markDockDrop(event, id)}
-                        onDragLeave={(event) => {
-                          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDockDropTarget(null);
-                        }}
-                        onDrop={(event) => dropDockBefore(event, id)}
-                        onPointerDown={(event) => {
-                          pointerDockRef.current = {
-                            source: id,
-                            startX: event.clientX,
-                            startY: event.clientY,
-                            target: null,
-                            dragging: false,
-                          };
-                        }}
-                      >
-                        {dockContent[id].content}
-                      </DockFrame>
+            <>
+              <ResizablePanelGroup direction="vertical" className="flex-1">
+                <ResizablePanel id="dock-main-zone" order={0} defaultSize={bottomDockIds.length ? 72 : 100} minSize={35}>
+                  {renderDockRow(mainDockIds, 'main')}
+                </ResizablePanel>
+                {bottomDockIds.length > 0 && (
+                  <>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel id="dock-bottom-zone" order={1} defaultSize={28} minSize={16} maxSize={55}>
+                      {renderDockRow(bottomDockIds, 'bottom')}
                     </ResizablePanel>
-                  </Fragment>
-                );
-              })}
-              <DockEndDrop
-                dragging={Boolean(draggedDock)}
-                active={dockDropTarget === 'end'}
-                onDragOver={(event) => markDockDrop(event, 'end')}
-                onDragLeave={() => setDockDropTarget(null)}
-                onDrop={dropDockToEnd}
-              />
-            </ResizablePanelGroup>
+                  </>
+                )}
+              </ResizablePanelGroup>
+              {draggedDock && (
+                <DockBottomMagnet
+                  active={dockDropTarget === 'bottom-end'}
+                />
+              )}
+            </>
           ) : (
             <div className="flex h-full items-center justify-center bg-[var(--editor-bg)] text-xs text-muted-foreground">
               Reabra painéis em Window.
