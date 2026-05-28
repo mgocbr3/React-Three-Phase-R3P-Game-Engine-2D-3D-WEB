@@ -8,13 +8,14 @@
 // Interactive editor path: click selects, drag translates, toolbar modes expose
 // rotate/scale handles, and changes persist back through useEditorStore.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { pixlSceneToPhaserScene, type GameObjectJSON, type SceneJSON } from '@pixlland/phaser-runtime';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
+import { getEditorZoom, getZoomedScroll } from './phaserRuler';
 import { Viewport2DOverlay } from './Viewport2DOverlay';
 
 export interface PhaserRuntimeMountProps {
@@ -1268,16 +1269,34 @@ export function PhaserRuntimeMount({
     }
   }, [isPlaying, load.status]);
 
+  const handleEditorWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    if (!visible || isPlaying || load.status !== 'ready') return;
+    const scene = gameRef.current?.scene?.scenes?.[0] as import('phaser').Scene | undefined;
+    const camera = scene?.cameras?.main;
+    if (!camera) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nextZoom = getEditorZoom(camera.zoom, event.deltaY);
+    camera.setScroll(
+      getZoomedScroll(camera.scrollX, event.clientX - rect.left, camera.zoom, nextZoom),
+      getZoomedScroll(camera.scrollY, event.clientY - rect.top, camera.zoom, nextZoom),
+    );
+    camera.setZoom(nextZoom);
+  }, [isPlaying, load.status, visible]);
+
   return (
     <div
       data-runtime="phaser"
       ref={containerRef}
+      onWheel={handleEditorWheel}
       style={{
         display: visible ? 'block' : 'none',
         width: '100%',
         height: '100%',
         position: 'relative',
         background: '#101822',
+        overscrollBehavior: 'contain',
       }}
     >
       {load.status !== 'ready' && (
