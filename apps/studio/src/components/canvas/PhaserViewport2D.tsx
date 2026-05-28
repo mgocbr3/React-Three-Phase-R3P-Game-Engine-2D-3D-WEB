@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { useEditorStore, SceneObject } from '@/stores/editorStore';
 import { useAssetDragStore } from '@/stores/assetDragStore';
 import { toast } from 'sonner';
-import { formatRulerMark, getRulerMarks } from './phaserRuler';
+import { formatRulerMark, getEditorSceneFit, getRulerMarks } from './phaserRuler';
 
 type SceneSnapshot = {
   objects: SceneObject[];
@@ -156,6 +156,7 @@ class PixlPhaserEditorScene extends Phaser.Scene {
   private draggingObjectId: string | null = null;
   private dragOffset = { x: 0, y: 0 };
   private lastPointer = { x: 0, y: 0 };
+  private didFitInitialCamera = false;
 
   constructor(snapshot: SceneSnapshot) {
     super('PixlPhaserEditorScene');
@@ -183,6 +184,7 @@ class PixlPhaserEditorScene extends Phaser.Scene {
   refresh(snapshot: SceneSnapshot) {
     this.snapshot = snapshot;
     if (!this.gridLayer || !this.objectLayer) return;
+    this.fitInitialCamera();
 
     this.gridLayer.clear();
     this.objectLayer.clear();
@@ -198,6 +200,16 @@ class PixlPhaserEditorScene extends Phaser.Scene {
     snapshot.objects
       .filter((object) => object.visible !== false)
       .forEach((object) => this.drawObject(object));
+  }
+
+  private fitInitialCamera() {
+    if (this.didFitInitialCamera || !this.snapshot.objects.length) return;
+    const viewport = { width: this.scale.width || 0, height: this.scale.height || 0 };
+    if (viewport.width < 128 || viewport.height < 128) return;
+    const fit = getEditorSceneFit(this.snapshot.objects, viewport, DEFAULT_CAMERA_VIEWPORT, 72);
+    this.cameras.main.setZoom(fit.zoom);
+    this.cameras.main.setScroll(fit.scrollX, fit.scrollY);
+    this.didFitInitialCamera = true;
   }
 
   screenToWorld(clientX: number, clientY: number, rect: DOMRect) {
@@ -611,7 +623,11 @@ export const PhaserViewport2D = () => {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div ref={hostRef} className="absolute inset-0" />
+      <div
+        ref={hostRef}
+        className="absolute"
+        style={{ left: RULER_THICKNESS, top: RULER_THICKNESS, right: 0, bottom: 0 }}
+      />
       {isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center border-2 border-dashed border-primary bg-primary/20">
           <div className="border border-border bg-card/95 px-5 py-3 text-center shadow-xl">
@@ -662,6 +678,19 @@ const Viewport2DRulers = ({ sceneRef }: Viewport2DRulersProps) => {
 
   return (
     <>
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: RULER_THICKNESS,
+          height: RULER_THICKNESS,
+          pointerEvents: 'none',
+          background: '#2b2b2b',
+          borderRight: '1px solid #1f1f1f',
+          borderBottom: '1px solid #1f1f1f',
+        }}
+      />
       <canvas
         ref={topRef}
         style={{
@@ -680,11 +709,11 @@ const Viewport2DRulers = ({ sceneRef }: Viewport2DRulersProps) => {
         ref={leftRef}
         style={{
           position: 'absolute',
-          top: 0,
+          top: RULER_THICKNESS,
           left: 0,
           bottom: 0,
           width: RULER_THICKNESS,
-          height: '100%',
+          height: `calc(100% - ${RULER_THICKNESS}px)`,
           pointerEvents: 'none',
           background: '#2b2b2b',
           borderRight: '1px solid #1f1f1f',

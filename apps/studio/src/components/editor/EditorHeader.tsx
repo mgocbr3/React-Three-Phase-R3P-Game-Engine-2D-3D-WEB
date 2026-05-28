@@ -1,12 +1,12 @@
 import {
   AlertTriangle,
   Box,
-  Camera,
   ChevronDown,
   CheckCircle2,
   Circle,
   Clipboard,
   Copy,
+  Cone,
   Eye,
   FileArchive,
   FolderOpen,
@@ -31,18 +31,22 @@ import {
   Redo,
   Save,
   Settings,
+  Square,
   Sun,
   Terminal,
   Trash2,
+  Type,
   Undo,
   Wrench,
   MessageSquare,
   Book,
+  Image as ImageIcon,
+  Lightbulb,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoSilver from '@/assets/r3p-logo-light.png';
-import { useEditorStore } from '@/stores/editorStore';
+import { useEditorStore, type ObjectType } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { EngineSettingsModal } from './EngineSettingsModal';
@@ -75,6 +79,7 @@ import {
 } from '@/services/pixlPackageIO';
 import { FilePickerBusyError } from '@/services/filePickerLock';
 import { EditorToolbar } from './EditorToolbar';
+import { getEditorAddMenuSections } from './editorAddMenu';
 import { toggleRuntimePreviewFromEditor } from '@/engine/runtime/runtimePreviewControls';
 import { getRuntimeAdapterLabel } from '@/engine/runtime/runtimePreview';
 
@@ -90,6 +95,21 @@ interface MenuItem {
 interface MenuConfig {
   [key: string]: MenuItem[];
 }
+
+const sceneAddIcons: Partial<Record<ObjectType | 'terrain', React.ComponentType<{ className?: string }>>> = {
+  box: Box,
+  sphere: Circle,
+  cylinder: Layers,
+  plane: Layers,
+  rectangle: Square,
+  circle: Circle,
+  text: Type,
+  sprite: ImageIcon,
+  light: Lightbulb,
+  sunlight: Sun,
+  spotlight: Cone,
+  terrain: Mountain,
+};
 
 export const EditorHeader = () => {
   const navigate = useNavigate();
@@ -404,6 +424,20 @@ export const EditorHeader = () => {
     { label: 'Save Current Layout', icon: Save, action: saveWindowLayout },
     { label: 'Load Saved Layout', icon: LayoutGrid, action: loadWindowLayout, disabled: !hasSavedLayout },
   ];
+  const sceneCreateMenuItems: MenuItem[] = getEditorAddMenuSections(activeSceneKind).flatMap((section, sectionIndex) => [
+    ...(sectionIndex ? [{ label: '', divider: true }] : []),
+    ...section.items.map((item): MenuItem => {
+      const action = item.kind === 'terrain' ? 'terrain' : item.objectType;
+      return {
+        label: item.label,
+        icon: sceneAddIcons[action],
+        action: () => {
+          if (item.kind === 'terrain') setTerrainModalOpen(true);
+          else addObject(item.objectType, activeSceneKind === '2d' ? [400, 300, 0] : undefined);
+        },
+      };
+    }),
+  ]);
 
   const menuConfig: MenuConfig = {
     File: [
@@ -428,18 +462,7 @@ export const EditorHeader = () => {
       { label: '', divider: true },
       { label: 'Delete', shortcut: 'Del', icon: Trash2, action: () => selectedObjectId && deleteObject(selectedObjectId), disabled: !selectedObjectId },
     ],
-    Scene: [
-      { label: 'Terrain', icon: Mountain, action: () => setTerrainModalOpen(true) },
-      { label: '', divider: true },
-      { label: 'Cube', icon: Box, action: () => addObject('box') },
-      { label: 'Sphere', icon: Circle, action: () => addObject('sphere') },
-      { label: 'Cylinder', icon: Box, action: () => addObject('cylinder') },
-      { label: 'Plane', icon: Layers, action: () => addObject('plane') },
-      { label: '', divider: true },
-      { label: 'Point Light', icon: Sun, action: () => addObject('light') },
-      { label: 'Camera', icon: Camera },
-      { label: 'Player', icon: Gamepad2 },
-    ],
+    Scene: sceneCreateMenuItems,
     Tools: [
       { label: showGrid ? 'Hide Grid' : 'Show Grid', shortcut: 'G', icon: Grid3X3, action: toggleGrid },
       { label: showStats ? 'Hide Stats' : 'Show Stats', icon: Eye, action: toggleStats },

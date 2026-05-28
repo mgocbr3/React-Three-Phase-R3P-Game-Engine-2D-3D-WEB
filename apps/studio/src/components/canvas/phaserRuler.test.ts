@@ -4,6 +4,7 @@ import {
   formatPointerPosition,
   formatRulerMark,
   getEditorZoom,
+  getEditorSceneFit,
   getFittedViewportCamera,
   getViewportGridLines,
   getRulerMarks,
@@ -62,5 +63,16 @@ describe('phaserRuler', () => {
     expect(fit.zoom).toBeCloseTo(1.18);
     expect((0 - fit.scrollX) * fit.zoom).toBeCloseTo(328);
     expect((800 - fit.scrollX) * fit.zoom).toBeCloseTo(1272);
+  });
+
+  it('fits the 2D editor around the camera frame and visible content', () => {
+    const fit = getEditorSceneFit([
+      { type: 'image', position: [400, 300, 0], scale: [1, 1, 1], data: { displayWidth: 800, displayHeight: 600 } },
+      { type: 'sprite', position: [5000, 300, 0], visible: false, scale: [1, 1, 1], data: { frameWidth: 72, frameHeight: 96 } },
+    ], { width: 1600, height: 900 }, { width: 960, height: 540 });
+
+    expect(fit.zoom).toBeCloseTo(1.18);
+    expect((0 - fit.scrollX) * fit.zoom).toBeCloseTo(234, 0);
+    expect((960 - fit.scrollX) * fit.zoom).toBeCloseTo(1366, 0);
   });
 });

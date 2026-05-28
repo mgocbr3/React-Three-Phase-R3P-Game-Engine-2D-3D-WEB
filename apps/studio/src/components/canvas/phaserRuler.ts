@@ -25,6 +25,26 @@ export interface ViewportWorldBounds {
   maxY: number;
 }
 
+export interface Editor2DObjectLike {
+  type: string;
+  position: number[];
+  scale?: number[];
+  visible?: boolean;
+  name?: string;
+  data?: Record<string, unknown>;
+}
+
+const num = (value: unknown, fallback: number): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback
+);
+
+const mergeBounds = (a: ViewportWorldBounds, b: ViewportWorldBounds): ViewportWorldBounds => ({
+  minX: Math.min(a.minX, b.minX),
+  minY: Math.min(a.minY, b.minY),
+  maxX: Math.max(a.maxX, b.maxX),
+  maxY: Math.max(a.maxY, b.maxY),
+});
+
 export const getViewportRulerTicks = (
   scroll: number,
   viewportSize: number,
@@ -100,6 +120,47 @@ export const getFittedViewportCamera = (
     scrollY: Number((cy - viewH / (zoom * 2)).toFixed(2)),
     zoom,
   };
+};
+
+export const getEditorObjectBounds = (object: Editor2DObjectLike): ViewportWorldBounds | null => {
+  if (object.visible === false) return null;
+  const [x = 0, y = 0] = object.position;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const data = object.data ?? {};
+  const sx = Math.abs(object.scale?.[0] || 1);
+  const sy = Math.abs(object.scale?.[1] || object.scale?.[2] || object.scale?.[0] || 1);
+  const mult = Math.abs(num(data.scale, 1));
+  let w = 32 * sx;
+  let h = 32 * sy;
+  if (object.type === 'rectangle') [w, h] = [num(data.width, 40) * sx, num(data.height, 40) * sy];
+  else if (object.type === 'circle') w = h = num(data.radius, 20) * 2 * Math.max(sx, sy);
+  else if (object.type === 'text') {
+    const font = num(data.fontSize, 16);
+    w = Math.max(24, String(data.text ?? object.name ?? '').length * font * 0.62 * sx);
+    h = Math.max(16, font * 1.3 * sy);
+  } else if (object.type === 'image' || object.type === 'sprite') {
+    w = num(data.displayWidth, num(data.frameWidth, 64)) * sx * mult;
+    h = num(data.displayHeight, num(data.frameHeight, 64)) * sy * mult;
+  }
+  return { minX: x - w / 2, minY: y - h / 2, maxX: x + w / 2, maxY: y + h / 2 };
+};
+
+export const getEditorSceneBounds = (objects: Editor2DObjectLike[]): ViewportWorldBounds | null => (
+  objects.reduce<ViewportWorldBounds | null>((bounds, object) => {
+    const next = getEditorObjectBounds(object);
+    return next ? (bounds ? mergeBounds(bounds, next) : next) : bounds;
+  }, null)
+);
+
+export const getEditorSceneFit = (
+  objects: Editor2DObjectLike[],
+  viewport: { width: number; height: number },
+  cameraFrame: { width: number; height: number },
+  padding = 96,
+) => {
+  const frame = { minX: 0, minY: 0, maxX: cameraFrame.width, maxY: cameraFrame.height };
+  const bounds = getEditorSceneBounds(objects);
+  return getFittedViewportCamera(bounds ? mergeBounds(frame, bounds) : frame, viewport, padding);
 };
 
 export const formatPointerPosition = (x: number, y: number): string => (
