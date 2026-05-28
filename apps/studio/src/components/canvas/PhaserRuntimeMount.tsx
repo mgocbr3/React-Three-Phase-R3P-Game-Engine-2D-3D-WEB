@@ -253,6 +253,7 @@ export function PhaserRuntimeMount({
     if (!container || !visible) return;
 
     let disposed = false;
+    let resizeObserver: ResizeObserver | null = null;
     setLoad({ status: 'loading' });
 
     void (async () => {
@@ -304,6 +305,10 @@ export function PhaserRuntimeMount({
           backgroundColor: bg,
           pixelArt,
           roundPixels: pixelArt,
+          scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.NO_CENTER,
+          },
           physics: { default: 'arcade', arcade: { gravity } },
           scene: {
             preload(this: import('phaser').Scene) {
@@ -1007,6 +1012,20 @@ export function PhaserRuntimeMount({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__pixlPhaserGame = gameRef.current;
 
+        const resizeGame = () => {
+          if (!gameRef.current || disposed) return;
+          gameRef.current.scale.resize(container.clientWidth || 800, container.clientHeight || 600);
+          const canvas = gameRef.current.canvas as HTMLCanvasElement | undefined;
+          if (canvas) {
+            canvas.style.display = 'block';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+          }
+        };
+        resizeObserver = new ResizeObserver(resizeGame);
+        resizeObserver.observe(container);
+        requestAnimationFrame(resizeGame);
+
         // Keyboard capture only works when the canvas can take focus and
         // is in fact focused. Phaser DOES listen on window by default, but
         // when the studio toolbar steals focus to a button the user's
@@ -1064,6 +1083,7 @@ export function PhaserRuntimeMount({
 
     return () => {
       disposed = true;
+      resizeObserver?.disconnect();
       if (gameRef.current) {
         try { gameRef.current.destroy(true); } catch { /* ignore */ }
         gameRef.current = null;
