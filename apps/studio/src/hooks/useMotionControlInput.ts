@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useMotionControlStore } from '@/stores/motionControlStore';
 import { useHandTracking } from '@/hooks/useHandTracking';
-import { touchInput } from '@/components/canvas/MobileGameControls';
+import { runtimeInput } from '@/engine/runtime/runtimeInput';
 
 /**
  * Hook that bridges Motion Control gestures to game input.
  * When motion control is enabled, hand movements and gestures 
- * are translated to the touchInput global state that player controllers read.
+ * are translated to runtime input that player controllers read.
  */
 export const useMotionControlInput = () => {
   const { 
@@ -29,9 +29,9 @@ export const useMotionControlInput = () => {
   useEffect(() => {
     if (!enabled || mode === 'off') {
       // Reset movement when motion control is disabled
-      if (touchInput.movement.x !== 0 || touchInput.movement.y !== 0) {
-        touchInput.movement.x = 0;
-        touchInput.movement.y = 0;
+      if (runtimeInput.movement.x !== 0 || runtimeInput.movement.y !== 0) {
+        runtimeInput.movement.x = 0;
+        runtimeInput.movement.y = 0;
       }
       return;
     }
@@ -57,8 +57,8 @@ export const useMotionControlInput = () => {
       moveX = Math.max(-1, Math.min(1, moveX));
       moveY = Math.max(-1, Math.min(1, moveY));
       
-      touchInput.movement.x = moveX;
-      touchInput.movement.y = moveY;
+      runtimeInput.movement.x = moveX;
+      runtimeInput.movement.y = moveY;
     }
     
     // ============ GESTURE ACTIONS ============
@@ -66,29 +66,29 @@ export const useMotionControlInput = () => {
       switch (action) {
         case 'jump':
           if (justPressed) {
-            touchInput.jump = true;
+            runtimeInput.jump = true;
           }
           break;
         case 'click':
         case 'attack':
           if (justPressed) {
-            touchInput.action1 = true;
+            runtimeInput.action1 = true;
           }
           break;
         case 'shoot':
           if (justPressed) {
-            touchInput.action2 = true;
+            runtimeInput.action2 = true;
           }
           break;
         case 'special':
           // Could be used for special abilities
           if (justPressed) {
-            touchInput.action1 = true;
+            runtimeInput.action1 = true;
           }
           break;
         case 'interact':
           if (justPressed) {
-            touchInput.action2 = true;
+            runtimeInput.action2 = true;
           }
           break;
       }

@@ -93,9 +93,6 @@ export interface EngineSettings {
   showGizmo: boolean;
   showStats: boolean;
   
-  // Touch Controls (Gameplay)
-  showTouchControls: boolean;
-  
   // Performance Monitoring & Auto-Quality
   autoQuality: boolean;
   targetFps: number;
@@ -275,9 +272,6 @@ const defaultSettings: EngineSettings = {
   gridSize: 100,
   showGizmo: true,
   showStats: true,
-  
-  // Touch Controls (Gameplay)
-  showTouchControls: true,
   
   // Performance Monitoring
   autoQuality: false,

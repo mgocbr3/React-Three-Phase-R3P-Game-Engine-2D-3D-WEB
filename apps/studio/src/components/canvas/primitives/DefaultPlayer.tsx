@@ -2,7 +2,7 @@
 //
 // Replaces the deleted MinecraftPlayer.tsx — same physics & input model
 // (RigidBody + CapsuleCollider + WASD + jump with coyote/buffer +
-// optional sprint + 2d-sidescroll lock + camera follow + touch input
+// optional sprint + 2d-sidescroll lock + camera follow + runtime input
 // bridge), but the visual is a GLTF (default: manequim CC-BY-4.0 at
 // `/models/manequin/scene.gltf`). Combat/melee/ranged/projectile logic
 // from MinecraftPlayer was stripped; bring it back as a Script if needed.
@@ -13,7 +13,7 @@ import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import type { RapierRigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
 import { PlayerSettings, CameraSettings } from '@/stores/editorStore';
-import { touchInput, consumeJump } from '@/components/canvas/MobileGameControls';
+import { runtimeInput, consumeJump } from '@/engine/runtime/runtimeInput';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { PlayerGltfModel } from './PlayerGltfModel';
 
@@ -208,9 +208,9 @@ export const DefaultPlayer = forwardRef<THREE.Object3D, DefaultPlayerProps>(
       // Read input
       let moveX = 0;
       let moveZ = 0;
-      if (touchInput.movement.x !== 0 || touchInput.movement.y !== 0) {
-        moveX = touchInput.movement.x;
-        moveZ = -touchInput.movement.y;
+      if (runtimeInput.movement.x !== 0 || runtimeInput.movement.y !== 0) {
+        moveX = runtimeInput.movement.x;
+        moveZ = -runtimeInput.movement.y;
       } else {
         if (movement.current.forward) moveZ -= 1;
         if (movement.current.backward) moveZ += 1;

@@ -3,10 +3,8 @@
  * 
  * Features:
  * - Precise, battle-tested controls from Three.js core
- * - Full touch support with pointer capture
  * - World/Local space toggle
  * - Snap-to-grid with Shift key
- * - Proper pointer capture for reliable dragging on touch devices
  */
 
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
@@ -14,7 +12,6 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TransformControls as ThreeTransformControls } from 'three/addons/controls/TransformControls.js';
 import { TransformSpace, useEditorStore } from '@/stores/editorStore';
-import { useIsTouchDevice } from '@/hooks/use-touch-device';
 
 // The mode type that TransformControls accepts (excludes 'select')
 type GizmoMode = 'translate' | 'rotate' | 'scale';
@@ -190,13 +187,6 @@ export const TransformGizmo = ({
   );
   const helper = useMemo(() => controls.getHelper(), [controls]);
   
-  // Detect touch device for larger gizmo handles
-  const isTouchDevice = useIsTouchDevice();
-  
-  // Gizmo size: larger on touch devices for easier interaction
-  // Desktop: 1.0 (comfortable), Touch: 1.4 (bigger targets for fingers)
-  const gizmoSize = isTouchDevice ? 1.4 : 1.0;
-  
   // Get snap settings from store
   const { snapEnabled, snapTranslate, snapRotate, snapScale, transformSpace } = useEditorStore();
   
@@ -264,12 +254,12 @@ export const TransformGizmo = ({
     invalidate();
   }, [controls, effectiveSpace, invalidate, targetRef]);
 
-  // Size change (touch vs mouse).
+  // Keep desktop gizmo sizing stable.
   useEffect(() => {
     if (!targetRef.current) return;
-    controls.setSize(gizmoSize);
+    controls.setSize(1);
     invalidate();
-  }, [controls, gizmoSize, invalidate, targetRef]);
+  }, [controls, invalidate, targetRef]);
 
   // Handle dragging state with pointer capture
   const handleDraggingChanged = useCallback((event: any) => {

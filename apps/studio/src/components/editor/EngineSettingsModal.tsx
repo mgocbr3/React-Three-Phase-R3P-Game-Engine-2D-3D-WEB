@@ -715,15 +715,6 @@ export const EngineSettingsModal = ({ isOpen, onClose }: EngineSettingsModalProp
                     onChange={(v) => updateSettings({ showStats: v })}
                   />
                 </SettingGroup>
-
-                <SettingGroup title="Gameplay">
-                  <ToggleSetting
-                    label="Controles Touch (Mobile)"
-                    description="Exibe joystick e botões de ação durante o jogo"
-                    value={settings.showTouchControls}
-                    onChange={(v) => updateSettings({ showTouchControls: v })}
-                  />
-                </SettingGroup>
               </div>
             )}
 
