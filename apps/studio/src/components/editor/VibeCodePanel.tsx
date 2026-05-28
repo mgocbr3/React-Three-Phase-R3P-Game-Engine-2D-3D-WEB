@@ -183,10 +183,10 @@ export const VibeCodePanel = () => {
           <button
             onClick={() => setAgentMode(!agentMode)}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] transition-colors",
+              "flex items-center gap-1 rounded-sm border px-2 py-1 text-[10px] transition-colors",
               agentMode 
-                ? "bg-secondary/30 text-muted-foreground border border-border" 
-                : "bg-secondary/50 text-muted-foreground border border-border/50"
+                ? "border-[var(--editor-border-light)] bg-[var(--editor-command-active)] text-foreground"
+                : "border-border bg-[var(--editor-command)] text-muted-foreground"
             )}
             title={agentMode ? "Modo Agente: Executa ações automaticamente" : "Modo Chat: Apenas responde"}
           >
@@ -208,10 +208,10 @@ export const VibeCodePanel = () => {
             )}
           >
             <div className={cn(
-              'w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0',
+              'flex h-6 w-6 shrink-0 items-center justify-center border border-[var(--editor-command-border)]',
               message.role === 'user' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-gradient-to-br from-muted to-muted text-white'
+                ? 'bg-[var(--editor-command-active)] text-foreground'
+                : 'bg-[var(--editor-command)] text-muted-foreground'
             )}>
               {message.role === 'user' ? (
                 <User className="w-3 h-3" />
@@ -220,10 +220,10 @@ export const VibeCodePanel = () => {
               )}
             </div>
             <div className={cn(
-              'max-w-[85%] rounded-lg px-3 py-2 text-xs',
+              'max-w-[85%] border px-3 py-2 text-xs',
               message.role === 'user'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-foreground'
+                ? 'border-[var(--editor-border-light)] bg-[var(--editor-command-active)] text-foreground'
+                : 'border-[var(--editor-border-dark)] bg-[var(--editor-panel-sunken)] text-foreground'
             )}>
               <p className="whitespace-pre-wrap">{message.content}</p>
               
@@ -254,14 +254,14 @@ export const VibeCodePanel = () => {
         
         {isLoading && streamingContentRef.current === '' && (
           <div className="flex gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-muted to-muted flex items-center justify-center">
-              <Loader2 className="w-3 h-3 text-white animate-spin" />
+            <div className="flex h-6 w-6 items-center justify-center border border-[var(--editor-command-border)] bg-[var(--editor-command)]">
+              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
             </div>
-            <div className="bg-secondary rounded-lg px-3 py-2">
+            <div className="border border-[var(--editor-border-dark)] bg-[var(--editor-panel-sunken)] px-3 py-2">
               <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <span className="h-1.5 w-1.5 animate-bounce bg-muted-foreground" style={{ animationDelay: '0ms' }} />
+                <span className="h-1.5 w-1.5 animate-bounce bg-muted-foreground" style={{ animationDelay: '150ms' }} />
+                <span className="h-1.5 w-1.5 animate-bounce bg-muted-foreground" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </div>
@@ -281,7 +281,7 @@ export const VibeCodePanel = () => {
               <button
                 key={i}
                 onClick={() => handleSuggestion(suggestion)}
-                className="text-[10px] px-2 py-1 rounded-full bg-secondary hover:bg-primary/15 hover:text-primary transition-colors text-muted-foreground truncate max-w-full"
+                className="max-w-full truncate border border-[var(--editor-command-border)] bg-[var(--editor-command)] px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-[var(--editor-row-hover)] hover:text-foreground"
               >
                 {suggestion}
               </button>
@@ -291,7 +291,7 @@ export const VibeCodePanel = () => {
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-border bg-secondary/30">
+      <div className="border-t border-border bg-[var(--editor-panel-header)] p-3">
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
@@ -301,7 +301,7 @@ export const VibeCodePanel = () => {
             onKeyUp={handleKeyUp}
             placeholder="Descreva o que quer fazer..."
             rows={1}
-            className="flex-1 bg-muted border-0 rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none min-h-[36px] max-h-[100px]"
+            className="min-h-[36px] max-h-[100px] flex-1 resize-none border border-[var(--editor-border-dark)] bg-[var(--editor-panel-sunken)] px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             style={{ height: 'auto' }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -313,10 +313,10 @@ export const VibeCodePanel = () => {
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             className={cn(
-              'p-2 rounded-lg transition-all',
+              'border p-2 transition-colors',
               input.trim() && !isLoading
-                ? 'bg-gradient-to-r from-muted to-muted text-white hover:opacity-90'
-                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                ? 'border-[var(--editor-command-border)] bg-[var(--editor-command)] text-foreground hover:bg-[var(--editor-command-hover)]'
+                : 'cursor-not-allowed border-[var(--editor-command-border)] bg-muted text-muted-foreground'
             )}
           >
             <Send className="w-4 h-4" />

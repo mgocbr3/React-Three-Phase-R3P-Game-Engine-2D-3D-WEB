@@ -240,7 +240,7 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
         <div className="p-2 border-t border-border bg-card flex items-center justify-between">
           <span className="text-[10px] text-muted-foreground">JAVASCRIPT • UTF-8</span>
           <button 
-            className="flex items-center gap-2 px-4 py-1.5 bg-neon-green text-black rounded text-xs font-semibold hover:bg-neon-green/90 transition-colors"
+            className="flex items-center gap-2 rounded-sm border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-[var(--editor-command-hover)]"
             onClick={() => {
               console.log('Executing script:', scriptCode);
               setEditingScript(null);
@@ -281,7 +281,7 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
           </div>
         </div>
         {!isEditMode && (
-          <span className="px-1.5 py-0.5 bg-neon-green/20 text-neon-green text-[9px] font-semibold rounded flex items-center gap-1">
+          <span className="flex items-center gap-1 border border-[var(--editor-command-border)] bg-[var(--editor-command)] px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
             <Play className="w-2.5 h-2.5" /> ATIVO
           </span>
         )}
@@ -324,7 +324,7 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
                         e.stopPropagation();
                         handleEditScript(instance.scriptId);
                       }}
-                      className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/15 transition-colors"
+                      className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-[var(--editor-row-hover)] hover:text-foreground"
                       title="Editar código"
                     >
                       <FileCode className="w-3 h-3" />
@@ -337,10 +337,10 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
                         toggleScriptEnabled(selectedObject.id, instance.id);
                       }}
                       className={cn(
-                        "p-1 rounded transition-colors",
+                        "rounded-sm p-1 transition-colors",
                         instance.enabled 
-                          ? "text-neon-green hover:bg-neon-green/20" 
-                          : "text-muted-foreground hover:bg-secondary"
+                          ? "text-foreground hover:bg-[var(--editor-row-hover)]"
+                          : "text-muted-foreground hover:bg-[var(--editor-row-hover)]"
                       )}
                       title={instance.enabled ? "Desativar" : "Ativar"}
                     >
@@ -353,7 +353,7 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
                         e.stopPropagation();
                         handleRemoveScript(instance.id);
                       }}
-                      className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/15 transition-colors"
+                      className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
                       title="Remover"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -405,8 +405,8 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
                     onClick={() => handleAddScript(script.id)}
                     disabled={alreadyAdded}
                     className={cn(
-                      "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
-                      alreadyAdded ? "opacity-50 cursor-not-allowed" : "hover:bg-secondary"
+                      "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors",
+                      alreadyAdded ? "cursor-not-allowed opacity-50" : "hover:bg-[var(--editor-row-hover)]"
                     )}
                   >
                     <Code className="w-3.5 h-3.5 text-primary" />
@@ -429,10 +429,10 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
           <button
             onClick={() => setShowSnippets(!showSnippets)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-medium transition-colors",
+              "flex flex-1 items-center justify-center gap-2 rounded-sm border border-[var(--editor-command-border)] px-3 py-2 text-xs font-medium transition-colors",
               showSnippets 
-                ? "bg-primary text-primary-foreground" 
-                : "bg-secondary text-foreground hover:bg-secondary/80"
+                ? "bg-[var(--editor-command-active)] text-foreground"
+                : "bg-[var(--editor-command)] text-foreground hover:bg-[var(--editor-command-hover)]"
             )}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -440,7 +440,7 @@ export const ScriptEditorPanel = ({ selectedObject }: ScriptEditorPanelProps) =>
           </button>
           <button
             onClick={handleCreateNewScript}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded text-xs font-medium hover:bg-primary/90 transition-colors"
+            className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-[var(--editor-command-border)] bg-[var(--editor-command)] px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-[var(--editor-command-hover)]"
           >
             <Plus className="w-3.5 h-3.5" />
             Novo Script
@@ -486,12 +486,12 @@ const ParameterEditor = ({ param, value, onChange }: ParameterEditorProps) => {
           <button
             onClick={() => onChange(!value)}
             className={cn(
-              "w-8 h-4 rounded-full transition-colors relative",
-              value ? "bg-primary" : "bg-muted"
+              "relative h-4 w-8 rounded-sm border border-border transition-colors",
+              value ? "bg-[var(--editor-command-active)]" : "bg-muted"
             )}
           >
             <span className={cn(
-              "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform",
+              "absolute top-0.5 h-3 w-3 rounded-sm bg-foreground/80 transition-transform",
               value ? "translate-x-4" : "translate-x-0.5"
             )} />
           </button>
@@ -505,7 +505,7 @@ const ParameterEditor = ({ param, value, onChange }: ParameterEditorProps) => {
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-muted border border-border rounded px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-sm border border-border bg-muted px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {param.options?.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -523,13 +523,13 @@ const ParameterEditor = ({ param, value, onChange }: ParameterEditorProps) => {
               type="color"
               value={value || '#ffffff'}
               onChange={(e) => onChange(e.target.value)}
-              className="w-6 h-6 rounded border-0 cursor-pointer"
+              className="h-6 w-6 cursor-pointer rounded-sm border-0"
             />
             <input
               type="text"
               value={value || '#ffffff'}
               onChange={(e) => onChange(e.target.value)}
-              className="flex-1 bg-muted border border-border rounded px-2 py-1 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 rounded-sm border border-border bg-muted px-2 py-1 font-mono text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
         </div>
@@ -543,7 +543,7 @@ const ParameterEditor = ({ param, value, onChange }: ParameterEditorProps) => {
             type="text"
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-muted border border-border rounded px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-sm border border-border bg-muted px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
       );

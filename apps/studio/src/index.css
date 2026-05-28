@@ -42,15 +42,15 @@
 
     --editor-topbar: #111111;
     --editor-menubar: #151515;
-    --editor-toolbar: #242424;
-    --editor-panel: #282828;
-    --editor-panel-raised: #303030;
-    --editor-panel-sunken: #1d1d1d;
-    --editor-panel-header: #202020;
-    --editor-tab: #242424;
-    --editor-tab-active: #303030;
-    --editor-border-dark: #111111;
-    --editor-border-light: #363636;
+    --editor-toolbar: #222222;
+    --editor-panel: #232323;
+    --editor-panel-raised: #282828;
+    --editor-panel-sunken: #181818;
+    --editor-panel-header: #1b1b1b;
+    --editor-tab: #202020;
+    --editor-tab-active: #2a2a2a;
+    --editor-border-dark: #0d0d0d;
+    --editor-border-light: #2f2f2f;
     --editor-row-selected: #4a4a4a;
     --editor-row-hover: #353535;
     --editor-command: #262626;
@@ -58,14 +58,6 @@
     --editor-command-active: #3d3d3d;
     --editor-command-border: #151515;
     --editor-command-highlight: #555555;
-
-    /* Semantic Colors for templates */
-    --neon-purple: 270 60% 60%;
-    --neon-cyan: 185 70% 50%;
-    --neon-pink: 320 60% 55%;
-    --neon-green: 145 60% 45%;
-    --neon-orange: 25 80% 55%;
-    --neon-red: 0 70% 55%;
 
     /* Sidebar - slightly different shade */
     --sidebar-background: 0 0% 15%;
@@ -191,12 +183,12 @@
 /* Floating menu surfaces */
 @layer components {
   .glass-menu {
-    @apply border-border shadow-xl;
+    @apply border-border;
     background: hsl(var(--popover)) !important;
     border-color: hsl(var(--border));
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
   }
 
   :root[data-ui-theme="light"] .glass-menu {
@@ -215,12 +207,10 @@
     inset: -1px;
     z-index: -1;
     border-radius: inherit;
-    background: var(--editor-command-hover);
-    background-size: 360% 360%;
+    background: var(--editor-command-active);
     opacity: 0;
     filter: none;
     transition: opacity 180ms ease;
-    animation: ai-service-gradient-flow 5s ease infinite;
   }
 
   .ai-service-trigger:hover::before,
@@ -233,59 +223,9 @@
     overflow: visible;
   }
 
-  .ai-service-card::before,
-  .ai-service-card::after {
-    content: '';
-    position: absolute;
-    pointer-events: none;
-    border-radius: inherit;
-    background: linear-gradient(120deg, #38bdf8, #8b5cf6, #ec4899, #22d3ee, #34d399, #38bdf8);
-    background-size: 360% 360%;
-    animation: ai-service-gradient-flow 5s ease infinite;
-  }
-
-  .ai-service-card::before {
-    inset: -10px;
-    z-index: -2;
-    opacity: 0.34;
-    filter: blur(18px);
-  }
-
-  .ai-service-card::after {
-    inset: -1px;
-    z-index: -1;
-    padding: 1px;
-    opacity: 0.9;
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-  }
-
   .ai-service-card-content {
     position: relative;
     z-index: 1;
-  }
-}
-
-@keyframes ai-service-gradient-flow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ai-service-trigger::before,
-  .ai-service-card::before,
-  .ai-service-card::after {
-    animation: none;
   }
 }
 
@@ -298,7 +238,7 @@
   .editor-header {
     background: var(--editor-topbar);
     border-bottom: 1px solid var(--editor-border-dark);
-    box-shadow: inset 0 -1px 0 var(--editor-border-light);
+    box-shadow: none;
   }
 
   .editor-menubar {
@@ -308,7 +248,7 @@
 
   .editor-toolbar-row {
     background: var(--editor-toolbar);
-    border-top: 1px solid var(--editor-border-light);
+    border-top: 1px solid var(--editor-border-dark);
     border-bottom: 1px solid var(--editor-border-dark);
   }
 
@@ -330,7 +270,7 @@
     background: var(--editor-command);
     border: 1px solid var(--editor-command-border);
     border-radius: 2px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    box-shadow: none;
   }
 
   .editor-command-chip:hover {
@@ -343,9 +283,7 @@
     background: var(--editor-command-active);
     border-color: var(--editor-border-light);
     color: hsl(var(--foreground));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.07),
-      inset 0 -1px 0 var(--editor-command-highlight);
+    box-shadow: none;
   }
 
   .engine-view-tab {
@@ -358,7 +296,7 @@
     background: var(--editor-command-active);
     border-color: var(--editor-border-light);
     color: hsl(var(--foreground));
-    box-shadow: inset 0 -1px 0 var(--editor-command-highlight);
+    box-shadow: none;
   }
 
   .editor-dock {
@@ -368,24 +306,22 @@
   }
 
   .editor-dock-outline {
-    box-shadow:
-      inset 1px 0 0 var(--editor-border-light),
-      inset -1px 0 0 var(--editor-border-dark),
-      inset 0 1px 0 var(--editor-border-light);
+    border: 1px solid var(--editor-border-dark);
+    box-shadow: none;
   }
 
   /* Professional panel styling - Godot inspired dock panels */
   .editor-panel {
     background: var(--editor-panel);
     border-color: var(--editor-border-dark);
-    box-shadow: inset 0 1px 0 var(--editor-border-light);
+    box-shadow: none;
   }
 
   .panel-header {
     @apply h-7 px-1 border-b flex items-end justify-between;
     background: var(--editor-panel-header);
     border-color: var(--editor-border-dark);
-    box-shadow: inset 0 1px 0 var(--editor-border-light);
+    box-shadow: none;
   }
 
   .panel-tabs-left {
@@ -406,7 +342,7 @@
     position: relative;
     background: var(--editor-tab-active);
     border-color: var(--editor-border-dark);
-    box-shadow: inset 0 1px 0 var(--editor-border-light);
+    box-shadow: none;
     color: hsl(var(--foreground));
   }
 
@@ -415,7 +351,7 @@
     position: absolute;
     inset: 0 0 auto 0;
     height: 1px;
-    background: var(--editor-command-highlight);
+    background: #3a3a3a;
   }
 
   .panel-section {
@@ -446,7 +382,7 @@
     @apply h-7 w-full rounded-sm px-2 py-1.5 text-xs text-foreground focus:outline-none transition-colors;
     background: var(--editor-panel-sunken);
     border: 1px solid var(--editor-border-dark);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+    box-shadow: none;
   }
 
   .inspector-input:focus {
@@ -587,7 +523,7 @@
     @apply p-2 border-b;
     background: var(--editor-panel);
     border-color: var(--editor-border-dark);
-    box-shadow: inset 0 1px 0 var(--editor-border-light);
+    box-shadow: none;
   }
 
   /* Glass Action Buttons - Unreal Style */
@@ -615,7 +551,7 @@
 
   /* Toggle switch professional style */
   .toggle-switch {
-    @apply relative inline-flex h-4 w-7 items-center rounded-full transition-colors cursor-pointer;
+    @apply relative inline-flex h-4 w-7 items-center rounded-sm transition-colors cursor-pointer;
   }
 
   .toggle-switch[data-state="checked"] {
@@ -667,29 +603,6 @@
   }
 }
 
-@layer utilities {
-  .text-glow-purple {
-    color: hsl(var(--primary));
-  }
-
-  .text-glow-cyan {
-    color: hsl(var(--neon-cyan));
-  }
-
-  /* Status indicators */
-  .status-dot {
-    @apply w-2 h-2 rounded-full;
-  }
-
-  .status-running {
-    background: var(--editor-command-highlight);
-  }
-
-  .status-paused {
-    @apply bg-neon-orange;
-  }
-}
-
 /* Stats panel positioning - avoid header overlap */
 .stats-panel {
   top: 44px !important;
@@ -705,7 +618,7 @@ input[type="range"] {
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  @apply w-3 h-3 rounded-full appearance-none cursor-pointer;
+  @apply w-3 h-3 rounded-sm appearance-none cursor-pointer;
   background: hsl(var(--primary));
   box-shadow: none;
   border: 1px solid hsl(0 0% 100% / 0.25);
@@ -721,7 +634,7 @@ input[type="range"]::-webkit-slider-thumb:active {
 }
 
 input[type="range"]::-moz-range-thumb {
-  @apply w-3 h-3 rounded-full cursor-pointer border-0;
+  @apply w-3 h-3 rounded-sm cursor-pointer border-0;
   background: hsl(var(--primary));
   box-shadow: none;
 }

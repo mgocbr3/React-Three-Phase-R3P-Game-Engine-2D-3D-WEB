@@ -15,7 +15,7 @@ const buttonVariants = cva(
         secondary: "border border-[var(--editor-command-border)] bg-[var(--editor-panel-raised)] text-foreground hover:bg-[var(--editor-row-hover)]",
         ghost: "hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        neon: "border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] text-foreground hover:bg-[var(--editor-command-hover)]",
+        strong: "border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] text-foreground hover:bg-[var(--editor-command-hover)]",
         glass: "border border-[var(--editor-border-light)] bg-[var(--editor-panel-raised)] text-foreground hover:bg-[var(--editor-row-hover)]",
       },
       size: {
