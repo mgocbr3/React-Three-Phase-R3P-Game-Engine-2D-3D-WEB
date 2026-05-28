@@ -192,6 +192,26 @@ const applyRuntimeCameraView = (
   camera.setZoom(runtimeCamera.zoom);
 };
 
+export const shouldRunRuntimeTick = (isPlaying: boolean) => isPlaying;
+
+export const pickEditorHitObjectId = (
+  hits: readonly {
+    depth?: number;
+    name?: string;
+    getData?: (key: string) => unknown;
+  }[] | null | undefined,
+) => {
+  let best: { id: string; depth: number } | null = null;
+  for (const hit of hits ?? []) {
+    if (typeof hit.name === 'string' && hit.name.startsWith('__pixl_')) continue;
+    const id = hit.getData?.('pixlId');
+    if (typeof id !== 'string') continue;
+    const depth = num(hit.depth, 0);
+    if (!best || depth >= best.depth) best = { id, depth };
+  }
+  return best?.id ?? null;
+};
+
 const syncRuntimeCanvasSize = (
   game: { scale?: { resize?: (width: number, height: number) => unknown }; canvas?: HTMLCanvasElement },
   container: HTMLElement,
@@ -641,6 +661,11 @@ export function PhaserRuntimeMount({
                     return typeof n === 'string' && n.startsWith('__pixl_');
                   });
                   if (useRuntimeGameStore.getState().isPlaying) return;
+                  const hitObjectId = pickEditorHitObjectId(hits);
+                  if (hitObjectId) {
+                    useEditorStore.getState().selectObject(hitObjectId);
+                    return;
+                  }
                   if (hitInternal) return;
                   if (!hits || hits.length === 0) {
                     useEditorStore.getState().selectObject(null);
@@ -1251,12 +1276,9 @@ export function PhaserRuntimeMount({
                       return;
                     }
                     let tickFn: ((dt: number, time: number) => void) | null = null;
-                    // Editor-friendly ctx helpers: scripts that want to
-                    // react to player input must go through onGameInput so
-                    // the editor can suppress gameplay during edit mode.
-                    // tick() is already gated by scene pause (scene.update
-                    // doesn't fire) so polled inputs like keys[X].isDown
-                    // don't need a wrapper — only one-shot listeners do.
+                    // Editor-friendly ctx helpers: scripts only run while
+                    // Play Mode is active, even if Phaser's pause state
+                    // misses a frame after hot reload or resize.
                     const offFns: Array<() => void> = [];
                     const onGameInput = (
                       event: string,
@@ -1294,6 +1316,7 @@ export function PhaserRuntimeMount({
                     if (tickFn) {
                       sceneRef.events.on('update', (time: number, delta: number) => {
                         try {
+                          if (!shouldRunRuntimeTick(useRuntimeGameStore.getState().isPlaying)) return;
                           tickFn?.(delta, time);
                         } catch (err) {
                           // eslint-disable-next-line no-console

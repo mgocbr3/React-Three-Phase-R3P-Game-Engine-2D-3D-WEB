@@ -7,10 +7,12 @@ import {
   getPhaserRuntimeChromeState,
   getRuntimeCameraView,
   getRuntimePlaySurfaceLayout,
+  pickEditorHitObjectId,
   getSpriteOrigin2D,
   getSnapped2DTransformValue,
   readEditorViewportPointer,
   readPhaserViewportSize,
+  shouldRunRuntimeTick,
   shouldCommit2DDragHistory,
   shouldAutoFit2DEditorCamera,
 } from './PhaserRuntimeMount';
@@ -81,6 +83,29 @@ describe('PhaserRuntimeMount', () => {
   it('keeps editor auto-fit out of 2D play mode', () => {
     expect(shouldAutoFit2DEditorCamera({ isPlaying: true, hasAutoFit: true })).toBe(false);
     expect(shouldAutoFit2DEditorCamera({ isPlaying: false, hasAutoFit: true })).toBe(true);
+  });
+
+  it('runs gameplay script ticks only while Play Mode is active', () => {
+    expect(shouldRunRuntimeTick(false)).toBe(false);
+    expect(shouldRunRuntimeTick(true)).toBe(true);
+  });
+
+  it('selects the topmost editable 2D object from pointer hits', () => {
+    const hit = (id: string | null, depth: number, name = id ?? 'no-id') => ({
+      depth,
+      name,
+      getData: (key: string) => (key === 'pixlId' ? id : undefined),
+    });
+
+    expect(pickEditorHitObjectId([
+      hit('arena-bg', -10, 'Arena Backdrop'),
+      hit('player-mage', 10, 'Player Mage'),
+      hit('hp-bar', 100, 'HP Bar'),
+    ])).toBe('hp-bar');
+    expect(pickEditorHitObjectId([
+      hit(null, 9999, '__pixl_selection_outline'),
+      hit('player-mage', 10, 'Player Mage'),
+    ])).toBe('player-mage');
   });
 
   it('snaps 2D transform values to the editor translate grid', () => {
