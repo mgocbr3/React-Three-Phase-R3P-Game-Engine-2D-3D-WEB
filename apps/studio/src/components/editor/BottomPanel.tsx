@@ -820,10 +820,10 @@ export const BottomPanel = () => {
               {/* Toolbar */}
               <div className="flex items-center justify-between border-b border-border bg-[var(--editor-toolbar)] px-3 py-1.5">
                 <div className="flex items-center gap-2">
-                  <button className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground" title="Voltar">
+                  <button className="editor-command-chip flex h-6 w-6 items-center justify-center text-muted-foreground hover:text-foreground" title="Voltar">
                     <ChevronRight className="w-3.5 h-3.5 rotate-180" />
                   </button>
-                  <button className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground" title="Atualizar">
+                  <button className="editor-command-chip flex h-6 w-6 items-center justify-center text-muted-foreground hover:text-foreground" title="Atualizar">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                   <input
@@ -836,14 +836,14 @@ export const BottomPanel = () => {
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1 px-2 py-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground text-xs"
+                    className="editor-command-chip flex h-6 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     Import
                   </button>
                   <button
                     onClick={handleCreateFolder}
-                    className="p-1 hover:bg-[var(--editor-row-hover)] text-muted-foreground"
+                    className="editor-command-chip flex h-6 w-6 items-center justify-center text-muted-foreground hover:text-foreground"
                     title="Nova pasta"
                   >
                     <FolderPlus className="w-3.5 h-3.5" />
@@ -862,7 +862,7 @@ export const BottomPanel = () => {
                   </div>
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={cn("p-1", viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-[var(--editor-row-hover)]')}
+                    className={cn("editor-command-chip flex h-6 w-6 items-center justify-center", viewMode === 'grid' ? 'is-active text-foreground' : 'text-muted-foreground hover:text-foreground')}
                     aria-label="Grid view"
                     title="Grid view"
                   >
@@ -870,7 +870,7 @@ export const BottomPanel = () => {
                   </button>
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={cn("p-1", viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-[var(--editor-row-hover)]')}
+                    className={cn("editor-command-chip flex h-6 w-6 items-center justify-center", viewMode === 'list' ? 'is-active text-foreground' : 'text-muted-foreground hover:text-foreground')}
                     aria-label="Column list view"
                     title="Column list view"
                   >
@@ -1040,7 +1040,7 @@ export const BottomPanel = () => {
                 </div>
                 <button 
                   onClick={() => setConsoleFilter('all')}
-                  className={cn("px-1.5 py-1 rounded text-[10px]", consoleFilter === 'all' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-secondary')}
+                  className={cn("editor-command-chip h-6 px-1.5 text-[10px]", consoleFilter === 'all' ? 'is-active text-foreground' : 'text-muted-foreground hover:text-foreground')}
                 >
                   Todos {consoleCounts.all}
                 </button>

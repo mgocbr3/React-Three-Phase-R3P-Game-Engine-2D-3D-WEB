@@ -256,8 +256,8 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
             disabled={editorLocked}
             onClick={() => !editorLocked && setShowAddMenu(!showAddMenu)}
             className={cn(
-              'editor-command-chip flex h-7 items-center gap-1.5 border border-border bg-[var(--editor-toolbar)] px-2.5 text-xs font-semibold text-foreground transition-colors',
-              editorLocked ? 'cursor-not-allowed opacity-35' : 'hover:bg-[var(--editor-panel-raised)]',
+              'editor-command-chip flex h-7 items-center gap-1.5 px-2.5 text-xs font-semibold text-foreground transition-colors',
+              editorLocked && 'cursor-not-allowed opacity-35',
             )}
           >
             <span className="text-sm font-semibold leading-none">+</span>
@@ -372,10 +372,10 @@ const ToolButton = ({ icon: Icon, active, disabled, onClick, tooltip }: ToolButt
     onClick={onClick}
     disabled={disabled}
     className={cn(
-      'flex h-7 w-7 items-center justify-center border border-transparent transition-colors',
-      active && 'border-primary bg-primary text-primary-foreground',
+      'editor-command-chip flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors',
+      active && 'is-active text-foreground',
       disabled && 'opacity-30 cursor-not-allowed',
-      !active && !disabled && 'text-muted-foreground hover:border-border hover:bg-[var(--editor-row-hover)] hover:text-foreground'
+      !active && !disabled && 'hover:text-foreground'
     )}
     title={tooltip}
   >

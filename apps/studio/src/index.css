@@ -53,6 +53,11 @@
     --editor-border-light: #363636;
     --editor-row-selected: #4a4a4a;
     --editor-row-hover: #353535;
+    --editor-command: #262626;
+    --editor-command-hover: #303030;
+    --editor-command-active: #3d3d3d;
+    --editor-command-border: #151515;
+    --editor-command-highlight: #555555;
 
     /* Semantic Colors for templates */
     --neon-purple: 270 60% 60%;
@@ -119,6 +124,11 @@
     --editor-border-light: #ededed;
     --editor-row-selected: #9fc2e6;
     --editor-row-hover: #b7b7b7;
+    --editor-command: #c9c9c9;
+    --editor-command-hover: #d6d6d6;
+    --editor-command-active: #b7b7b7;
+    --editor-command-border: #929292;
+    --editor-command-highlight: #eeeeee;
 
     --sidebar-background: 0 0% 80%;
     --sidebar-foreground: 220 8% 16%;
@@ -319,25 +329,38 @@
   }
 
   .editor-command-chip {
-    background: transparent;
-    border: 1px solid transparent;
+    background: var(--editor-command);
+    border: 1px solid var(--editor-command-border);
     border-radius: 2px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
   }
 
   .editor-command-chip:hover {
-    background: var(--editor-panel-raised);
-    border-color: var(--editor-border-dark);
+    background: var(--editor-command-hover);
+    border-color: var(--editor-border-light);
+  }
+
+  .editor-command-chip:active,
+  .editor-command-chip.is-active {
+    background: var(--editor-command-active);
+    border-color: var(--editor-border-light);
+    color: hsl(var(--foreground));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      inset 0 -1px 0 var(--editor-command-highlight);
   }
 
   .engine-view-tab {
     border-radius: 0;
-    border: 1px solid transparent;
+    border: 1px solid var(--editor-command-border);
+    background: var(--editor-command);
   }
 
   .engine-view-tab.active {
-    background: hsl(var(--primary));
-    border-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    background: var(--editor-command-active);
+    border-color: var(--editor-border-light);
+    color: hsl(var(--foreground));
+    box-shadow: inset 0 -1px 0 var(--editor-command-highlight);
   }
 
   .editor-dock {
@@ -463,7 +486,9 @@
   }
 
   .toolbar-button.active {
-    @apply bg-primary/15 text-primary;
+    background: var(--editor-command-active);
+    color: hsl(var(--foreground));
+    box-shadow: inset 0 -1px 0 var(--editor-command-highlight);
   }
 
   /* Property row for inspector */
@@ -522,7 +547,7 @@
   .glass-tab.active {
     background: var(--editor-tab-active);
     color: hsl(var(--foreground));
-    border-bottom-color: hsl(var(--primary));
+    border-bottom-color: var(--editor-command-highlight);
   }
 
   .engine-property-callout {
@@ -571,9 +596,9 @@
   }
 
   .glass-action-btn.active {
-    background: #22364a;
-    border-color: hsl(var(--primary) / 0.65);
-    color: hsl(var(--primary));
+    background: var(--editor-command-active);
+    border-color: var(--editor-border-light);
+    color: hsl(var(--foreground));
   }
 
   .glass-action-btn.destructive:hover {

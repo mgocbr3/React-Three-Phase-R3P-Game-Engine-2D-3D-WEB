@@ -618,7 +618,7 @@ export const EditorHeader = () => {
 
             {previewSession && (
               <div
-                className="editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold text-primary"
+                className="editor-command-chip is-active flex h-7 items-center gap-1.5 px-2 text-xs font-semibold text-foreground"
                 title={`Play Mode: ${runtimeLabel}`}
               >
                 <Gamepad2 className="h-3.5 w-3.5" />
@@ -630,7 +630,7 @@ export const EditorHeader = () => {
               onClick={handleRuntimeToggle}
               className={cn(
                 'editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold transition-colors',
-                isRuntimePreviewActive ? 'text-primary' : 'text-foreground'
+                isRuntimePreviewActive ? 'is-active text-foreground' : 'text-foreground'
               )}
             >
               {isRuntimePreviewActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
@@ -671,7 +671,7 @@ export const EditorHeader = () => {
                   className="flex min-w-0 max-w-[300px] items-center gap-1.5 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-[11px] text-muted-foreground"
                   title={`${localWorkspace.directoryName}/${localWorkspace.projectFilePath}`}
                 >
-                  <FolderOpen className="h-3 w-3 flex-shrink-0 text-primary" />
+                  <FolderOpen className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
                   <span className="truncate text-foreground">{localWorkspace.directoryName}</span>
                   <span className="text-muted-foreground/50">/</span>
                   <span className="truncate">{localWorkspace.projectFilePath}</span>
@@ -771,7 +771,7 @@ const MenuItems = ({ items, onSelect, showShortcut }: MenuItemsProps) => (
           )}
         >
           {isCheckedItem && (
-            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-primary">
+            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-foreground">
               {item.checked && <Check className="h-3.5 w-3.5" />}
             </span>
           )}
@@ -795,7 +795,7 @@ const diagnosticsIcon: Record<ProjectDiagnosticStatus, typeof CheckCircle2> = {
 const diagnosticsTone: Record<ProjectDiagnosticStatus, string> = {
   blocked: 'border-destructive/30 bg-destructive/10 text-destructive hover:text-destructive',
   warning: 'border-amber-500/30 bg-amber-500/10 text-amber-100 hover:text-amber-100',
-  ready: 'border-primary/25 bg-primary/10 text-primary hover:text-primary',
+  ready: 'is-active text-foreground hover:text-foreground',
 };
 
 const getDiagnosticsLabel = (diagnostics: ProjectDiagnosticsSummary): string => {
