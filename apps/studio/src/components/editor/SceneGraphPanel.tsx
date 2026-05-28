@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, Unlock, Trash2, Search, MoreHorizontal, Link, Unlink, Layers, Copy, Edit3, Focus, Play, Clipboard, Scissors } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useEditorStore, ObjectType, SceneObject } from '@/stores/editorStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { cn } from '@/lib/utils';
 import { getEditorObjectIcon } from './editorObjectIcon';
 
@@ -92,9 +93,10 @@ interface ContextMenuProps {
   onToggleVisible: () => void;
   onToggleLock: () => void;
   canPasteObject: boolean;
+  readOnly?: boolean;
 }
 
-const ContextMenu = ({ x, y, object, onClose, onRename, onCopy, onCut, onPasteAsChild, onDuplicate, onDelete, onFocus, onDetachFromParent, onToggleVisible, onToggleLock, canPasteObject }: ContextMenuProps) => {
+const ContextMenu = ({ x, y, object, onClose, onRename, onCopy, onCut, onPasteAsChild, onDuplicate, onDelete, onFocus, onDetachFromParent, onToggleVisible, onToggleLock, canPasteObject, readOnly = false }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,6 +119,7 @@ const ContextMenu = ({ x, y, object, onClose, onRename, onCopy, onCut, onPasteAs
   }, [onClose]);
 
   const canDelete = object.id !== 'main-camera' && object.id !== 'main-player';
+  const lockedClass = 'disabled:cursor-not-allowed disabled:text-muted-foreground/45 disabled:hover:bg-transparent';
 
   return (
     <div
@@ -130,41 +133,46 @@ const ContextMenu = ({ x, y, object, onClose, onRename, onCopy, onCut, onPasteAs
     >
       <button
         onClick={() => { onRename(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        disabled={readOnly}
+        className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
       >
         <Edit3 className="w-4 h-4 text-muted-foreground" />
-        <span className="text-foreground">Renomear</span>
+        <span className="text-current">Renomear</span>
       </button>
       <button
         onClick={() => { onCopy(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        disabled={readOnly}
+        className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
       >
         <Copy className="w-4 h-4 text-muted-foreground" />
-        <span className="text-foreground">Copiar</span>
+        <span className="text-current">Copiar</span>
       </button>
       {canDelete && (
         <button
           onClick={() => { onCut(); onClose(); }}
-          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+          disabled={readOnly}
+          className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
         >
           <Scissors className="w-4 h-4 text-muted-foreground" />
-          <span className="text-foreground">Recortar</span>
+          <span className="text-current">Recortar</span>
         </button>
       )}
       <button
         onClick={() => { onDuplicate(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        disabled={readOnly}
+        className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
       >
         <Copy className="w-4 h-4 text-muted-foreground" />
-        <span className="text-foreground">Duplicar</span>
+        <span className="text-current">Duplicar</span>
       </button>
       {canPasteObject && (
         <button
           onClick={() => { onPasteAsChild(); onClose(); }}
-          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+          disabled={readOnly}
+          className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
         >
           <Clipboard className="w-4 h-4 text-muted-foreground" />
-          <span className="text-foreground">Colar como filho</span>
+          <span className="text-current">Colar como filho</span>
         </button>
       )}
       <button
@@ -172,41 +180,45 @@ const ContextMenu = ({ x, y, object, onClose, onRename, onCopy, onCut, onPasteAs
         className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
       >
         <Focus className="w-4 h-4 text-muted-foreground" />
-        <span className="text-foreground">Focar Câmera</span>
+        <span className="text-current">Focar Câmera</span>
       </button>
       {object.parentId && (
         <button
           onClick={() => { onDetachFromParent(); onClose(); }}
-          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+          disabled={readOnly}
+          className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
         >
           <Unlink className="w-4 h-4 text-muted-foreground" />
-          <span className="text-foreground">Desanexar</span>
+          <span className="text-current">Desanexar</span>
         </button>
       )}
       <div className="h-px bg-border my-1.5 mx-2" />
       <button
         onClick={() => { onToggleVisible(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        disabled={readOnly}
+        className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
       >
         {object.visible ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
-        <span className="text-foreground">{object.visible ? 'Ocultar' : 'Mostrar'}</span>
+        <span className="text-current">{object.visible ? 'Ocultar' : 'Mostrar'}</span>
       </button>
       <button
         onClick={() => { onToggleLock(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        disabled={readOnly}
+        className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary', lockedClass)}
       >
         {object.locked ? <Unlock className="w-4 h-4 text-muted-foreground" /> : <Lock className="w-4 h-4 text-muted-foreground" />}
-        <span className="text-foreground">{object.locked ? 'Desbloquear' : 'Bloquear'}</span>
+        <span className="text-current">{object.locked ? 'Desbloquear' : 'Bloquear'}</span>
       </button>
       {canDelete && (
         <>
           <div className="h-px bg-border my-1.5 mx-2" />
           <button
             onClick={() => { onDelete(); onClose(); }}
-            className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary/30"
+            disabled={readOnly}
+            className={cn('w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary/30', lockedClass)}
           >
             <Trash2 className="w-4 h-4 text-muted-foreground" />
-            <span className="text-foreground">Deletar</span>
+            <span className="text-current">Deletar</span>
           </button>
         </>
       )}
@@ -220,9 +232,10 @@ interface SceneRootContextMenuProps {
   onClose: () => void;
   onPasteToRoot: () => void;
   canPasteObject: boolean;
+  readOnly?: boolean;
 }
 
-const SceneRootContextMenu = ({ x, y, onClose, onPasteToRoot, canPasteObject }: SceneRootContextMenuProps) => {
+const SceneRootContextMenu = ({ x, y, onClose, onPasteToRoot, canPasteObject, readOnly = false }: SceneRootContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -256,10 +269,11 @@ const SceneRootContextMenu = ({ x, y, onClose, onPasteToRoot, canPasteObject }: 
       {canPasteObject ? (
         <button
           onClick={() => { onPasteToRoot(); onClose(); }}
-          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+          disabled={readOnly}
+          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:text-muted-foreground/45 disabled:hover:bg-transparent"
         >
           <Clipboard className="w-4 h-4 text-muted-foreground" />
-          <span className="text-foreground">Colar na raiz</span>
+          <span className="text-current">Colar na raiz</span>
         </button>
       ) : (
         <div className="px-3 py-2 text-[13px] text-muted-foreground">Clipboard vazio</div>
@@ -290,6 +304,7 @@ interface SceneObjectItemProps {
   onSceneObjectDragEnd: () => void;
   childrenHidden?: boolean;
   pathLabel?: string;
+  readOnly?: boolean;
 }
 
 const SceneObjectItem = ({
@@ -309,6 +324,7 @@ const SceneObjectItem = ({
   onSceneObjectDragEnd,
   childrenHidden = false,
   pathLabel,
+  readOnly = false,
 }: SceneObjectItemProps) => {
   const [isExpanded, setIsExpanded] = useState(() => object.logicSettings?.customData?.defaultExpanded !== false);
   const [isEditing, setIsEditing] = useState(false);
@@ -334,7 +350,7 @@ const SceneObjectItem = ({
   }, [draggedObjectId]);
 
   const handleRename = () => {
-    if (editName.trim() && editName !== object.name) {
+    if (!readOnly && editName.trim() && editName !== object.name) {
       updateObject(object.id, { name: editName.trim() });
     }
     setIsEditing(false);
@@ -354,7 +370,7 @@ const SceneObjectItem = ({
     const timeSinceLastClick = now - lastClickTime;
     
     // Se já está selecionado e clicou novamente após 300ms (slow double click)
-    if (isSelected && timeSinceLastClick > 300 && timeSinceLastClick < 1000) {
+    if (!readOnly && isSelected && timeSinceLastClick > 300 && timeSinceLastClick < 1000) {
       e.stopPropagation();
       setIsEditing(true);
     } else {
@@ -384,6 +400,7 @@ const SceneObjectItem = ({
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || isEditing) return;
+    if (readOnly) return;
     if ((event.target as HTMLElement).closest('button,input,textarea,select')) return;
 
     onSceneObjectDragStart(object.id, event);
@@ -401,7 +418,7 @@ const SceneObjectItem = ({
     const placement = dropPlacement ?? getSceneDropPlacement(event.clientY, event.currentTarget.getBoundingClientRect());
     setDropPlacement(null);
 
-    if (draggedId !== object.id) {
+    if (!readOnly && draggedId !== object.id) {
       if (placement === 'inside') {
         if (reparentObject(draggedId, object.id)) {
           setIsExpanded(true);
@@ -433,6 +450,7 @@ const SceneObjectItem = ({
           onToggleVisible={() => updateObject(object.id, { visible: object.visible === false ? true : false })}
           onToggleLock={() => updateObject(object.id, { locked: !object.locked })}
           canPasteObject={canPasteObject}
+          readOnly={readOnly}
         />
       )}
       
@@ -548,9 +566,11 @@ const SceneObjectItem = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (readOnly) return;
               updateObject(object.id, { visible: object.visible === false ? true : false });
             }}
-            className="p-0.5 rounded hover:bg-secondary"
+            disabled={readOnly}
+            className="p-0.5 rounded hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-35"
           >
             {object.visible !== false ? (
               <Eye className="w-3 h-3 text-muted-foreground" />
@@ -561,9 +581,11 @@ const SceneObjectItem = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (readOnly) return;
               updateObject(object.id, { locked: !object.locked });
             }}
-            className="p-0.5 rounded hover:bg-secondary"
+            disabled={readOnly}
+            className="p-0.5 rounded hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-35"
           >
             {object.locked ? (
               <Lock className="w-3 h-3 text-muted-foreground" />
@@ -575,9 +597,11 @@ const SceneObjectItem = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                if (readOnly) return;
                 deleteObject(object.id);
               }}
-              className="p-0.5 rounded hover:bg-destructive/20"
+              disabled={readOnly}
+              className="p-0.5 rounded hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <Trash2 className="w-3 h-3 text-destructive" />
             </button>
@@ -605,6 +629,7 @@ const SceneObjectItem = ({
               draggedObjectId={draggedObjectId}
               onSceneObjectDragStart={onSceneObjectDragStart}
               onSceneObjectDragEnd={onSceneObjectDragEnd}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -614,7 +639,8 @@ const SceneObjectItem = ({
 };
 
 export const SceneGraphPanel = () => {
-  const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, reparentObject, reorderObject, deleteObject, pasteObject, hasObjectClipboard } = useEditorStore();
+  const { objects, selectedObjectId, selectObject, focusOnObject, updateObject, reparentObject, reorderObject, deleteObject, pasteObject, hasObjectClipboard, isEditMode } = useEditorStore();
+  const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const [expanded, setExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRootDropTarget, setIsRootDropTarget] = useState(false);
@@ -623,6 +649,7 @@ export const SceneGraphPanel = () => {
   const suppressNextRootClickRef = useRef(false);
   const query = searchQuery.trim().toLowerCase();
   const canPasteObject = hasObjectClipboard();
+  const readOnly = Boolean(previewSession) || !isEditMode;
 
   const childrenByParent = useMemo(() => {
     const byParent = new Map<string, SceneObject[]>();
@@ -686,6 +713,7 @@ export const SceneGraphPanel = () => {
   const activeDraggedObjectId = pointerDrag?.active ? pointerDrag.id : null;
 
   const handleSceneObjectDragStart = (id: string, event: React.PointerEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     setPointerDrag({
       id,
       startX: event.clientX,
@@ -696,6 +724,7 @@ export const SceneGraphPanel = () => {
   };
 
   const handleSceneObjectDragMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     setPointerDrag((current) => {
       if (!current || current.active) return current;
 
@@ -710,11 +739,13 @@ export const SceneGraphPanel = () => {
   };
 
   const handleRootPointerMove = () => {
+    if (readOnly) return;
     if (!activeDraggedObjectId) return;
     setIsRootDropTarget(true);
   };
 
   const handleRootPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (readOnly) return;
     const draggedId = activeDraggedObjectId;
     if (!draggedId) return;
 
@@ -746,6 +777,7 @@ export const SceneGraphPanel = () => {
           onClose={() => setRootContextMenu(null)}
           onPasteToRoot={() => pasteObject(null)}
           canPasteObject={canPasteObject}
+          readOnly={readOnly}
         />
       )}
 
@@ -839,6 +871,7 @@ export const SceneGraphPanel = () => {
                       onSceneObjectDragEnd={handleSceneObjectDragEnd}
                       childrenHidden
                       pathLabel={getObjectPath(obj, objectsById)}
+                      readOnly={readOnly}
                     />
                   ))}
                 </>
@@ -860,6 +893,7 @@ export const SceneGraphPanel = () => {
                     draggedObjectId={activeDraggedObjectId}
                     onSceneObjectDragStart={handleSceneObjectDragStart}
                     onSceneObjectDragEnd={handleSceneObjectDragEnd}
+                    readOnly={readOnly}
                   />
                 ))
               )}

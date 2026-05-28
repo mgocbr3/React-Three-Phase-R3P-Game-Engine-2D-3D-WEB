@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { SceneGraphPanel } from './SceneGraphPanel';
 import { useEditorStore, type SceneObject } from '@/stores/editorStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 
 const makeObject = (id: string, parentId: string | null = null): SceneObject => ({
   id,
@@ -19,8 +20,10 @@ const makeObject = (id: string, parentId: string | null = null): SceneObject => 
 
 describe('SceneGraphPanel context menu', () => {
   beforeEach(() => {
+    useRuntimeGameStore.getState().stopPreview();
     useEditorStore.setState({
       activeSceneKind: '3d',
+      isEditMode: true,
       objects: [
         makeObject('source'),
         makeObject('child', 'source'),
@@ -63,6 +66,23 @@ describe('SceneGraphPanel context menu', () => {
 
     expect(pastedChild?.parentId).toBeNull();
     expect(useEditorStore.getState().selectedObjectId).toBe(pastedChild?.id);
+  });
+
+  it('locks mutating hierarchy context actions while Play Mode is active', () => {
+    useEditorStore.getState().copyObject('source');
+    useEditorStore.setState({ isEditMode: false });
+
+    render(<SceneGraphPanel />);
+
+    fireEvent.contextMenu(screen.getByText('target'));
+
+    expect(screen.getByRole('button', { name: 'Renomear' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Duplicar' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Colar como filho' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Deletar' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deletar' }));
+    expect(useEditorStore.getState().objects.some((object) => object.id === 'target')).toBe(true);
   });
 
   it('uses 2D object icons instead of cube icons in the hierarchy', () => {

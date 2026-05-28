@@ -69,6 +69,38 @@ describe('EditorHeader layout selector', () => {
     expect(screen.getByRole('button', { name: 'Sprite' })).toBeDisabled();
   });
 
+  it('locks object mutation shortcuts while Play Mode is active', () => {
+    useEditorStore.setState({
+      activeSceneKind: '2d',
+      isEditMode: false,
+      objects: [
+        {
+          id: 'hero',
+          name: 'Hero',
+          type: 'sprite',
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          color: '#ffffff',
+          visible: true,
+          locked: false,
+        },
+      ],
+      selectedObjectId: 'hero',
+    });
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.keyDown(window, { key: 'Delete' });
+    fireEvent.keyDown(window, { key: 'd', ctrlKey: true });
+
+    expect(useEditorStore.getState().objects.map((object) => object.id)).toEqual(['hero']);
+  });
+
   it('uses the locked viewport kind for Scene creation entries', () => {
     useEditorStore.setState({ activeSceneKind: '3d' });
     useViewportStore.getState().setLockedKind('2d');

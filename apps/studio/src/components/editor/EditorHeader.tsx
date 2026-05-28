@@ -369,7 +369,7 @@ export const EditorHeader = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (handleEditorObjectShortcut(event, {
+      if (!editorMutationsLocked && handleEditorObjectShortcut(event, {
         selectedObjectId,
         copyObject,
         cutObject,
@@ -404,6 +404,7 @@ export const EditorHeader = () => {
     cutObject,
     deleteObject,
     duplicateObject,
+    editorMutationsLocked,
     handleRuntimeToggle,
     hasObjectClipboard,
     pasteObject,
