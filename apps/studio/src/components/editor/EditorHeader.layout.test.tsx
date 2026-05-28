@@ -8,6 +8,20 @@ import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
 import { useViewportStore } from '@/stores/viewportStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { EditorHeader } from './EditorHeader';
+import type { RuntimePreviewSession } from '@/engine/runtime/runtimePreview';
+
+const previewSession: RuntimePreviewSession = {
+  id: 'runtime-test',
+  projectId: 'project-test',
+  projectName: 'Runtime Test',
+  runtime: 'phaser-2d',
+  launchTarget: { kind: 'scene-preview' },
+  sceneId: 'main',
+  sceneKind: '2d',
+  source: 'editor',
+  startedAt: 1,
+  document: {} as RuntimePreviewSession['document'],
+};
 
 describe('EditorHeader layout selector', () => {
   beforeEach(() => {
@@ -67,6 +81,22 @@ describe('EditorHeader layout selector', () => {
 
     expect(screen.getByRole('button', { name: 'Square' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Sprite' })).toBeDisabled();
+  });
+
+  it('hides the project toolbar while Play Mode is active', () => {
+    useEditorStore.setState({ activeSceneKind: '2d', isEditMode: false });
+    useRuntimeGameStore.setState({ previewSession, isPlaying: true });
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
   });
 
   it('locks object mutation shortcuts while Play Mode is active', () => {

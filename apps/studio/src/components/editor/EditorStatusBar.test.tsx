@@ -5,6 +5,20 @@ import { useEditorStore, type SceneObject } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { EditorStatusBar } from './EditorStatusBar';
+import type { RuntimePreviewSession } from '@/engine/runtime/runtimePreview';
+
+const previewSession: RuntimePreviewSession = {
+  id: 'runtime-test',
+  projectId: 'project-test',
+  projectName: 'Runtime Test',
+  runtime: 'phaser-2d',
+  launchTarget: { kind: 'scene-preview' },
+  sceneId: 'main',
+  sceneKind: '2d',
+  source: 'editor',
+  startedAt: 1,
+  document: {} as RuntimePreviewSession['document'],
+};
 
 const object = (type: SceneObject['type'], id = type): SceneObject => ({
   id,
@@ -51,5 +65,13 @@ describe('EditorStatusBar scene metrics', () => {
     const status = screen.getByRole('contentinfo');
     expect(within(status).getByText('meshes')).toBeVisible();
     expect(within(status).getByText('tris')).toBeVisible();
+  });
+
+  it('hides editor metrics while Play Mode is active', () => {
+    useRuntimeGameStore.setState({ previewSession, isPlaying: true });
+
+    render(<EditorStatusBar />);
+
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 });
