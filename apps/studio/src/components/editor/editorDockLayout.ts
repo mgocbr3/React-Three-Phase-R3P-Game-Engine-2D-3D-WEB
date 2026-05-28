@@ -21,6 +21,13 @@ export type DockDragGhostPositionInput = {
   panels?: readonly DockPanelRect[];
 };
 
+export type DockDropPreviewRectInput = {
+  target: EditorDockTarget | null;
+  panels: readonly DockPanelRect[];
+  viewportWidth: number;
+  viewportHeight: number;
+};
+
 const weight = (id: EditorPanelId) => (id === 'viewport' ? 46 : 18);
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -112,4 +119,28 @@ export const getDockDragGhostPosition = ({
     left: clamp(x + offset, margin, Math.max(margin, viewportWidth - width - margin)),
     top: clamp(y + offset, margin, Math.max(margin, viewportHeight - height - margin)),
   };
+};
+
+export const getDockDropPreviewRect = ({
+  target,
+  panels,
+  viewportWidth,
+  viewportHeight,
+}: DockDropPreviewRectInput) => {
+  if (!target) return null;
+  const slot = 6;
+  const margin = 12;
+  if (target === 'bottom-end') {
+    const top = viewportHeight - Math.max(170, viewportHeight * 0.34);
+    return { left: margin, top, width: Math.max(slot, viewportWidth - margin * 2), height: viewportHeight - top - margin };
+  }
+  const zone = target === 'main-end' ? 'main' : panels.find((panel) => panel.id === target)?.zone;
+  const row = panels.filter((panel) => panel.zone === zone).sort((a, b) => a.left - b.left);
+  if (!row.length) return null;
+  const top = Math.min(...row.map((panel) => panel.top));
+  const bottom = Math.max(...row.map((panel) => panel.top + panel.height));
+  const left = target === 'main-end'
+    ? Math.max(...row.map((panel) => panel.left + panel.width)) - slot
+    : (panels.find((panel) => panel.id === target)?.left ?? row[0].left) - slot / 2;
+  return { left: clamp(left, 0, viewportWidth - slot), top, width: slot, height: bottom - top };
 };

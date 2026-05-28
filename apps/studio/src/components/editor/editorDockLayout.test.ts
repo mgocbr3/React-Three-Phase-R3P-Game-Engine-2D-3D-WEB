@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getDockDropPreviewRect,
   getDockDragGhostPosition,
   getDockPanelLabels,
   getDockPanelSize,
@@ -87,5 +88,32 @@ describe('editorDockLayout', () => {
         { id: 'viewport', zone: 'main', left: 240, top: 64, width: 680, height: 520 },
       ],
     })).toEqual({ left: 252, top: 76 });
+  });
+
+  it('draws Unity-like dock preview slots for panel, row-end, and bottom targets', () => {
+    const panels = [
+      { id: 'scene', zone: 'main', left: 0, top: 64, width: 240, height: 520 },
+      { id: 'viewport', zone: 'main', left: 240, top: 64, width: 680, height: 520 },
+      { id: 'inspector', zone: 'main', left: 920, top: 64, width: 280, height: 520 },
+    ] as const;
+
+    expect(getDockDropPreviewRect({ target: 'viewport', panels, viewportWidth: 1200, viewportHeight: 900 })).toEqual({
+      left: 237,
+      top: 64,
+      width: 6,
+      height: 520,
+    });
+    expect(getDockDropPreviewRect({ target: 'main-end', panels, viewportWidth: 1200, viewportHeight: 900 })).toEqual({
+      left: 1194,
+      top: 64,
+      width: 6,
+      height: 520,
+    });
+    expect(getDockDropPreviewRect({ target: 'bottom-end', panels, viewportWidth: 1200, viewportHeight: 900 })).toEqual({
+      left: 12,
+      top: 594,
+      width: 1176,
+      height: 294,
+    });
   });
 });

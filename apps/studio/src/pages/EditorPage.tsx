@@ -11,7 +11,7 @@ import { BottomPanel } from '@/components/editor/BottomPanel';
 import { DockFrame } from '@/components/editor/DockFrame';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockDragGhostPosition, getDockPanelLabels, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockDropPreviewRect, getDockPanelLabels, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -94,6 +94,14 @@ const DockDragGhost = ({
       <span className="border border-primary/50 bg-primary/10 px-2 py-1 text-primary">{targetLabel}</span>
     </div>
   </div>
+);
+
+const DockDropPreview = ({ rect }: { rect: { left: number; top: number; width: number; height: number } }) => (
+  <div
+    data-testid="dock-drop-preview"
+    className="pointer-events-none fixed z-[68] border-2 border-primary/85 bg-primary/[0.12] shadow-[0_0_22px_rgba(75,160,255,0.72)] transition-[left,top,width,height,opacity] duration-100 ease-out"
+    style={rect}
+  />
 );
 
 const getDockTargetLabel = (target: EditorDockTarget | null, labels: Record<EditorPanelId, string>) => {
@@ -388,6 +396,14 @@ const EditorPage = () => {
       panels: dockPanelRects,
     })
     : null;
+  const dockDropPreviewRect = draggedDock
+    ? getDockDropPreviewRect({
+      target: dockDropTarget,
+      panels: dockPanelRects,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    })
+    : null;
   const renderDockRow = (ids: EditorPanelId[], zone: EditorDockZone) => (
     ids.length ? (
       <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -477,6 +493,7 @@ const EditorPage = () => {
                   active={dockDropTarget === 'bottom-end'}
                 />
               )}
+              {dockDropPreviewRect && <DockDropPreview rect={dockDropPreviewRect} />}
               {draggedDock && dockGhostPosition && (
                 <DockDragGhost
                   label={dockPanelLabels[draggedDock]}
