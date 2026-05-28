@@ -3,7 +3,7 @@ import {
   FolderOpen, Terminal, Package,
   Search, Filter, RefreshCw, Download, FolderPlus, Trash2,
   AlertCircle, AlertTriangle, Info, ChevronRight, Play, Grid, List,
-  Upload, FileBox, Image, Music, Code, Clock, Layout, MoreVertical, X,
+  Upload, FileBox, Image, Music, Code, Clock, Layout, MoreVertical,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -712,25 +712,11 @@ export const BottomPanel = () => {
                   setTabMenuOpen((open) => open === tab.id ? null : tab.id);
                 }}
                 onPointerDown={(event) => event.stopPropagation()}
-                className="ml-0.5 flex h-5 w-5 items-center justify-center text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
+                className="editor-panel-action ml-0.5 flex h-5 w-5 items-center justify-center text-muted-foreground"
                 aria-label={`Menu ${tab.label}`}
                 title={`Menu ${tab.label}`}
               >
                 <MoreVertical className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  closeBottomTab(tab.id);
-                  setTabMenuOpen(null);
-                }}
-                onPointerDown={(event) => event.stopPropagation()}
-                className="flex h-5 w-5 items-center justify-center text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
-                aria-label={`Fechar ${tab.label}`}
-                title={`Fechar ${tab.label}`}
-              >
-                <X className="h-3 w-3" />
               </button>
               {tabMenuOpen === tab.id && (
                 <div className="editor-menu-dropdown absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden py-1">

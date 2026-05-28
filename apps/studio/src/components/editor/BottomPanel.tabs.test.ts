@@ -62,16 +62,17 @@ describe('BottomPanel tab availability', () => {
     expect(screen.getByTestId('bottom-tab-end-drop')).toBeVisible();
   });
 
-  it('keeps the close control explicit and closes without starting a tab drag', () => {
+  it('keeps close under the ellipsis menu and closes without starting a tab drag', () => {
     render(createElement(BottomPanel));
 
-    const closeConsole = screen.getByTitle('Fechar Console');
-    expect(closeConsole).toHaveAttribute('aria-label', 'Fechar Console');
+    expect(screen.queryByTitle('Fechar Console')).toBeNull();
 
-    fireEvent.pointerDown(closeConsole);
+    const menuConsole = screen.getByTitle('Menu Console');
+    fireEvent.pointerDown(menuConsole);
     expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
 
-    fireEvent.click(closeConsole);
+    fireEvent.click(menuConsole);
+    fireEvent.click(screen.getByText('Close Tab'));
 
     expect(useBottomPanelTabsStore.getState().closedTabs).toContain('console');
     expect(useBottomPanelTabsStore.getState().activeTab).toBe('assets');

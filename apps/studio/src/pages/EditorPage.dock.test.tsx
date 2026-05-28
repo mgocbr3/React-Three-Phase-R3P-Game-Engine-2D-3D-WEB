@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DockFrame } from '@/components/editor/DockFrame';
 
 describe('DockFrame', () => {
-  it('exposes a named close button without starting tab drag', () => {
+  it('keeps close in the ellipsis menu without exposing a duplicate x button', () => {
     const onClose = vi.fn();
     const onDockMain = vi.fn();
     const onDockBottom = vi.fn();
@@ -29,9 +29,12 @@ describe('DockFrame', () => {
       </DockFrame>,
     );
 
-    const close = screen.getByRole('button', { name: 'Close Preview 2D' });
-    fireEvent.pointerDown(close);
-    fireEvent.click(close);
+    expect(screen.queryByRole('button', { name: 'Close Preview 2D' })).toBeNull();
+
+    const menu = screen.getByRole('button', { name: 'Menu Preview 2D' });
+    fireEvent.pointerDown(menu);
+    fireEvent.click(menu);
+    fireEvent.click(screen.getByRole('button', { name: 'Close Tab' }));
 
     expect(onPointerDown).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);

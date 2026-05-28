@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
-import { MoreVertical, X } from 'lucide-react';
+import { MoreVertical } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { EditorDockZone, EditorPanelId } from '@/stores/editorLayoutStore';
@@ -90,21 +90,12 @@ export const DockFrame = ({
         <div ref={menuRef} className="relative flex items-center gap-0.5">
           <button
             aria-label={`Menu ${label}`}
-            className="flex h-6 w-6 items-center justify-center text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
+            className="editor-panel-action flex h-6 w-6 items-center justify-center text-muted-foreground"
             onClick={() => setMenuOpen((open) => !open)}
             onPointerDown={(event) => event.stopPropagation()}
             title={`Menu ${label}`}
           >
             <MoreVertical className="h-3.5 w-3.5" />
-          </button>
-          <button
-            aria-label={`Close ${label}`}
-            className="flex h-6 w-6 items-center justify-center text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
-            onClick={onClose}
-            onPointerDown={(event) => event.stopPropagation()}
-            title={`Close ${label}`}
-          >
-            <X className="h-3.5 w-3.5" />
           </button>
           {menuOpen && (
             <div className="editor-menu-dropdown absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden py-1">

@@ -787,7 +787,7 @@ export const SceneGraphPanel = () => {
           <button className="editor-panel-tab active">Scene</button>
           <button className="editor-panel-tab">Import</button>
         </div>
-        <button className="p-1 hover:bg-secondary rounded transition-colors" title="Opções">
+        <button className="editor-panel-action flex h-6 w-6 items-center justify-center text-muted-foreground" title="Opções">
           <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
       </div>

@@ -366,7 +366,7 @@
 
   .editor-panel-tab.active {
     position: relative;
-    background: transparent;
+    background: var(--editor-tab-active);
     border-color: transparent;
     box-shadow: none;
     color: hsl(var(--foreground));
@@ -374,6 +374,20 @@
 
   .editor-panel-tab.active::before {
     content: none;
+  }
+
+  .editor-panel-action {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .editor-panel-action:hover {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: hsl(var(--foreground));
   }
 
   .panel-section {

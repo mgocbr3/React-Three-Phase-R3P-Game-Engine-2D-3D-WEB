@@ -41,8 +41,10 @@ describe('desktop-only studio build', () => {
     expect(editorHeader).toContain('editor-brand-button');
     expect(editorHeader).toContain('editor-project-tab');
     expect(css).toMatch(/\.editor-command-chip\s*{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
-    expect(css).toMatch(/\.editor-panel-tab\.active\s*{[^}]*background:\s*transparent;[^}]*border-color:\s*transparent;[^}]*box-shadow:\s*none;/s);
+    expect(css).toMatch(/\.editor-panel-tab\.active\s*{[^}]*background:\s*var\(--editor-tab-active\);[^}]*border-color:\s*transparent;[^}]*box-shadow:\s*none;/s);
     expect(css).toMatch(/\.editor-panel-tab\.active::before\s*{[^}]*content:\s*none;/s);
+    expect(css).toMatch(/\.editor-panel-action\s*{[^}]*background:\s*transparent;[^}]*border-radius:\s*0;[^}]*box-shadow:\s*none;/s);
+    expect(css).toMatch(/\.editor-panel-action:hover\s*{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
     expect(css).toMatch(/\.glass-search input\s*{[^}]*border:\s*1px solid transparent;[^}]*border-radius:\s*0;/s);
   });
 
