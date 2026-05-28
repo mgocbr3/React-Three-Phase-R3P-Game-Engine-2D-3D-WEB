@@ -6,6 +6,9 @@ import { DockFrame } from '@/components/editor/DockFrame';
 describe('DockFrame', () => {
   it('exposes a named close button without starting tab drag', () => {
     const onClose = vi.fn();
+    const onDockMain = vi.fn();
+    const onDockBottom = vi.fn();
+    const onResetDock = vi.fn();
     const onPointerDown = vi.fn();
 
     render(
@@ -14,6 +17,9 @@ describe('DockFrame', () => {
         zone="main"
         label="Preview 2D"
         onClose={onClose}
+        onDockMain={onDockMain}
+        onDockBottom={onDockBottom}
+        onResetDock={onResetDock}
         dragging={false}
         draggingAny={false}
         dropActive={false}
@@ -31,6 +37,34 @@ describe('DockFrame', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('opens compact dock actions from the ellipsis menu', () => {
+    const onDockBottom = vi.fn();
+
+    render(
+      <DockFrame
+        id="scene"
+        zone="main"
+        label="Hierarchy"
+        onClose={vi.fn()}
+        onDockMain={vi.fn()}
+        onDockBottom={onDockBottom}
+        onResetDock={vi.fn()}
+        dragging={false}
+        draggingAny={false}
+        dropActive={false}
+        onPointerDown={vi.fn()}
+      >
+        <div>Scene body</div>
+      </DockFrame>,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Menu Hierarchy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Menu Hierarchy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dock Below' }));
+
+    expect(onDockBottom).toHaveBeenCalledTimes(1);
+  });
+
   it('can render a chromeless runtime frame so the game owns the full dock body', () => {
     render(
       <DockFrame
@@ -38,6 +72,9 @@ describe('DockFrame', () => {
         zone="main"
         label="Game 2D"
         onClose={vi.fn()}
+        onDockMain={vi.fn()}
+        onDockBottom={vi.fn()}
+        onResetDock={vi.fn()}
         dragging={false}
         draggingAny={false}
         dropActive={false}

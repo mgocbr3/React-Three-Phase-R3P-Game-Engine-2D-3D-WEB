@@ -123,6 +123,7 @@ const EditorPage = () => {
   const setPanelVisible = useEditorLayoutStore((s) => s.setPanelVisible);
   const movePanelBefore = useEditorLayoutStore((s) => s.movePanelBefore);
   const movePanelToZone = useEditorLayoutStore((s) => s.movePanelToZone);
+  const restorePanel = useEditorLayoutStore((s) => s.restorePanel);
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
   const [draggedDock, setDraggedDock] = useState<EditorPanelId | null>(null);
   const [dockDropTarget, setDockDropTarget] = useState<EditorDockTarget | null>(null);
@@ -428,6 +429,9 @@ const EditorPage = () => {
                   zone={zone}
                   label={dockContent[id].label}
                   onClose={() => setPanelVisible(id, false)}
+                  onDockMain={() => movePanelToZone(id, 'main')}
+                  onDockBottom={() => movePanelToZone(id, 'bottom')}
+                  onResetDock={() => restorePanel(id)}
                   dragging={draggedDock === id}
                   draggingAny={Boolean(draggedDock)}
                   dropActive={dockDropTarget === id && draggedDock !== id}

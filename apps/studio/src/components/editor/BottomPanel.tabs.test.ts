@@ -52,7 +52,9 @@ describe('BottomPanel tab availability', () => {
 
     expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
 
-    const contentTab = screen.getByText('Content Browser').closest('[draggable="true"]');
+    const contentTab = Array
+      .from(document.querySelectorAll('[draggable="true"]'))
+      .find((element) => element.textContent?.trim() === 'Project');
     expect(contentTab).not.toBeNull();
 
     fireEvent.dragStart(contentTab!);
@@ -76,13 +78,27 @@ describe('BottomPanel tab availability', () => {
     expect(screen.queryByText('Console')).not.toBeInTheDocument();
   });
 
+  it('opens compact tab actions from the ellipsis menu', () => {
+    render(createElement(BottomPanel));
+
+    fireEvent.pointerDown(screen.getByTitle('Menu Project'));
+    fireEvent.click(screen.getByTitle('Menu Project'));
+
+    expect(screen.getByText('Move to End')).toBeVisible();
+    expect(screen.getByText('Restore Tabs')).toBeVisible();
+    expect(screen.getByText('Close Tab')).toBeVisible();
+    expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
+  });
+
   it('previews bottom tab order while dragging over another tab', () => {
     render(createElement(BottomPanel));
 
     const tabNames = () => Array
       .from(document.querySelectorAll('[draggable="true"]'))
       .map((element) => element.textContent?.trim());
-    const contentTab = screen.getByText('Content Browser').closest('[draggable="true"]');
+    const contentTab = Array
+      .from(document.querySelectorAll('[draggable="true"]'))
+      .find((element) => element.textContent?.trim() === 'Project');
     const timelineTab = screen.getByText('Timeline').closest('[draggable="true"]');
     expect(contentTab).not.toBeNull();
     expect(timelineTab).not.toBeNull();
@@ -90,7 +106,7 @@ describe('BottomPanel tab availability', () => {
     fireEvent.dragStart(contentTab!);
     fireEvent.dragOver(timelineTab!);
 
-    expect(tabNames()).toEqual(['UI Editor', 'Content Browser', 'Timeline', 'Console']);
+    expect(tabNames()).toEqual(['UI Editor', 'Project', 'Timeline', 'Console']);
   });
 
   it('hides 3D model folders from the 2D content browser', () => {

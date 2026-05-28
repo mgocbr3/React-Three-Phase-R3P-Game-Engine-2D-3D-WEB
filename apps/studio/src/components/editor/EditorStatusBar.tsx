@@ -50,7 +50,7 @@ const useFPS = (enabled: boolean) => {
 
 // Get FPS color based on performance
 const getFpsColor = (fps: number) => {
-  if (fps >= 55) return 'text-neon-green';
+  if (fps >= 55) return 'text-foreground';
   if (fps >= 30) return 'text-muted-foreground';
   return 'text-muted-foreground';
 };

@@ -3,7 +3,7 @@ import {
   FolderOpen, Terminal, Package,
   Search, Filter, RefreshCw, Download, FolderPlus, Trash2,
   AlertCircle, AlertTriangle, Info, ChevronRight, Play, Grid, List,
-  Upload, FileBox, Image, Music, Code, Clock, Layout, X,
+  Upload, FileBox, Image, Music, Code, Clock, Layout, MoreVertical, X,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -94,7 +94,7 @@ const CONTENT_BROWSER_SIDEBAR_MAX_WIDTH = 360;
 type BottomTabDefinition = { id: BottomTabId; label: string; icon: LucideIcon };
 
 const BOTTOM_TABS: BottomTabDefinition[] = [
-  { id: 'assets', label: 'Content Browser', icon: FolderOpen },
+  { id: 'assets', label: 'Project', icon: FolderOpen },
   { id: 'ui', label: 'UI Editor', icon: Layout },
   { id: 'timeline', label: 'Timeline', icon: Clock },
   { id: 'console', label: 'Console', icon: Terminal },
@@ -215,7 +215,7 @@ const getAssetPreviewStyle = (asset: ProjectAsset) => {
   if (text.includes('tractor') || text.includes('harvester')) return 'from-amber-500/35 via-lime-300/20 to-stone-950';
   if (text.includes('trailer') || text.includes('truck') || text.includes('vehicle')) return 'from-orange-500/35 via-slate-400/20 to-stone-950';
   if (text.includes('crop') || text.includes('plant') || text.includes('hay') || text.includes('farm')) return 'from-green-500/35 via-yellow-300/20 to-stone-950';
-  return 'from-blue-500/30 via-slate-300/15 to-slate-950';
+  return 'from-zinc-500/30 via-zinc-300/15 to-zinc-950';
 };
 
 const assetMatchesFolder = (asset: ProjectAsset, selectedFolder: string) => {
@@ -273,6 +273,16 @@ const AssetPreview = ({ asset, size = 'md' }: { asset: ProjectAsset; size?: 'sm'
   );
 };
 
+const BottomTabMenuItem = ({ label, onClick }: { label: string; onClick: () => void }) => (
+  <button
+    className="editor-menu-item flex h-7 w-full items-center px-3 text-left text-[11px]"
+    onClick={onClick}
+    onPointerDown={(event) => event.stopPropagation()}
+  >
+    {label}
+  </button>
+);
+
 export const BottomPanel = () => {
   const availableBottomTabs = useMemo(() => getAvailableBottomTabs(), []);
   const activeTab = useBottomPanelTabsStore((s) => s.activeTab);
@@ -282,8 +292,10 @@ export const BottomPanel = () => {
   const moveTabBefore = useBottomPanelTabsStore((s) => s.moveTabBefore);
   const moveTabToEnd = useBottomPanelTabsStore((s) => s.moveTabToEnd);
   const closeBottomTab = useBottomPanelTabsStore((s) => s.closeTab);
+  const restoreAllBottomTabs = useBottomPanelTabsStore((s) => s.restoreAllTabs);
   const [draggedTab, setDraggedTab] = useState<BottomTabId | null>(null);
   const [tabDropTarget, setTabDropTarget] = useState<BottomTabDropTarget | null>(null);
+  const [tabMenuOpen, setTabMenuOpen] = useState<BottomTabId | null>(null);
   const draggedTabRef = useRef<BottomTabId | null>(null);
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
   const [consoleSearch, setConsoleSearch] = useState('');
@@ -674,7 +686,7 @@ export const BottomPanel = () => {
               onDrop={handleTabDrop}
               onDragEnd={handleTabDragEnd}
               className={cn(
-                'editor-panel-tab flex h-7 cursor-grab items-center gap-1.5 px-2 text-xs transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
+                'editor-panel-tab relative flex h-6 max-w-[160px] cursor-grab items-center gap-1 px-1.5 text-[11px] transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
                 activeTab === tab.id 
                   ? 'active' 
                   : 'text-muted-foreground',
@@ -684,25 +696,50 @@ export const BottomPanel = () => {
             >
               <button
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className="flex h-full min-w-0 items-center gap-1.5"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setTabMenuOpen(null);
+                }}
+                className="flex h-full min-w-0 items-center gap-1"
               >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <Icon className="h-3 w-3 shrink-0" />
                 <span className="truncate">{tab.label}</span>
               </button>
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  closeBottomTab(tab.id);
+                  setTabMenuOpen((open) => open === tab.id ? null : tab.id);
                 }}
                 onPointerDown={(event) => event.stopPropagation()}
-                className="ml-1 rounded-sm p-0.5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                className="ml-0.5 flex h-5 w-5 items-center justify-center text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
+                aria-label={`Menu ${tab.label}`}
+                title={`Menu ${tab.label}`}
+              >
+                <MoreVertical className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  closeBottomTab(tab.id);
+                  setTabMenuOpen(null);
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="flex h-5 w-5 items-center justify-center text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
                 aria-label={`Fechar ${tab.label}`}
                 title={`Fechar ${tab.label}`}
               >
                 <X className="h-3 w-3" />
               </button>
+              {tabMenuOpen === tab.id && (
+                <div className="editor-menu-dropdown absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden py-1">
+                  <BottomTabMenuItem label="Activate" onClick={() => { setActiveTab(tab.id); setTabMenuOpen(null); }} />
+                  <BottomTabMenuItem label="Move to End" onClick={() => { moveTabToEnd(tab.id); setTabMenuOpen(null); }} />
+                  <BottomTabMenuItem label="Restore Tabs" onClick={() => { restoreAllBottomTabs(); setTabMenuOpen(null); }} />
+                  <BottomTabMenuItem label="Close Tab" onClick={() => { closeBottomTab(tab.id); setTabMenuOpen(null); }} />
+                </div>
+              )}
             </div>
           );
         })}
@@ -1121,7 +1158,7 @@ export const BottomPanel = () => {
 
             {/* Command Input */}
             <div className="flex items-center gap-2 px-3 py-2 border-t border-border bg-[var(--editor-panel-sunken)]">
-              <span className="text-primary text-xs">{'>'}</span>
+              <span className="text-muted-foreground text-xs">{'>'}</span>
               <input
                 type="text"
                 value={consoleCommand}
@@ -1129,7 +1166,7 @@ export const BottomPanel = () => {
                 placeholder="Pixl.createBox('myCube', 1, { x: 0, y: 2, z: 0 })"
                 className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
               />
-              <button className="px-3 py-1 bg-neon-green text-black rounded text-[10px] font-semibold hover:bg-neon-green/90 transition-colors">
+              <button className="editor-command-chip h-6 px-3 text-[10px] font-semibold text-foreground hover:text-foreground">
                 Executar
               </button>
             </div>

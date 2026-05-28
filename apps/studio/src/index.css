@@ -19,7 +19,7 @@
     --popover: 0 0% 13%;
     --popover-foreground: 0 0% 84%;
 
-    --primary: 207 91% 54%;
+    --primary: 0 0% 46%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 19%;
@@ -28,7 +28,7 @@
     --muted: 0 0% 13%;
     --muted-foreground: 0 0% 62%;
 
-    --accent: 207 80% 42%;
+    --accent: 0 0% 36%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 65% 50%;
@@ -36,7 +36,7 @@
 
     --border: 0 0% 8%;
     --input: 0 0% 10%;
-    --ring: 207 91% 54%;
+    --ring: 0 0% 56%;
 
     --radius: 0.125rem;
 
@@ -70,12 +70,12 @@
     /* Sidebar - slightly different shade */
     --sidebar-background: 0 0% 15%;
     --sidebar-foreground: 0 0% 84%;
-    --sidebar-primary: 207 91% 54%;
+    --sidebar-primary: 0 0% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 20%;
     --sidebar-accent-foreground: 0 0% 84%;
     --sidebar-border: 0 0% 8%;
-    --sidebar-ring: 207 91% 54%;
+    --sidebar-ring: 0 0% 56%;
   }
 
   /* Light Mode Theme */
@@ -90,8 +90,8 @@
     --popover: 0 0% 86%;
     --popover-foreground: 220 8% 16%;
 
-    /* Blue Primary */
-    --primary: 210 100% 45%;
+    /* Neutral primary for Unity-like editor chrome */
+    --primary: 0 0% 38%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 74%;
@@ -100,8 +100,8 @@
     --muted: 0 0% 70%;
     --muted-foreground: 220 6% 35%;
 
-    /* Teal Accent */
-    --accent: 185 70% 40%;
+    /* Neutral accent for editor chrome */
+    --accent: 0 0% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
@@ -109,7 +109,7 @@
 
     --border: 0 0% 58%;
     --input: 0 0% 90%;
-    --ring: 210 100% 45%;
+    --ring: 0 0% 42%;
 
     --editor-topbar: #d0d0d0;
     --editor-menubar: #c8c8c8;
@@ -132,12 +132,12 @@
 
     --sidebar-background: 0 0% 80%;
     --sidebar-foreground: 220 8% 16%;
-    --sidebar-primary: 210 100% 45%;
+    --sidebar-primary: 0 0% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 74%;
     --sidebar-accent-foreground: 220 8% 20%;
     --sidebar-border: 0 0% 58%;
-    --sidebar-ring: 210 100% 45%;
+    --sidebar-ring: 0 0% 42%;
   }
 }
 
@@ -206,9 +206,7 @@
   .ai-service-trigger {
     position: relative;
     isolation: isolate;
-    box-shadow:
-      0 0 0 1px rgba(96, 165, 250, 0.22),
-      0 0 18px rgba(14, 165, 233, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .ai-service-trigger::before {
@@ -217,17 +215,17 @@
     inset: -1px;
     z-index: -1;
     border-radius: inherit;
-    background: linear-gradient(120deg, #38bdf8, #8b5cf6, #ec4899, #22d3ee, #34d399, #38bdf8);
+    background: var(--editor-command-hover);
     background-size: 360% 360%;
     opacity: 0;
-    filter: blur(7px);
+    filter: none;
     transition: opacity 180ms ease;
     animation: ai-service-gradient-flow 5s ease infinite;
   }
 
   .ai-service-trigger:hover::before,
   .ai-service-trigger.is-open::before {
-    opacity: 0.55;
+    opacity: 0.25;
   }
 
   .ai-service-card {
@@ -384,7 +382,7 @@
   }
 
   .panel-header {
-    @apply h-8 px-1 border-b flex items-end justify-between;
+    @apply h-7 px-1 border-b flex items-end justify-between;
     background: var(--editor-panel-header);
     border-color: var(--editor-border-dark);
     box-shadow: inset 0 1px 0 var(--editor-border-light);
@@ -395,7 +393,7 @@
   }
 
   .editor-panel-tab {
-    @apply h-7 px-3 border border-transparent border-b-0 text-xs font-semibold text-muted-foreground transition-colors;
+    @apply h-6 px-2 border border-transparent border-b-0 text-[11px] font-medium text-muted-foreground transition-colors;
     border-radius: 2px 2px 0 0;
   }
 
@@ -405,10 +403,19 @@
   }
 
   .editor-panel-tab.active {
+    position: relative;
     background: var(--editor-tab-active);
     border-color: var(--editor-border-dark);
     box-shadow: inset 0 1px 0 var(--editor-border-light);
     color: hsl(var(--foreground));
+  }
+
+  .editor-panel-tab.active::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: var(--editor-command-highlight);
   }
 
   .panel-section {
@@ -571,7 +578,8 @@
   }
 
   .glass-search input:focus {
-    @apply outline-none ring-0 border-primary/70;
+    @apply outline-none ring-0;
+    border-color: var(--editor-border-light);
   }
 
   /* Glass Object Header - Unreal Style with 95% opacity */
@@ -611,7 +619,7 @@
   }
 
   .toggle-switch[data-state="checked"] {
-    @apply bg-primary;
+    background: var(--editor-command-active);
   }
 
   .toggle-switch[data-state="unchecked"] {
@@ -631,7 +639,8 @@
   }
 
   .glass-select:focus {
-    @apply outline-none ring-0 border-primary/70;
+    @apply outline-none ring-0;
+    border-color: var(--editor-border-light);
   }
 
   .glass-select option {
@@ -645,7 +654,9 @@
   }
 
   .glass-slider::-webkit-slider-thumb {
-    @apply w-3 h-3 rounded-full appearance-none cursor-pointer bg-primary;
+    @apply w-3 h-3 appearance-none cursor-pointer;
+    background: var(--editor-command-active);
+    border-radius: 2px;
     box-shadow: none;
     border: 1px solid hsl(0 0% 100% / 0.25);
   }
@@ -671,7 +682,7 @@
   }
 
   .status-running {
-    @apply bg-neon-green;
+    background: var(--editor-command-highlight);
   }
 
   .status-paused {
