@@ -6,6 +6,7 @@ import {
   getEditorZoom,
   getEditorSceneFit,
   getFittedViewportCamera,
+  setFittedViewportCamera,
   getViewportGridLines,
   getRulerMarks,
   getViewportRulerTicks,
@@ -63,6 +64,30 @@ describe('phaserRuler', () => {
     expect(fit.zoom).toBeCloseTo(1.18);
     expect((0 - fit.scrollX) * fit.zoom).toBeCloseTo(328);
     expect((800 - fit.scrollX) * fit.zoom).toBeCloseTo(1272);
+  });
+
+  it('reapplies the fitted camera when the preview viewport changes size', () => {
+    const camera = {
+      scrollX: 0,
+      scrollY: 0,
+      zoom: 1,
+      setScroll(x: number, y: number) {
+        this.scrollX = x;
+        this.scrollY = y;
+      },
+      setZoom(zoom: number) {
+        this.zoom = zoom;
+      },
+    };
+
+    setFittedViewportCamera(camera, { minX: 0, minY: 0, maxX: 800, maxY: 600 }, { width: 900, height: 640 }, 96);
+    const small = { scrollX: camera.scrollX, zoom: camera.zoom };
+    const large = setFittedViewportCamera(camera, { minX: 0, minY: 0, maxX: 800, maxY: 600 }, { width: 1600, height: 900 }, 96);
+
+    expect(large.zoom).toBeGreaterThan(small.zoom);
+    expect(camera.zoom).toBe(large.zoom);
+    expect(camera.scrollX).toBe(large.scrollX);
+    expect(camera.scrollX).not.toBe(small.scrollX);
   });
 
   it('fits the 2D editor around the camera frame and visible content', () => {

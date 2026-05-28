@@ -25,6 +25,11 @@ export interface ViewportWorldBounds {
   maxY: number;
 }
 
+export interface FittableViewportCamera {
+  setScroll: (x: number, y: number) => void;
+  setZoom: (zoom: number) => void;
+}
+
 export interface Editor2DObjectLike {
   type: string;
   position: number[];
@@ -120,6 +125,18 @@ export const getFittedViewportCamera = (
     scrollY: Number((cy - viewH / (zoom * 2)).toFixed(2)),
     zoom,
   };
+};
+
+export const setFittedViewportCamera = (
+  camera: FittableViewportCamera,
+  bounds: ViewportWorldBounds,
+  viewport: { width: number; height: number },
+  padding = 96,
+) => {
+  const fit = getFittedViewportCamera(bounds, viewport, padding);
+  camera.setZoom(fit.zoom);
+  camera.setScroll(fit.scrollX, fit.scrollY);
+  return fit;
 };
 
 export const getEditorObjectBounds = (object: Editor2DObjectLike): ViewportWorldBounds | null => {

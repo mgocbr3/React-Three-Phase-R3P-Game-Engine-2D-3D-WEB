@@ -15,7 +15,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
-import { getEditorZoom, getFittedViewportCamera, getZoomedScroll, type ViewportWorldBounds } from './phaserRuler';
+import { getEditorZoom, getZoomedScroll, setFittedViewportCamera, type ViewportWorldBounds } from './phaserRuler';
 import { Viewport2DOverlay } from './Viewport2DOverlay';
 
 export interface PhaserRuntimeMountProps {
@@ -265,6 +265,8 @@ export function PhaserRuntimeMount({
   const containerRef = useRef<HTMLDivElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gameRef = useRef<any>(null);
+  const autoFitBoundsRef = useRef<ViewportWorldBounds | null>(null);
+  const autoFitCameraRef = useRef(false);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
 
   // Subscribe to the editor's Play/Stop button via the existing
@@ -303,6 +305,8 @@ export function PhaserRuntimeMount({
 
     let disposed = false;
     let resizeObserver: ResizeObserver | null = null;
+    autoFitBoundsRef.current = null;
+    autoFitCameraRef.current = false;
     setLoad({ status: 'loading' });
 
     void (async () => {
@@ -936,12 +940,12 @@ export function PhaserRuntimeMount({
               if (!hasCameraScroll && !hasCameraZoom) {
                 const bounds = getSceneBounds(phaserScene.rootObjects);
                 if (bounds) {
-                  const fit = getFittedViewportCamera(bounds, {
+                  autoFitBoundsRef.current = bounds;
+                  autoFitCameraRef.current = true;
+                  setFittedViewportCamera(this.cameras.main, bounds, {
                     width: this.scale.width || container.clientWidth || 800,
                     height: this.scale.height || container.clientHeight || 600,
                   });
-                  this.cameras.main.setZoom(fit.zoom);
-                  this.cameras.main.setScroll(fit.scrollX, fit.scrollY);
                 }
               }
 
@@ -1072,7 +1076,13 @@ export function PhaserRuntimeMount({
 
         const resizeGame = () => {
           if (!gameRef.current || disposed) return;
-          gameRef.current.scale.resize(container.clientWidth || 800, container.clientHeight || 600);
+          const width = container.clientWidth || 800;
+          const height = container.clientHeight || 600;
+          gameRef.current.scale.resize(width, height);
+          const scene = gameRef.current.scene?.scenes?.[0] as import('phaser').Scene | undefined;
+          if (autoFitCameraRef.current && autoFitBoundsRef.current && scene?.cameras?.main) {
+            setFittedViewportCamera(scene.cameras.main, autoFitBoundsRef.current, { width, height });
+          }
           const canvas = gameRef.current.canvas as HTMLCanvasElement | undefined;
           if (canvas) {
             canvas.style.display = 'block';
@@ -1352,6 +1362,7 @@ export function PhaserRuntimeMount({
     const scene = gameRef.current?.scene?.scenes?.[0] as import('phaser').Scene | undefined;
     const camera = scene?.cameras?.main;
     if (!camera) return;
+    autoFitCameraRef.current = false;
     event.preventDefault();
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
