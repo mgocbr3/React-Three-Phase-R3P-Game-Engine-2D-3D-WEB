@@ -33,6 +33,23 @@ export const getVisibleBottomTabs = (order: BottomTabId[], closedTabs: BottomTab
   normalizeBottomTabOrder(order).filter((id) => !closedTabs.includes(id))
 );
 
+type BottomTabsLayoutSnapshot = {
+  activeTab: BottomTabId | null;
+  tabOrder: BottomTabId[];
+  closedTabs: BottomTabId[];
+};
+
+const normalizeBottomTabsLayoutSnapshot = (
+  snapshot?: Partial<BottomTabsLayoutSnapshot> | null,
+): BottomTabsLayoutSnapshot | null => {
+  if (!snapshot) return null;
+  const tabOrder = normalizeBottomTabOrder(snapshot.tabOrder);
+  const closedTabs = normalizeClosedBottomTabs(snapshot.closedTabs);
+  const visible = getVisibleBottomTabs(tabOrder, closedTabs);
+  const activeTab = snapshot.activeTab && visible.includes(snapshot.activeTab) ? snapshot.activeTab : visible[0] ?? null;
+  return { activeTab, tabOrder, closedTabs };
+};
+
 export const previewBottomTabMove = (
   order: BottomTabId[],
   closedTabs: BottomTabId[],
@@ -49,12 +66,15 @@ interface BottomPanelTabsState {
   activeTab: BottomTabId | null;
   tabOrder: BottomTabId[];
   closedTabs: BottomTabId[];
+  savedTabsLayout: BottomTabsLayoutSnapshot | null;
   setActiveTab: (tab: BottomTabId) => void;
   moveTabBefore: (source: BottomTabId, target: BottomTabId) => void;
   moveTabToEnd: (source: BottomTabId) => void;
   closeTab: (tab: BottomTabId) => void;
   restoreTab: (tab: BottomTabId) => void;
   restoreAllTabs: () => void;
+  saveCurrentTabsLayout: () => void;
+  loadSavedTabsLayout: () => void;
   resetTabs: () => void;
 }
 
@@ -64,6 +84,7 @@ export const useBottomPanelTabsStore = create<BottomPanelTabsState>()(
       activeTab: 'assets',
       tabOrder: defaultBottomTabOrder,
       closedTabs: [],
+      savedTabsLayout: null,
       setActiveTab: (tab) => set((state) => (
         state.closedTabs.includes(tab) ? state : { activeTab: tab }
       )),
@@ -91,6 +112,16 @@ export const useBottomPanelTabsStore = create<BottomPanelTabsState>()(
         tabOrder: normalizeBottomTabOrder(state.tabOrder),
         activeTab: state.activeTab ?? getVisibleBottomTabs(state.tabOrder, [])[0] ?? 'assets',
       })),
+      saveCurrentTabsLayout: () => set((state) => ({
+        savedTabsLayout: {
+          activeTab: state.activeTab,
+          tabOrder: normalizeBottomTabOrder(state.tabOrder),
+          closedTabs: normalizeClosedBottomTabs(state.closedTabs),
+        },
+      })),
+      loadSavedTabsLayout: () => set((state) => (
+        normalizeBottomTabsLayoutSnapshot(state.savedTabsLayout) ?? state
+      )),
       resetTabs: () => set(() => ({ activeTab: 'assets', tabOrder: defaultBottomTabOrder, closedTabs: [] })),
     }),
     {
@@ -101,7 +132,13 @@ export const useBottomPanelTabsStore = create<BottomPanelTabsState>()(
         const closedTabs = normalizeClosedBottomTabs(saved?.closedTabs);
         const visible = getVisibleBottomTabs(tabOrder, closedTabs);
         const activeTab = saved?.activeTab && visible.includes(saved.activeTab) ? saved.activeTab : visible[0] ?? null;
-        return { ...current, tabOrder, closedTabs, activeTab };
+        return {
+          ...current,
+          tabOrder,
+          closedTabs,
+          activeTab,
+          savedTabsLayout: normalizeBottomTabsLayoutSnapshot(saved?.savedTabsLayout),
+        };
       },
     },
   ),

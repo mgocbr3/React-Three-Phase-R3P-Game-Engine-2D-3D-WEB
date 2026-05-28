@@ -181,6 +181,8 @@ export const EditorHeader = () => {
   const applyLayoutPreset = useEditorLayoutStore((s) => s.applyPreset);
   const restoreBottomTab = useBottomPanelTabsStore((s) => s.restoreTab);
   const restoreAllBottomTabs = useBottomPanelTabsStore((s) => s.restoreAllTabs);
+  const saveBottomTabsLayout = useBottomPanelTabsStore((s) => s.saveCurrentTabsLayout);
+  const loadBottomTabsLayout = useBottomPanelTabsStore((s) => s.loadSavedTabsLayout);
 
   const projectName = localProject?.name || 'Untitled Project';
   const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
@@ -236,13 +238,15 @@ export const EditorHeader = () => {
 
   const saveWindowLayout = useCallback(() => {
     saveCurrentLayout();
+    saveBottomTabsLayout();
     toast.success('Layout salvo.', { duration: 1200 });
-  }, [saveCurrentLayout]);
+  }, [saveBottomTabsLayout, saveCurrentLayout]);
 
   const loadWindowLayout = useCallback(() => {
     loadSavedLayout();
+    loadBottomTabsLayout();
     toast.success('Layout carregado.', { duration: 1200 });
-  }, [loadSavedLayout]);
+  }, [loadBottomTabsLayout, loadSavedLayout]);
 
   const openBuildSettings = useCallback(() => {
     try {

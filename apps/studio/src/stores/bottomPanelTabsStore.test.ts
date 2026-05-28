@@ -71,4 +71,19 @@ describe('bottomPanelTabsStore', () => {
       'assets',
     ]);
   });
+
+  it('saves and reloads bottom tab layout snapshots', () => {
+    useBottomPanelTabsStore.getState().moveTabToEnd('assets');
+    useBottomPanelTabsStore.getState().closeTab('ui');
+    useBottomPanelTabsStore.getState().setActiveTab('console');
+    useBottomPanelTabsStore.getState().saveCurrentTabsLayout();
+
+    useBottomPanelTabsStore.getState().resetTabs();
+    useBottomPanelTabsStore.getState().loadSavedTabsLayout();
+
+    const state = useBottomPanelTabsStore.getState();
+    expect(state.tabOrder).toEqual(['ui', 'timeline', 'console', 'assets']);
+    expect(state.closedTabs).toEqual(['ui']);
+    expect(state.activeTab).toBe('console');
+  });
 });

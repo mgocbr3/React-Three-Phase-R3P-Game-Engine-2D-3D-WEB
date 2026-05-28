@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useEditorStore } from '@/stores/editorStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
+import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
 import { EditorHeader } from './EditorHeader';
 
 describe('EditorHeader layout selector', () => {
   beforeEach(() => {
     useEditorLayoutStore.getState().resetLayout();
+    useBottomPanelTabsStore.getState().resetTabs();
     useEditorStore.setState({ activeSceneKind: '3d' });
   });
 
@@ -83,5 +85,30 @@ describe('EditorHeader layout selector', () => {
     expect(screen.getByRole('menuitemcheckbox', { name: 'Scene 3D' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.queryByRole('menuitemcheckbox', { name: 'Scene View' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Dock Scene 3D Center' })).toBeVisible();
+  });
+
+  it('saves and reloads bottom tab layout with the Unity-like layout command', () => {
+    useBottomPanelTabsStore.getState().moveTabToEnd('assets');
+    useBottomPanelTabsStore.getState().closeTab('ui');
+    useBottomPanelTabsStore.getState().setActiveTab('console');
+
+    render(
+      <MemoryRouter>
+        <EditorHeader />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Layout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Current Layout' }));
+
+    useBottomPanelTabsStore.getState().resetTabs();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Layout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load Saved Layout' }));
+
+    const state = useBottomPanelTabsStore.getState();
+    expect(state.tabOrder).toEqual(['ui', 'timeline', 'console', 'assets']);
+    expect(state.closedTabs).toEqual(['ui']);
+    expect(state.activeTab).toBe('console');
   });
 });
