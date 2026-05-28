@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type BottomTabId = 'assets' | 'ui' | 'timeline' | 'console';
+export type BottomTabDropTarget = BottomTabId | 'end';
 
 export const defaultBottomTabOrder: BottomTabId[] = ['assets', 'ui', 'timeline', 'console'];
 
@@ -54,12 +55,25 @@ export const previewBottomTabMove = (
   order: BottomTabId[],
   closedTabs: BottomTabId[],
   source: BottomTabId,
-  target: BottomTabId | 'end',
+  target: BottomTabDropTarget,
 ): BottomTabId[] => {
   const next = getVisibleBottomTabs(order, closedTabs).filter((id) => id !== source);
   if (target === 'end') return [...next, source];
   next.splice(Math.max(next.indexOf(target), 0), 0, source);
   return next;
+};
+
+export const getBottomTabDropTarget = (
+  visibleTabs: BottomTabId[],
+  source: BottomTabId,
+  over: BottomTabId,
+  rect: { left: number; width: number },
+  clientX: number,
+): BottomTabDropTarget => {
+  const x = Number.isFinite(clientX) ? clientX : rect.left;
+  if (rect.width <= 0 || x <= rect.left + rect.width / 2) return over;
+  const ordered = visibleTabs.filter((id) => id !== source);
+  return ordered[ordered.indexOf(over) + 1] ?? 'end';
 };
 
 interface BottomPanelTabsState {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   defaultBottomTabOrder,
+  getBottomTabDropTarget,
   getVisibleBottomTabs,
   normalizeBottomTabOrder,
   previewBottomTabMove,
@@ -70,6 +71,14 @@ describe('bottomPanelTabsStore', () => {
       'console',
       'assets',
     ]);
+  });
+
+  it('uses tab halves to choose before or after while dragging bottom tabs', () => {
+    const rect = { left: 100, width: 80 };
+
+    expect(getBottomTabDropTarget(defaultBottomTabOrder, 'assets', 'ui', rect, 120)).toBe('ui');
+    expect(getBottomTabDropTarget(defaultBottomTabOrder, 'assets', 'ui', rect, 170)).toBe('timeline');
+    expect(getBottomTabDropTarget(defaultBottomTabOrder, 'assets', 'console', rect, 170)).toBe('end');
   });
 
   it('saves and reloads bottom tab layout snapshots', () => {

@@ -26,10 +26,12 @@ import {
   type ProjectDiagnosticConsoleMessage,
 } from '@/services/projectDiagnostics';
 import {
+  getBottomTabDropTarget,
   getVisibleBottomTabs,
   normalizeBottomTabOrder as normalizeBottomTabOrderState,
   previewBottomTabMove,
   useBottomPanelTabsStore,
+  type BottomTabDropTarget,
   type BottomTabId,
 } from '@/stores/bottomPanelTabsStore';
 
@@ -277,7 +279,7 @@ export const BottomPanel = () => {
   const moveTabToEnd = useBottomPanelTabsStore((s) => s.moveTabToEnd);
   const closeBottomTab = useBottomPanelTabsStore((s) => s.closeTab);
   const [draggedTab, setDraggedTab] = useState<BottomTabId | null>(null);
-  const [tabDropTarget, setTabDropTarget] = useState<BottomTabId | 'end' | null>(null);
+  const [tabDropTarget, setTabDropTarget] = useState<BottomTabDropTarget | null>(null);
   const draggedTabRef = useRef<BottomTabId | null>(null);
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
   const [consoleSearch, setConsoleSearch] = useState('');
@@ -396,14 +398,16 @@ export const BottomPanel = () => {
     setDraggedTab(tab);
   };
 
-  const handleTabDrop = (targetTab: BottomTabId) => {
+  const handleTabDrop = () => {
     const sourceTab = draggedTabRef.current;
-    if (!sourceTab || sourceTab === targetTab) {
+    const target = tabDropTarget;
+    if (!sourceTab || !target || sourceTab === target) {
       handleTabDragEnd();
       return;
     }
 
-    moveTabBefore(sourceTab, targetTab);
+    if (target === 'end') moveTabToEnd(sourceTab);
+    else moveTabBefore(sourceTab, target);
     handleTabDragEnd();
   };
 
@@ -653,10 +657,13 @@ export const BottomPanel = () => {
               onDragStart={() => handleTabDragStart(tab.id)}
               onDragOver={(event) => {
                 event.preventDefault();
-                if (draggedTabRef.current !== tab.id) setTabDropTarget(tab.id);
+                const source = draggedTabRef.current;
+                if (source) {
+                  setTabDropTarget(getBottomTabDropTarget(visibleTabIds, source, tab.id, event.currentTarget.getBoundingClientRect(), event.clientX));
+                }
               }}
               onDragLeave={() => setTabDropTarget((target) => target === tab.id ? null : target)}
-              onDrop={() => handleTabDrop(tab.id)}
+              onDrop={handleTabDrop}
               onDragEnd={handleTabDragEnd}
               className={cn(
                 'editor-panel-tab flex h-7 cursor-grab items-center gap-1.5 px-2 text-xs transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
