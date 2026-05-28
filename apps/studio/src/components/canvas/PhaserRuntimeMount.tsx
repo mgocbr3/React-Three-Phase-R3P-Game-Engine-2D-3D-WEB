@@ -217,7 +217,36 @@ const mergeBounds = (a: ViewportWorldBounds, b: ViewportWorldBounds): ViewportWo
   maxY: Math.max(a.maxY, b.maxY),
 });
 
-const getRenderBounds = (obj: GameObjectJSON): ViewportWorldBounds | null => {
+const readOriginPair = (value: unknown): { x: number; y: number } | null => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const origin = value as Record<string, unknown>;
+    const x = num(origin.x, Number.NaN);
+    const y = num(origin.y, Number.NaN);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+  }
+  return null;
+};
+
+export const getSpriteOrigin2D = ({
+  data = {},
+  components = [],
+}: {
+  data?: Record<string, unknown>;
+  components?: GameObjectJSON['components'];
+}) => {
+  const spriteComponent = components?.find((component) => (
+    component.type === 'pixl.sprite' && component.enabled !== false
+  ));
+  const merged = { ...(spriteComponent ?? {}), ...data };
+  const explicitOrigin = readOriginPair(merged.origin);
+  if (explicitOrigin) return explicitOrigin;
+  const x = num(merged.originX ?? merged.pivotX, Number.NaN);
+  const y = num(merged.originY ?? merged.pivotY, Number.NaN);
+  if (Number.isFinite(x) && Number.isFinite(y)) return { x, y };
+  return merged.centered === false ? { x: 0, y: 0 } : { x: 0.5, y: 0.5 };
+};
+
+export const getRenderBounds = (obj: GameObjectJSON): ViewportWorldBounds | null => {
   if (obj.visible === false) return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = (obj as any).data ?? {};
@@ -239,7 +268,13 @@ const getRenderBounds = (obj: GameObjectJSON): ViewportWorldBounds | null => {
     const explicitH = typeof data.displayHeight === 'number';
     w = explicitW ? data.displayWidth : num(data.frameWidth, 64) * sx * mult;
     h = explicitH ? data.displayHeight : num(data.frameHeight, 64) * sy * mult;
-    return { minX: x - w / 2, minY: y - h / 2, maxX: x + w / 2, maxY: y + h / 2 };
+    const origin = getSpriteOrigin2D(obj);
+    return {
+      minX: x - w * origin.x,
+      minY: y - h * origin.y,
+      maxX: x + w * (1 - origin.x),
+      maxY: y + h * (1 - origin.y),
+    };
   }
   w *= sx;
   h *= sy;
@@ -303,6 +338,8 @@ const drawObject = (
       const sprite = scene.add.sprite(px.x, px.y, key, frame);
       sprite.setName(obj.name || obj.id);
       stampPixlId(sprite, obj.id);
+      const origin = getSpriteOrigin2D(obj);
+      sprite.setOrigin(origin.x, origin.y);
       sprite.setRotation(obj.transform.rotation);
       const scaleMult = typeof data.scale === 'number' ? data.scale : 1;
       sprite.setScale(
