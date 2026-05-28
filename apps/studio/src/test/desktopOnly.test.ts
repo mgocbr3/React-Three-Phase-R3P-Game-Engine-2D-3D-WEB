@@ -57,6 +57,14 @@ describe('desktop-only studio build', () => {
     expect(existsSync(src('components/canvas/effects/RealismEffects.tsx'))).toBe(false);
   });
 
+  it('keeps editor shadow maps compatible with point lights', () => {
+    const editorCanvas = readFileSync(src('components/canvas/EditorCanvas.tsx'), 'utf8');
+
+    expect(editorCanvas).toContain('THREE.PCFShadowMap');
+    expect(editorCanvas).not.toContain('THREE.PCFSoftShadowMap');
+    expect(editorCanvas).not.toContain('THREE.VSMShadowMap');
+  });
+
   it('defaults to keyboard and gamepad bindings only', () => {
     useInputMapStore.getState().resetToDefaults();
 

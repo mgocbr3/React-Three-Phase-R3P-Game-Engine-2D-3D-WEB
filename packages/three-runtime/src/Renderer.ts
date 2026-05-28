@@ -14,6 +14,7 @@ import type Game from './Game.js';
 import type {
   RendererOptions,
   RendererPostProcessingOptions,
+  RendererShadowMapType,
   RendererToneMapping,
 } from './types.js';
 
@@ -83,6 +84,16 @@ export const resolveRendererToneMapping = (toneMapping?: RendererToneMapping) =>
   }
 };
 
+export const resolveRendererShadowMapType = (shadowMapType?: RendererShadowMapType) => {
+  switch (shadowMapType) {
+    case 'basic': return THREE.BasicShadowMap;
+    case 'percentage':
+    case 'soft':
+    case 'variance':
+    default: return THREE.PCFShadowMap;
+  }
+};
+
 export const shouldUseRendererPostProcessing = (
   options?: RendererPostProcessingOptions,
 ): boolean => options?.enabled === true;
@@ -123,8 +134,8 @@ class Renderer {
 
     this.threeJSRenderer = new THREE.WebGLRenderer(rendererOpts);
     this.threeJSRenderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.threeJSRenderer.shadowMap.enabled = true;
-    this.threeJSRenderer.shadowMap.type = THREE.VSMShadowMap;
+    this.threeJSRenderer.shadowMap.enabled = options.shadows ?? true;
+    this.threeJSRenderer.shadowMap.type = resolveRendererShadowMapType(options.shadowMapType);
     this.applyRendererColorSettings();
 
     if (typeof window !== 'undefined') {

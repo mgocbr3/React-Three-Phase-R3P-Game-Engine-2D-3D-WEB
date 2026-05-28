@@ -84,6 +84,8 @@ export interface RendererOptions {
   height?: number;
   enableVR?: boolean;
   pixelRatio?: number;
+  shadows?: boolean;
+  shadowMapType?: RendererShadowMapType;
   cameraOptions?: CameraOptions;
   setupFullScreenCanvas?: boolean;
   canvas?: HTMLCanvasElement;
@@ -92,6 +94,7 @@ export interface RendererOptions {
 }
 
 export type RendererToneMapping = 'aces' | 'cineon' | 'reinhard' | 'linear' | 'none';
+export type RendererShadowMapType = 'basic' | 'percentage' | 'soft' | 'variance';
 
 export interface RendererPostProcessingOptions {
   enabled?: boolean;

@@ -664,6 +664,8 @@ export function ThreeRuntimeMount({
           initialRenderSettings,
           typeof window !== 'undefined' ? window.devicePixelRatio : 1,
         ),
+        shadows: initialRenderSettings.shadows,
+        shadowMapType: initialRenderSettings.shadowMapType,
         postProcessing: createThreeNativePostProcessingOptions(initialRenderSettings, false),
       },
     });

@@ -606,10 +606,10 @@ const getToneMappingType = (type: string) => {
 const getShadowMapType = (type: string) => {
   switch (type) {
     case 'basic': return THREE.BasicShadowMap;
-    case 'percentage': return THREE.PCFShadowMap;
-    case 'soft': return THREE.PCFSoftShadowMap;
-    case 'variance': return THREE.VSMShadowMap;
-    default: return THREE.PCFSoftShadowMap;
+    case 'percentage':
+    case 'soft':
+    case 'variance':
+    default: return THREE.PCFShadowMap;
   }
 };
 
