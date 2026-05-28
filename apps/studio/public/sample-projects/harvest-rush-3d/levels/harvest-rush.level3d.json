@@ -1,0 +1,705 @@
+{
+  "schema": "pixlland.level3d.v1",
+  "game": "harvest-rush-3d",
+  "engineTarget": "three-phaser-editor-bridge",
+  "sourceScene": "phaser/scenes/HarvestLevel.scene",
+  "notes": "Generated from the official Phaser Editor project in phaser/. Edit scenes/HarvestLevel.scene in Phaser Editor Desktop, then run npm run phaser:export-level.",
+  "editorMap": {
+    "center": [
+      720,
+      480
+    ],
+    "pixelsPerMeter": 6,
+    "axes": {
+      "sceneX": "+worldX",
+      "sceneY": "+worldZ"
+    }
+  },
+  "world": {
+    "units": "meters",
+    "upAxis": "+Y",
+    "forwardAxis": "-Z",
+    "fieldHalfWidth": 25.8,
+    "fieldHalfDepth": 17.2
+  },
+  "camera": {
+    "position": [
+      64,
+      58,
+      82
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ]
+  },
+  "assetLibrary": [
+    {
+      "key": "farm.fir.001",
+      "label": "wind-tree-04",
+      "kind": "model",
+      "url": "assets/vendor/farm-pack/fir_tree_001.glb"
+    },
+    {
+      "key": "farm.fir.003",
+      "label": "wind-tree-05",
+      "kind": "model",
+      "url": "assets/vendor/farm-pack/fir_tree_003.glb"
+    },
+    {
+      "key": "farm.tree.001",
+      "label": "wind-tree-01",
+      "kind": "model",
+      "url": "assets/vendor/farm-pack/tree_001.glb"
+    },
+    {
+      "key": "farm.tree.003",
+      "label": "wind-tree-06",
+      "kind": "model",
+      "url": "assets/vendor/farm-pack/tree_003.glb"
+    },
+    {
+      "key": "farm.tree.004",
+      "label": "wind-tree-02",
+      "kind": "model",
+      "url": "assets/vendor/farm-pack/tree_004.glb"
+    },
+    {
+      "key": "farm.tree.006",
+      "label": "wind-tree-03",
+      "kind": "model",
+      "url": "assets/vendor/farm-pack/tree_006.glb"
+    },
+    {
+      "key": "kenney.crop.carrot",
+      "label": "carrot-patch",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/crop_carrot.glb"
+    },
+    {
+      "key": "kenney.crop.corn",
+      "label": "corn-patch",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/crops_cornStageD.glb"
+    },
+    {
+      "key": "kenney.crop.pumpkin",
+      "label": "pumpkin-patch",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/crop_pumpkin.glb"
+    },
+    {
+      "key": "kenney.crop.wheat",
+      "label": "wheat-patch",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/crops_wheatStageB.glb"
+    },
+    {
+      "key": "kenney.dirt",
+      "label": "west-dirt-patch",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/hexagon-kit/dirt.glb"
+    },
+    {
+      "key": "kenney.fence.gate",
+      "label": "north-gate",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/fence_gate.glb"
+    },
+    {
+      "key": "kenney.log.stack",
+      "label": "log-stack-east",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/log_stack.glb"
+    },
+    {
+      "key": "kenney.market",
+      "label": "market-building",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/hexagon-kit/building-market.glb"
+    },
+    {
+      "key": "kenney.path.corner",
+      "label": "west-corner-path",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/hexagon-kit/path-corner.glb"
+    },
+    {
+      "key": "kenney.path.straight",
+      "label": "front-path",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/hexagon-kit/path-straight.glb"
+    },
+    {
+      "key": "kenney.rock.large",
+      "label": "large-rock-west",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/rock_largeA.glb"
+    },
+    {
+      "key": "kenney.sheep-building",
+      "label": "sheep-building",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/hexagon-kit/building-sheep.glb"
+    },
+    {
+      "key": "kenney.tree.simple",
+      "label": "simple-tree-west",
+      "kind": "model",
+      "url": "assets/vendor/kenney/all-in-one/nature-3d/tree_simple.glb"
+    }
+  ],
+  "objects": [
+    {
+      "id": "wind-tree-01",
+      "name": "wind-tree-01",
+      "assetKey": "farm.tree.001",
+      "layer": "tree-line",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          -24.2,
+          0,
+          22
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.572,
+          0.572,
+          0.572
+        ]
+      }
+    },
+    {
+      "id": "wind-tree-02",
+      "name": "wind-tree-02",
+      "assetKey": "farm.tree.004",
+      "layer": "tree-line",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          26.4,
+          0,
+          17.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.528,
+          0.528,
+          0.528
+        ]
+      }
+    },
+    {
+      "id": "wind-tree-03",
+      "name": "wind-tree-03",
+      "assetKey": "farm.tree.006",
+      "layer": "tree-line",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          -50.6,
+          0,
+          -19.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.55,
+          0.55,
+          0.55
+        ]
+      }
+    },
+    {
+      "id": "wind-tree-04",
+      "name": "wind-tree-04",
+      "assetKey": "farm.fir.001",
+      "layer": "tree-line",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          50.6,
+          0,
+          -19.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.484,
+          0.484,
+          0.484
+        ]
+      }
+    },
+    {
+      "id": "wind-tree-05",
+      "name": "wind-tree-05",
+      "assetKey": "farm.fir.003",
+      "layer": "tree-line",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          -13.2,
+          0,
+          60.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.506,
+          0.506,
+          0.506
+        ]
+      }
+    },
+    {
+      "id": "wind-tree-06",
+      "name": "wind-tree-06",
+      "assetKey": "farm.tree.003",
+      "layer": "tree-line",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          63.8,
+          0,
+          41.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.55,
+          0.55,
+          0.55
+        ]
+      }
+    },
+    {
+      "id": "market-building",
+      "name": "market-building",
+      "assetKey": "kenney.market",
+      "layer": "market",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          -38.4,
+          0,
+          27
+        ],
+        "rotation": [
+          0,
+          1.319,
+          0
+        ],
+        "scale": [
+          3.2,
+          3.2,
+          3.2
+        ]
+      }
+    },
+    {
+      "id": "sheep-building",
+      "name": "sheep-building",
+      "assetKey": "kenney.sheep-building",
+      "layer": "animals",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          40.8,
+          0,
+          7.9
+        ],
+        "rotation": [
+          0,
+          -1.319,
+          0
+        ],
+        "scale": [
+          3.25,
+          3.25,
+          3.25
+        ]
+      }
+    },
+    {
+      "id": "north-gate",
+      "name": "north-gate",
+      "assetKey": "kenney.fence.gate",
+      "layer": "field-edge",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          18.65
+        ],
+        "rotation": [
+          0,
+          1.571,
+          0
+        ],
+        "scale": [
+          2.2,
+          2.2,
+          2.2
+        ]
+      }
+    },
+    {
+      "id": "simple-tree-west",
+      "name": "simple-tree-west",
+      "assetKey": "kenney.tree.simple",
+      "layer": "field-edge",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          -39.6,
+          0,
+          -20
+        ],
+        "rotation": [
+          0,
+          0.628,
+          0
+        ],
+        "scale": [
+          2.6,
+          2.6,
+          2.6
+        ]
+      }
+    },
+    {
+      "id": "simple-tree-east",
+      "name": "simple-tree-east",
+      "assetKey": "kenney.tree.simple",
+      "layer": "field-edge",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          39,
+          0,
+          -12.7
+        ],
+        "rotation": [
+          0,
+          -0.314,
+          0
+        ],
+        "scale": [
+          2.35,
+          2.35,
+          2.35
+        ]
+      }
+    },
+    {
+      "id": "large-rock-west",
+      "name": "large-rock-west",
+      "assetKey": "kenney.rock.large",
+      "layer": "field-edge",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          -38,
+          0,
+          12.1
+        ],
+        "rotation": [
+          0,
+          1.1,
+          0
+        ],
+        "scale": [
+          2.2,
+          2.2,
+          2.2
+        ]
+      }
+    },
+    {
+      "id": "log-stack-east",
+      "name": "log-stack-east",
+      "assetKey": "kenney.log.stack",
+      "layer": "field-edge",
+      "collider": "static",
+      "editable": true,
+      "transform": {
+        "position": [
+          35,
+          0,
+          9.4
+        ],
+        "rotation": [
+          0,
+          -0.628,
+          0
+        ],
+        "scale": [
+          1.8,
+          1.8,
+          1.8
+        ]
+      }
+    },
+    {
+      "id": "wheat-patch",
+      "name": "wheat-patch",
+      "assetKey": "kenney.crop.wheat",
+      "layer": "crop-dressing",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          -20.8,
+          0,
+          -23.7
+        ],
+        "rotation": [
+          0,
+          0.314,
+          0
+        ],
+        "scale": [
+          1.45,
+          1.45,
+          1.45
+        ]
+      }
+    },
+    {
+      "id": "corn-patch",
+      "name": "corn-patch",
+      "assetKey": "kenney.crop.corn",
+      "layer": "crop-dressing",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          -16.6,
+          0,
+          -24
+        ],
+        "rotation": [
+          0,
+          -0.251,
+          0
+        ],
+        "scale": [
+          1.35,
+          1.35,
+          1.35
+        ]
+      }
+    },
+    {
+      "id": "carrot-patch",
+      "name": "carrot-patch",
+      "assetKey": "kenney.crop.carrot",
+      "layer": "crop-dressing",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          -12.8,
+          0,
+          -23.4
+        ],
+        "rotation": [
+          0,
+          0.785,
+          0
+        ],
+        "scale": [
+          1.65,
+          1.65,
+          1.65
+        ]
+      }
+    },
+    {
+      "id": "pumpkin-patch",
+      "name": "pumpkin-patch",
+      "assetKey": "kenney.crop.pumpkin",
+      "layer": "crop-dressing",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          -9.4,
+          0,
+          -23.6
+        ],
+        "rotation": [
+          0,
+          -0.565,
+          0
+        ],
+        "scale": [
+          1.55,
+          1.55,
+          1.55
+        ]
+      }
+    },
+    {
+      "id": "front-path",
+      "name": "front-path",
+      "assetKey": "kenney.path.straight",
+      "layer": "roads",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          0,
+          0.02,
+          26.1
+        ],
+        "rotation": [
+          0,
+          1.571,
+          0
+        ],
+        "scale": [
+          4,
+          4,
+          4
+        ]
+      }
+    },
+    {
+      "id": "west-corner-path",
+      "name": "west-corner-path",
+      "assetKey": "kenney.path.corner",
+      "layer": "roads",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          -35.4,
+          0.02,
+          21.2
+        ],
+        "rotation": [
+          0,
+          1.571,
+          0
+        ],
+        "scale": [
+          3.4,
+          3.4,
+          3.4
+        ]
+      }
+    },
+    {
+      "id": "east-corner-path",
+      "name": "east-corner-path",
+      "assetKey": "kenney.path.corner",
+      "layer": "roads",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          35.4,
+          0.02,
+          21.2
+        ],
+        "rotation": [
+          0,
+          3.142,
+          0
+        ],
+        "scale": [
+          3.4,
+          3.4,
+          3.4
+        ]
+      }
+    },
+    {
+      "id": "west-dirt-patch",
+      "name": "west-dirt-patch",
+      "assetKey": "kenney.dirt",
+      "layer": "roads",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          -40.6,
+          0.01,
+          -16
+        ],
+        "rotation": [
+          0,
+          0.565,
+          0
+        ],
+        "scale": [
+          4.8,
+          4.8,
+          4.8
+        ]
+      }
+    },
+    {
+      "id": "east-dirt-patch",
+      "name": "east-dirt-patch",
+      "assetKey": "kenney.dirt",
+      "layer": "roads",
+      "collider": "none",
+      "editable": true,
+      "transform": {
+        "position": [
+          39.6,
+          0.01,
+          13.9
+        ],
+        "rotation": [
+          0,
+          -0.377,
+          0
+        ],
+        "scale": [
+          4.6,
+          4.6,
+          4.6
+        ]
+      }
+    }
+  ]
+}

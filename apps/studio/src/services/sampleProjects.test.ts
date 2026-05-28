@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { buildSampleEditorUrl, listSampleProjects } from './sampleProjects';
 
 describe('sample projects', () => {
@@ -16,5 +18,15 @@ describe('sample projects', () => {
     expect(harvest?.runtimeBaseUrl).toBe('/sample-projects/harvest-rush-3d/runtime/');
     expect(harvest?.documentBaseUrl).toBe('/sample-projects/harvest-rush-3d/');
     expect(harvest?.assetBaseUrl).not.toContain('games-src');
+  });
+
+  it('ships the Harvest Rush runtime UI and level data with the standalone sample', () => {
+    const root = resolve(process.cwd(), 'public/sample-projects/harvest-rush-3d');
+    const css = readFileSync(resolve(root, 'runtime/src/styles.css'), 'utf8');
+
+    expect(css).toContain('.game-shell');
+    expect(css).toContain('.title-panel.open');
+    expect(css).toContain("url('../../assets/");
+    expect(existsSync(resolve(root, 'levels/harvest-rush.level3d.json'))).toBe(true);
   });
 });
