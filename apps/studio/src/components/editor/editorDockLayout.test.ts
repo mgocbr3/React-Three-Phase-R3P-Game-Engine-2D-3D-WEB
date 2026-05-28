@@ -69,6 +69,17 @@ describe('editorDockLayout', () => {
     expect(resolveDockTargetFromRects({ x: 700, y: 760, viewportHeight: 900, panels: [] })).toBe('bottom-end');
   });
 
+  it('prioritizes the bottom magnet even when a main panel fills the lower screen', () => {
+    expect(resolveDockTargetFromRects({
+      x: 700,
+      y: 760,
+      viewportHeight: 900,
+      panels: [
+        { id: 'viewport', zone: 'main', left: 0, top: 64, width: 1200, height: 820 },
+      ],
+    })).toBe('bottom-end');
+  });
+
   it('still resolves panel slots inside the bottom dock row', () => {
     const panels = [
       { id: 'viewport', zone: 'main', left: 0, top: 64, width: 900, height: 520 },
