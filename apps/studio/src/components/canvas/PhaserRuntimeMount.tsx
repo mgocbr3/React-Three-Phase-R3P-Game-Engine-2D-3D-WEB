@@ -60,6 +60,18 @@ export const readEditorViewportPointer = (
   return point.x < 0 || point.y < 0 || point.x > rect.width || point.y > rect.height ? null : point;
 };
 
+export const canInstallRuntimeScript = (scene: unknown) => {
+  const keyboard = (scene as { input?: { keyboard?: { manager?: unknown } } } | null)?.input?.keyboard;
+  return !keyboard || keyboard.manager != null;
+};
+
+export const clearPixlPhaserGameGlobal = (
+  win: { __pixlPhaserGame?: unknown },
+  game: unknown,
+) => {
+  if (win.__pixlPhaserGame === game) delete win.__pixlPhaserGame;
+};
+
 const fetchPixlProject = async (baseUrl: string): Promise<{ scenes: unknown[]; activeSceneId: string }> => {
   const url = `${baseUrl.replace(/\/$/, '')}/project.pixlproject.json`;
   const response = await fetch(url, { headers: { accept: 'application/json' } });
@@ -1038,6 +1050,7 @@ export function PhaserRuntimeMount({
                   }
                 })()
                   .then((mod: { default?: unknown; setup?: unknown }) => {
+                    if (disposed || gameRef.current !== sceneRef.game || !canInstallRuntimeScript(sceneRef)) return;
                     const setup = (mod.default ?? mod.setup) as
                       | ((ctx: unknown) => unknown)
                       | undefined;
@@ -1204,6 +1217,8 @@ export function PhaserRuntimeMount({
       window.removeEventListener('resize', scheduleResize);
       window.removeEventListener('pointerup', scheduleResize);
       if (gameRef.current) {
+        const game = gameRef.current;
+        clearPixlPhaserGameGlobal(window as Window & { __pixlPhaserGame?: unknown }, game);
         try { gameRef.current.destroy(true); } catch { /* ignore */ }
         gameRef.current = null;
       }
