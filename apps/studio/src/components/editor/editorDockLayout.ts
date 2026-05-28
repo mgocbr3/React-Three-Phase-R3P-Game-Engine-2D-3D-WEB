@@ -16,6 +16,8 @@ export type DockDragGhostPositionInput = {
   viewportHeight: number;
   width?: number;
   height?: number;
+  target?: EditorDockTarget | null;
+  panels?: readonly DockPanelRect[];
 };
 
 const weight = (id: EditorPanelId) => (id === 'viewport' ? 46 : 18);
@@ -57,9 +59,36 @@ export const getDockDragGhostPosition = ({
   viewportHeight,
   width = 224,
   height = 76,
+  target = null,
+  panels = [],
 }: DockDragGhostPositionInput) => {
   const margin = 12;
   const offset = 14;
+  const snap = target && target !== 'main-end' && target !== 'bottom-end'
+    ? panels.find((panel) => panel.id === target)
+    : null;
+  if (snap) {
+    return {
+      left: clamp(snap.left + margin, margin, Math.max(margin, viewportWidth - width - margin)),
+      top: clamp(snap.top + margin, margin, Math.max(margin, viewportHeight - height - margin)),
+    };
+  }
+  if (target === 'bottom-end') {
+    const bottomTop = viewportHeight - Math.max(170, viewportHeight * 0.34);
+    return {
+      left: clamp(viewportWidth / 2 - width / 2, margin, Math.max(margin, viewportWidth - width - margin)),
+      top: clamp(bottomTop + margin, margin, Math.max(margin, viewportHeight - height - margin)),
+    };
+  }
+  if (target === 'main-end') {
+    const row = panels.filter((panel) => panel.zone === 'main');
+    const right = row.reduce((max, panel) => Math.max(max, panel.left + panel.width), x);
+    const top = row.reduce((min, panel) => Math.min(min, panel.top), y);
+    return {
+      left: clamp(right - width + margin, margin, Math.max(margin, viewportWidth - width - margin)),
+      top: clamp(top + margin, margin, Math.max(margin, viewportHeight - height - margin)),
+    };
+  }
   return {
     left: clamp(x + offset, margin, Math.max(margin, viewportWidth - width - margin)),
     top: clamp(y + offset, margin, Math.max(margin, viewportHeight - height - margin)),

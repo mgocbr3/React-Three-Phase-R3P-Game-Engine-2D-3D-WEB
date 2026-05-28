@@ -152,7 +152,7 @@ const DockDragGhost = ({
 }) => (
   <div
     data-testid="dock-drag-ghost"
-    className="pointer-events-none fixed z-[70] h-[76px] w-56 overflow-hidden border border-primary/70 bg-[#1f1f1f]/95 text-foreground shadow-[0_12px_34px_rgba(0,0,0,0.46),0_0_24px_rgba(75,160,255,0.22)] backdrop-blur-sm"
+    className="pointer-events-none fixed z-[70] h-[76px] w-56 overflow-hidden border border-primary/70 bg-[#1f1f1f]/95 text-foreground shadow-[0_12px_34px_rgba(0,0,0,0.46),0_0_24px_rgba(75,160,255,0.22)] backdrop-blur-sm transition-[left,top,opacity,transform] duration-100 ease-out"
     style={{ left: position.left, top: position.top }}
   >
     <div className="panel-header h-7 px-2 text-xs font-semibold">{label}</div>
@@ -185,6 +185,7 @@ const EditorPage = () => {
   const [draggedDock, setDraggedDock] = useState<EditorPanelId | null>(null);
   const [dockDropTarget, setDockDropTarget] = useState<EditorDockTarget | null>(null);
   const [dockDragPoint, setDockDragPoint] = useState<{ x: number; y: number } | null>(null);
+  const [dockPanelRects, setDockPanelRects] = useState<DockPanelRect[]>([]);
   const pointerDockRef = useRef<{
     source: EditorPanelId;
     startX: number;
@@ -346,6 +347,7 @@ const EditorPage = () => {
     setDraggedDock(null);
     setDockDropTarget(null);
     setDockDragPoint(null);
+    setDockPanelRects([]);
   }, []);
   const moveDockToTarget = useCallback((source: EditorPanelId, target: EditorDockTarget) => {
     if (source === target) return;
@@ -355,14 +357,14 @@ const EditorPage = () => {
   }, [movePanelBefore, movePanelToZone]);
 
   useEffect(() => {
-    const resolveTarget = (x: number, y: number): EditorDockTarget | null => {
-      const panelRects = [...document.querySelectorAll<HTMLElement>('[data-dock-panel-id]')].flatMap((el): DockPanelRect[] => {
-        const id = el.dataset.dockPanelId;
-        const zone = el.dataset.dockZone;
-        if (!id || !zone || !isPanelId(id) || (zone !== 'main' && zone !== 'bottom')) return [];
-        const rect = el.getBoundingClientRect();
-        return [{ id, zone, left: rect.left, top: rect.top, width: rect.width, height: rect.height }];
-      });
+    const getPanelRects = (): DockPanelRect[] => [...document.querySelectorAll<HTMLElement>('[data-dock-panel-id]')].flatMap((el): DockPanelRect[] => {
+      const id = el.dataset.dockPanelId;
+      const zone = el.dataset.dockZone;
+      if (!id || !zone || !isPanelId(id) || (zone !== 'main' && zone !== 'bottom')) return [];
+      const rect = el.getBoundingClientRect();
+      return [{ id, zone, left: rect.left, top: rect.top, width: rect.width, height: rect.height }];
+    });
+    const resolveTarget = (x: number, y: number, panelRects = getPanelRects()): EditorDockTarget | null => {
       const geometric = resolveDockTargetFromRects({ x, y, viewportHeight: window.innerHeight, panels: panelRects });
       if (geometric) return geometric;
       const raw = document.elementFromPoint(x, y)
@@ -384,11 +386,13 @@ const EditorPage = () => {
       const drag = pointerDockRef.current;
       if (!drag) return;
       if (!drag.dragging && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return;
+      const panelRects = getPanelRects();
       drag.dragging = true;
-      drag.target = resolveTarget(event.clientX, event.clientY);
+      drag.target = resolveTarget(event.clientX, event.clientY, panelRects);
       setDraggedDock(drag.source);
       setDockDropTarget(drag.target && drag.target !== drag.source ? drag.target : null);
       setDockDragPoint({ x: event.clientX, y: event.clientY });
+      setDockPanelRects(panelRects);
       event.preventDefault();
     };
     window.addEventListener('pointermove', move);
@@ -450,6 +454,8 @@ const EditorPage = () => {
       y: dockDragPoint.y,
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
+      target: dockDropTarget,
+      panels: dockPanelRects,
     })
     : null;
   const renderDockRow = (ids: EditorPanelId[], zone: EditorDockZone) => (

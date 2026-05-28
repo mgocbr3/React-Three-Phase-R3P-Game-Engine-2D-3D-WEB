@@ -43,4 +43,18 @@ describe('editorDockLayout', () => {
       top: 632,
     });
   });
+
+  it('snaps the floating dock preview to the active panel target', () => {
+    expect(getDockDragGhostPosition({
+      x: 760,
+      y: 420,
+      viewportWidth: 1200,
+      viewportHeight: 900,
+      target: 'viewport',
+      panels: [
+        { id: 'scene', zone: 'main', left: 0, top: 64, width: 240, height: 520 },
+        { id: 'viewport', zone: 'main', left: 240, top: 64, width: 680, height: 520 },
+      ],
+    })).toEqual({ left: 252, top: 76 });
+  });
 });
