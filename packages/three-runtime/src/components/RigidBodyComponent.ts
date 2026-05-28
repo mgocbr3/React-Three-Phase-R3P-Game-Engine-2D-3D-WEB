@@ -111,6 +111,12 @@ class RigidBodyComponent extends Component {
     return this.rapierRigidBody;
   }
 
+  unload(): void {
+    if (!this.rapierRigidBody) return;
+    this.gameObject.getScene().rapierWorld?.removeRigidBody(this.rapierRigidBody);
+    this.rapierRigidBody = null;
+  }
+
   private static _createRigidBodyDesc(
     type: RigidBodyComponentJSON['rigidBodyType'],
   ): RAPIER.RigidBodyDesc {
