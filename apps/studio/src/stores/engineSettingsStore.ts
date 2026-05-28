@@ -176,7 +176,7 @@ export const QUALITY_PRESETS: Record<QualityPreset, Partial<EngineSettings>> = {
     shadows: true,
     bloom: true,
     bloomIntensity: 0.5,
-    ssao: true,
+    ssao: false,
     antialias: true,
     lodEnabled: true,
     lodBias: 1.5,
@@ -214,8 +214,8 @@ const defaultSettings: EngineSettings = {
   noise: false,
   noiseIntensity: 0,
 
-  // Post-Processing - Advanced — HBAO on by default
-  ssao: true,
+  // Post-Processing - Advanced
+  ssao: false,
   ssaoIntensity: 0.8,
   ssaoRadius: 1.2,
   ssaoBias: 1,
@@ -238,10 +238,8 @@ const defaultSettings: EngineSettings = {
   saturation: 0.02,
   hue: 0,
   
-  // Screen Space Global Illumination (re-purposed `ssr` toggle drives
-  // SSGIEffect which is a superset — diffuse bounce + reflections).
-  // ON by default for the ultra-realism preset.
-  ssr: true,
+  // Screen Space Reflections
+  ssr: false,
   ssrIntensity: 1.0,
   ssrMaxSteps: 24,
   ssrThickness: 1.5,

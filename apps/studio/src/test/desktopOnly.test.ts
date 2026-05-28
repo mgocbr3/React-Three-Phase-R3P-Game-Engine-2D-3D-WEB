@@ -48,6 +48,15 @@ describe('desktop-only studio build', () => {
     expect(css).toMatch(/\.glass-search input\s*{[^}]*border:\s*1px solid transparent;[^}]*border-radius:\s*0;/s);
   });
 
+  it('keeps 3D play-mode post processing sober and dependency-local', () => {
+    const postProcessing = readFileSync(src('components/canvas/PostProcessingEffects.tsx'), 'utf8');
+
+    expect(postProcessing).toContain('@react-three/postprocessing');
+    expect(postProcessing).not.toContain('realism-effects');
+    expect(postProcessing).not.toMatch(/Noise|Vignette|ChromaticAberration|Glitch|Scanline|MotionBlur/);
+    expect(existsSync(src('components/canvas/effects/RealismEffects.tsx'))).toBe(false);
+  });
+
   it('defaults to keyboard and gamepad bindings only', () => {
     useInputMapStore.getState().resetToDefaults();
 
