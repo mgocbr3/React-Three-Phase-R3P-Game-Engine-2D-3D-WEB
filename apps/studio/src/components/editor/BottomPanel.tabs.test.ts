@@ -91,6 +91,8 @@ describe('BottomPanel tab availability', () => {
     expect(screen.getByText('Restore Tabs')).toBeVisible();
     expect(screen.getByText('Close Tab')).toBeVisible();
     expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
+    expect(screen.getByTitle('Menu Console')).toHaveClass('opacity-0');
+    expect(screen.getByTitle('Menu Project')).not.toHaveClass('opacity-0');
   });
 
   it('previews bottom tab order while dragging over another tab', () => {

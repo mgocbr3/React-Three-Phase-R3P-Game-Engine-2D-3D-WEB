@@ -15,7 +15,7 @@ describe('DockFrame', () => {
       <DockFrame
         id="viewport"
         zone="main"
-        label="Preview 2D"
+        label="Scene"
         onClose={onClose}
         onDockMain={onDockMain}
         onDockBottom={onDockBottom}
@@ -29,9 +29,9 @@ describe('DockFrame', () => {
       </DockFrame>,
     );
 
-    expect(screen.queryByRole('button', { name: 'Close Preview 2D' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close Scene' })).toBeNull();
 
-    const menu = screen.getByRole('button', { name: 'Menu Preview 2D' });
+    const menu = screen.getByRole('button', { name: 'Menu Scene' });
     fireEvent.pointerDown(menu);
     fireEvent.click(menu);
     fireEvent.click(screen.getByRole('button', { name: 'Close Tab' }));

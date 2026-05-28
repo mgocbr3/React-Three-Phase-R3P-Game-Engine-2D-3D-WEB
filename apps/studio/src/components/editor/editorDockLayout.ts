@@ -33,7 +33,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 
 export const getDockPanelLabels = (sceneKind: SceneKind, isRuntimePreview = false): Record<EditorPanelId, string> => ({
   scene: 'Hierarchy',
-  viewport: isRuntimePreview ? (sceneKind === '2d' ? 'Game 2D' : 'Game 3D') : (sceneKind === '2d' ? 'Preview 2D' : 'Scene 3D'),
+  viewport: isRuntimePreview ? (sceneKind === '2d' ? 'Game 2D' : 'Game 3D') : 'Scene',
   inspector: 'Inspector',
   bottom: 'Project',
 });

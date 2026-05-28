@@ -693,7 +693,7 @@ export const BottomPanel = () => {
               onDragEnd={handleTabDragEnd}
               onPointerDown={(event) => event.stopPropagation()}
               className={cn(
-                'editor-panel-tab relative flex h-6 max-w-[160px] cursor-grab items-center gap-1 px-1.5 text-[11px] transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
+                'editor-panel-tab group relative flex h-6 max-w-[160px] cursor-grab items-center gap-1 px-1.5 text-[11px] transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
                 activeTab === tab.id 
                   ? 'active' 
                   : 'text-muted-foreground',
@@ -719,7 +719,10 @@ export const BottomPanel = () => {
                   setTabMenuOpen((open) => open === tab.id ? null : tab.id);
                 }}
                 onPointerDown={(event) => event.stopPropagation()}
-                className="editor-panel-action ml-0.5 flex h-5 w-5 items-center justify-center text-muted-foreground"
+                className={cn(
+                  'editor-panel-action ml-0.5 flex h-5 w-5 items-center justify-center text-muted-foreground transition-opacity',
+                  activeTab === tab.id ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100'
+                )}
                 aria-label={`Menu ${tab.label}`}
                 title={`Menu ${tab.label}`}
               >

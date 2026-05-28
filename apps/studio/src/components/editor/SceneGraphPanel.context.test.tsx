@@ -104,15 +104,15 @@ describe('SceneGraphPanel context menu', () => {
     expect(screen.getByTestId('scene-object-sprite').querySelector('.lucide-box')).toBeNull();
   });
 
-  it('keeps hierarchy subtabs in one flat strip without a nested dock outline', () => {
+  it('keeps hierarchy as one flat dock tab without unused subtabs', () => {
     const { container } = render(<SceneGraphPanel />);
 
     expect(container.querySelector('.editor-dock-outline')).toBeNull();
     expect(container.querySelectorAll('.panel-header')).toHaveLength(1);
-    expect(container.querySelectorAll('.editor-panel-tab')).toHaveLength(3);
+    expect(container.querySelectorAll('.editor-panel-tab')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Hierarchy' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Scene' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Import' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Scene' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText('Buscar...')).toBeVisible();
   });
 });

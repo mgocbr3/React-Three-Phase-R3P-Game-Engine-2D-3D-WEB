@@ -148,7 +148,7 @@ describe('EditorHeader layout selector', () => {
     expect(screen.queryByRole('button', { name: 'Terrain' })).not.toBeInTheDocument();
   });
 
-  it('uses fixed checked Window entries and names the 2D viewport Preview 2D', () => {
+  it('uses fixed checked Window entries and names the editor viewport Scene', () => {
     useEditorStore.setState({ activeSceneKind: '2d' });
 
     render(
@@ -159,7 +159,7 @@ describe('EditorHeader layout selector', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Window' }));
 
-    const previewItem = screen.getByRole('menuitemcheckbox', { name: 'Preview 2D' });
+    const previewItem = screen.getByRole('menuitemcheckbox', { name: 'Scene' });
     expect(previewItem).toHaveAttribute('aria-checked', 'true');
     expect(screen.queryByRole('button', { name: 'Hide Scene View' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show Scene View' })).not.toBeInTheDocument();
@@ -168,7 +168,7 @@ describe('EditorHeader layout selector', () => {
     expect(useEditorLayoutStore.getState().panels.viewport).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Window' }));
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Preview 2D' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Scene' })).toHaveAttribute('aria-checked', 'false');
   });
 
   it('uses the dock viewport name in the 3D Window menu', () => {
@@ -180,9 +180,9 @@ describe('EditorHeader layout selector', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Window' }));
 
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Scene 3D' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Scene' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.queryByRole('menuitemcheckbox', { name: 'Scene View' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Dock Scene 3D Center' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Dock Scene Center' })).toBeVisible();
   });
 
   it('restores Content Browser when docking the Project panel below', () => {

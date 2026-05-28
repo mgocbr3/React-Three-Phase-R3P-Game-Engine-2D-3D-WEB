@@ -790,8 +790,6 @@ export const SceneGraphPanel = () => {
       >
         <div className="flex min-w-0 flex-1 items-end gap-0.5">
           <button className="editor-panel-tab active">{dockChrome?.label ?? 'Hierarchy'}</button>
-          <button className="editor-panel-tab text-muted-foreground">Scene</button>
-          <button className="editor-panel-tab text-muted-foreground">Import</button>
         </div>
         <DockFrameMenu label={dockChrome?.label ?? 'Hierarchy'} />
       </div>

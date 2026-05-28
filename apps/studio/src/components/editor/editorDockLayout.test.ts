@@ -22,11 +22,11 @@ describe('editorDockLayout', () => {
   it('keeps dock panel labels consistent across 2D and 3D layouts', () => {
     expect(getDockPanelLabels('2d')).toEqual({
       scene: 'Hierarchy',
-      viewport: 'Preview 2D',
+      viewport: 'Scene',
       inspector: 'Inspector',
       bottom: 'Project',
     });
-    expect(getDockPanelLabels('3d').viewport).toBe('Scene 3D');
+    expect(getDockPanelLabels('3d').viewport).toBe('Scene');
   });
 
   it('switches the dock viewport to game mode while previewing', () => {
