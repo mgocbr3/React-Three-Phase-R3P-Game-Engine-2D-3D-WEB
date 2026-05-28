@@ -58,6 +58,8 @@ interface LoadState {
 const DEFAULT_BASE_URL = '/sample-projects/harvest-rush-3d';
 const DEFAULT_SCENE: string | undefined = undefined; // let project.activeSceneId pick
 const HELPER_USER_DATA = { pixlEditorHelper: true };
+type SceneAxisView = 'x' | 'y' | 'z' | 'free';
+type SceneAxisPose = { position: [number, number, number]; up: [number, number, number] };
 
 const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => {
   const material = (object as THREE.LineSegments).material as THREE.Material | THREE.Material[] | undefined;
@@ -134,6 +136,28 @@ export const getEditorObjectIdForNativeSelection = (
 export const getThreeEditorGridConfig = (gridSize: number) => {
   const size = Math.max(16, Math.min(500, Number.isFinite(gridSize) ? gridSize : 100));
   return { size, divisions: Math.max(16, Math.min(200, Math.round(size))) };
+};
+
+export const getThreeSceneAxisView = (
+  axis: SceneAxisView,
+  target: THREE.Vector3,
+  distance: number,
+): SceneAxisPose => {
+  const safeDistance = Math.max(1, Number.isFinite(distance) ? distance : 10);
+  const offsets: Record<SceneAxisView, THREE.Vector3> = {
+    x: new THREE.Vector3(safeDistance, 0, 0),
+    y: new THREE.Vector3(0, safeDistance, 0),
+    z: new THREE.Vector3(0, 0, safeDistance),
+    free: new THREE.Vector3(5, 4, 8).normalize().multiplyScalar(safeDistance),
+  };
+  const ups: Record<SceneAxisView, [number, number, number]> = {
+    x: [0, 1, 0],
+    y: [0, 0, -1],
+    z: [0, 1, 0],
+    free: [0, 1, 0],
+  };
+  const position = target.clone().add(offsets[axis]);
+  return { position: [position.x, position.y, position.z], up: ups[axis] };
 };
 
 export const createThreeEditorSceneHelpers = ({
@@ -344,6 +368,20 @@ export function ThreeRuntimeMount({
     if (store.selectedObjectId !== objectId) store.selectObject(objectId);
   }, []);
 
+  const handleSceneAxisView = useCallback((axis: SceneAxisView) => {
+    if (!camera) return;
+    const target = orbitControlsInstance?.target instanceof THREE.Vector3
+      ? orbitControlsInstance.target.clone()
+      : new THREE.Vector3(0, 0, 0);
+    const distance = camera.position.distanceTo(target);
+    const pose = getThreeSceneAxisView(axis, target, distance);
+    camera.position.set(...pose.position);
+    camera.up.set(...pose.up);
+    camera.lookAt(target);
+    orbitControlsInstance?.target?.copy?.(target);
+    orbitControlsInstance?.update?.();
+  }, [camera, orbitControlsInstance]);
+
   useSelectionGizmo({
     canvas: canvasEl,
     camera,
@@ -453,7 +491,7 @@ export function ThreeRuntimeMount({
         position: 'relative',
       }}
     >
-      {editorToolsEnabled && showAxes && <SceneAxesWidget />}
+      {editorToolsEnabled && showAxes && <SceneAxesWidget onSnap={handleSceneAxisView} />}
       <canvas
         ref={(node) => {
           canvasRef.current = node;
@@ -487,14 +525,42 @@ export function ThreeRuntimeMount({
   );
 }
 
-const SceneAxesWidget = () => (
+const SceneAxesWidget = ({ onSnap }: { onSnap: (axis: SceneAxisView) => void }) => (
   <div className="pointer-events-none absolute right-3 top-3 z-10 h-20 w-20 text-[10px] font-bold text-[#c9c9c9]">
     <div className="absolute left-1/2 top-1/2 h-px w-9 origin-left bg-[#d94b4b]" style={{ transform: 'rotate(-18deg)' }} />
     <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#55b96a]" style={{ transform: 'rotate(-96deg)' }} />
     <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#5c8fe8]" style={{ transform: 'rotate(42deg)' }} />
-    <span className="absolute right-1 top-[29px] text-[#d94b4b]">X</span>
-    <span className="absolute left-[35px] top-0 text-[#55b96a]">Y</span>
-    <span className="absolute right-3 bottom-2 text-[#5c8fe8]">Z</span>
-    <span className="absolute left-[34px] top-[34px] h-2 w-2 border border-[#a8a8a8] bg-[#1f1f1f]" />
+    <AxisSnapButton axis="x" label="X" className="right-0 top-[24px] text-[#d94b4b]" onSnap={onSnap} />
+    <AxisSnapButton axis="y" label="Y" className="left-[31px] top-0 text-[#55b96a]" onSnap={onSnap} />
+    <AxisSnapButton axis="z" label="Z" className="right-2 bottom-1 text-[#5c8fe8]" onSnap={onSnap} />
+    <button
+      type="button"
+      title="Free View"
+      aria-label="Free View"
+      onClick={() => onSnap('free')}
+      className="pointer-events-auto absolute left-[33px] top-[33px] h-3 w-3 border border-[#a8a8a8] bg-[#1f1f1f] transition-colors hover:border-[#dddddd]"
+    />
   </div>
+);
+
+const AxisSnapButton = ({
+  axis,
+  label,
+  className,
+  onSnap,
+}: {
+  axis: SceneAxisView;
+  label: string;
+  className: string;
+  onSnap: (axis: SceneAxisView) => void;
+}) => (
+  <button
+    type="button"
+    title={`${label} View`}
+    aria-label={`${label} View`}
+    onClick={() => onSnap(axis)}
+    className={`pointer-events-auto absolute flex h-5 w-5 items-center justify-center transition-colors hover:text-foreground ${className}`}
+  >
+    {label}
+  </button>
 );

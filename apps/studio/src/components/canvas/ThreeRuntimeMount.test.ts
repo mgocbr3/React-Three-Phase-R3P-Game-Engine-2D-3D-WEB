@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {
   createThreeEditorSceneHelpers,
   getEditorObjectIdForNativeSelection,
+  getThreeSceneAxisView,
   getThreeEditorGridConfig,
   shouldEnableThreeEditorTools,
 } from './ThreeRuntimeMount';
@@ -31,5 +32,20 @@ describe('ThreeRuntimeMount', () => {
     expect(helpers.userData.pixlEditorHelper).toBe(true);
     expect(helpers.children.map((child) => child.name)).toEqual(['Editor Grid', 'Editor Axes']);
     expect(helpers.children.every((child) => child.userData.pixlEditorHelper)).toBe(true);
+  });
+
+  it('snaps the native scene camera to Unity-like axis views', () => {
+    expect(getThreeSceneAxisView('x', new THREE.Vector3(1, 2, 3), 10)).toEqual({
+      position: [11, 2, 3],
+      up: [0, 1, 0],
+    });
+    expect(getThreeSceneAxisView('y', new THREE.Vector3(1, 2, 3), 10)).toEqual({
+      position: [1, 12, 3],
+      up: [0, 0, -1],
+    });
+    expect(getThreeSceneAxisView('z', new THREE.Vector3(1, 2, 3), 10)).toEqual({
+      position: [1, 2, 13],
+      up: [0, 1, 0],
+    });
   });
 });
