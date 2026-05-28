@@ -51,12 +51,14 @@ import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 
 // Tabs as icon-based navigation
 const mainTabs = [
-  { id: 'inspector', label: 'Inspector', icon: Settings },
-  { id: 'scripts', label: 'Scripts', icon: Code },
-  { id: 'vibe', label: 'Vibe Code', icon: Sparkles },
+  { id: 'inspector', label: 'Inspector', shortLabel: 'Inspector', icon: Settings },
+  { id: 'scripts', label: 'Scripts', shortLabel: 'Scripts', icon: Code },
+  { id: 'vibe', label: 'Vibe Code', shortLabel: 'Vibe', icon: Sparkles },
 ] as const;
 
 type MainTabId = typeof mainTabs[number]['id'];
+type EntityAIType = EntitySettings['aiType'];
+type EntityPickupType = NonNullable<EntitySettings['pickupType']>;
 
 export const InspectorPanel = () => {
   const {
@@ -93,10 +95,13 @@ export const InspectorPanel = () => {
           return (
             <button
               key={tab.id}
+              aria-label={tab.label}
+              aria-pressed={isActive}
               disabled={isRuntimePreviewActive && tab.id !== 'inspector'}
               onClick={() => setMainTab(tab.id)}
+              title={tab.label}
               className={cn(
-                'editor-panel-tab flex h-7 flex-1 items-center justify-center gap-1.5 px-3 text-xs transition-colors',
+                'editor-panel-tab flex h-6 flex-1 min-w-0 items-center justify-center gap-1 px-1.5 text-[11px] transition-colors',
                 isRuntimePreviewActive && tab.id !== 'inspector'
                   ? 'cursor-not-allowed opacity-35'
                   : isActive
@@ -104,8 +109,8 @@ export const InspectorPanel = () => {
                   : 'text-muted-foreground'
               )}
             >
-              <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>{tab.label}</span>
+              <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 truncate whitespace-nowrap">{tab.shortLabel}</span>
             </button>
           );
         })}
@@ -2253,7 +2258,7 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
                     <label className="text-[9px] text-muted-foreground">Tipo de IA</label>
                     <select
                       value={entity.aiType}
-                      onChange={(e) => updateEntity({ aiType: e.target.value as any })}
+                      onChange={(e) => updateEntity({ aiType: e.target.value as EntityAIType })}
                       className="inspector-input w-full"
                     >
                       {AI_TYPES.map((ai) => (
@@ -2422,7 +2427,7 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
                 <label className="text-[9px] text-muted-foreground">Tipo</label>
                 <select
                   value={entity.pickupType || 'coin'}
-                  onChange={(e) => updateEntity({ pickupType: e.target.value as any })}
+                  onChange={(e) => updateEntity({ pickupType: e.target.value as EntityPickupType })}
                   className="inspector-input w-full"
                 >
                   {PICKUP_TYPES.map((type) => (

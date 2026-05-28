@@ -46,4 +46,15 @@ describe('InspectorPanel object icons', () => {
     expect(screen.getByRole('button', { name: 'Scripts' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Vibe Code' })).toBeDisabled();
   });
+
+  it('keeps inspector tabs compact while preserving full labels for tools', () => {
+    render(<InspectorPanel />);
+
+    const vibeTab = screen.getByRole('button', { name: 'Vibe Code' });
+
+    expect(vibeTab).toHaveAttribute('title', 'Vibe Code');
+    expect(vibeTab).toHaveTextContent('Vibe');
+    expect(vibeTab).not.toHaveTextContent('Vibe Code');
+    expect(vibeTab.querySelector('span')).toHaveClass('whitespace-nowrap');
+  });
 });
