@@ -180,6 +180,10 @@ export function ThreeRuntimeMount({
   // appeared to do nothing in the native engine path because the props chain
   // didn't reach this component.
   const storeTransformMode = useEditorStore((state) => state.transformMode);
+  const snapEnabled = useEditorStore((state) => state.snapEnabled);
+  const snapTranslate = useEditorStore((state) => state.snapTranslate);
+  const snapRotate = useEditorStore((state) => state.snapRotate);
+  const snapScale = useEditorStore((state) => state.snapScale);
   // The store distinguishes a 4th 'select' mode (camera-priority). For the
   // native gizmo, treat 'select' as translate behind the scenes — the hook's
   // `enabled` flag would also tear it down, but we keep the controls alive
@@ -266,6 +270,7 @@ export function ThreeRuntimeMount({
     enabled: visible,
     externalSelected: externalSelectedThree,
     onTransformCommit: commitNativeGizmoTransform,
+    snapSettings: { snapEnabled, snapTranslate, snapRotate, snapScale },
   });
 
   useEffect(() => {

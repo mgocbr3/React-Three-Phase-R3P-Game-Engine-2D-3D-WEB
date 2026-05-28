@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {
   enlargeTransformPickerHitArea,
   findTransformPickerHitAxis,
+  getNativeGizmoSnapConfig,
   getThreeObjectTransform,
   hasThreeObjectTransformChanged,
   rayHitsTransformHelper,
@@ -127,5 +128,29 @@ describe('resolveSelectableObject', () => {
       { position: [1, 2, 3], rotation: [0.1, 0.2, 0.3], scale: [2, 3, 4] },
       getThreeObjectTransform(object),
     )).toBe(true);
+  });
+
+  it('converts editor snap settings for native TransformControls', () => {
+    expect(getNativeGizmoSnapConfig({
+      snapEnabled: true,
+      snapTranslate: 2,
+      snapRotate: 45,
+      snapScale: 0.5,
+    })).toEqual({
+      translation: 2,
+      rotation: Math.PI / 4,
+      scale: 0.5,
+    });
+
+    expect(getNativeGizmoSnapConfig({
+      snapEnabled: false,
+      snapTranslate: 2,
+      snapRotate: 45,
+      snapScale: 0.5,
+    })).toEqual({
+      translation: null,
+      rotation: null,
+      scale: null,
+    });
   });
 });

@@ -19,6 +19,12 @@ export type ThreeObjectTransform = {
   rotation: [number, number, number];
   scale: [number, number, number];
 };
+export type NativeGizmoSnapSettings = {
+  snapEnabled: boolean;
+  snapTranslate: number;
+  snapRotate: number;
+  snapScale: number;
+};
 
 const TRANSFORM_PICKER_HIT_SCALE = 1.65;
 
@@ -44,7 +50,26 @@ export interface UseSelectionGizmoArgs {
   externalSelected?: THREE.Object3D | null;
   onSelectionChange?: (object: THREE.Object3D | null) => void;
   onTransformCommit?: (object: THREE.Object3D, transform: ThreeObjectTransform) => void;
+  snapSettings?: NativeGizmoSnapSettings;
 }
+
+const validSnap = (value: number): number | null => (
+  Number.isFinite(value) && value > 0 ? value : null
+);
+
+export const getNativeGizmoSnapConfig = ({
+  snapEnabled,
+  snapTranslate,
+  snapRotate,
+  snapScale,
+}: NativeGizmoSnapSettings) => {
+  if (!snapEnabled) return { translation: null, rotation: null, scale: null };
+  return {
+    translation: validSnap(snapTranslate),
+    rotation: validSnap(snapRotate) == null ? null : THREE.MathUtils.degToRad(snapRotate),
+    scale: validSnap(snapScale),
+  };
+};
 
 export const getThreeObjectTransform = (object: THREE.Object3D): ThreeObjectTransform => ({
   position: [object.position.x, object.position.y, object.position.z],
@@ -159,6 +184,7 @@ export const useSelectionGizmo = ({
   externalSelected,
   onSelectionChange,
   onTransformCommit,
+  snapSettings,
 }: UseSelectionGizmoArgs): void => {
   const transformRef = useRef<TransformControls | null>(null);
   const onTransformCommitRef = useRef(onTransformCommit);
@@ -204,6 +230,15 @@ export const useSelectionGizmo = ({
     if (!t) return;
     t.setMode(mode);
   }, [mode]);
+
+  useEffect(() => {
+    const t = transformRef.current;
+    if (!t || !snapSettings) return;
+    const snap = getNativeGizmoSnapConfig(snapSettings);
+    t.setTranslationSnap(snap.translation);
+    t.setRotationSnap(snap.rotation);
+    t.setScaleSnap(snap.scale);
+  }, [snapSettings?.snapEnabled, snapSettings?.snapTranslate, snapSettings?.snapRotate, snapSettings?.snapScale]);
 
   // Click-to-select via raycast against the scene root.
   useEffect(() => {
