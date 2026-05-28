@@ -273,8 +273,10 @@ export const BottomPanel = () => {
   const closedTabs = useBottomPanelTabsStore((s) => s.closedTabs);
   const setActiveTab = useBottomPanelTabsStore((s) => s.setActiveTab);
   const moveTabBefore = useBottomPanelTabsStore((s) => s.moveTabBefore);
+  const moveTabToEnd = useBottomPanelTabsStore((s) => s.moveTabToEnd);
   const closeBottomTab = useBottomPanelTabsStore((s) => s.closeTab);
   const [draggedTab, setDraggedTab] = useState<BottomTabId | null>(null);
+  const [tabDropTarget, setTabDropTarget] = useState<BottomTabId | 'end' | null>(null);
   const draggedTabRef = useRef<BottomTabId | null>(null);
   const [consoleFilter, setConsoleFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
   const [consoleSearch, setConsoleSearch] = useState('');
@@ -392,16 +394,25 @@ export const BottomPanel = () => {
 
   const handleTabDrop = (targetTab: BottomTabId) => {
     const sourceTab = draggedTabRef.current;
-    if (!sourceTab || sourceTab === targetTab) return;
+    if (!sourceTab || sourceTab === targetTab) {
+      handleTabDragEnd();
+      return;
+    }
 
     moveTabBefore(sourceTab, targetTab);
-    draggedTabRef.current = null;
-    setDraggedTab(null);
+    handleTabDragEnd();
+  };
+
+  const handleTabDropEnd = () => {
+    const sourceTab = draggedTabRef.current;
+    if (sourceTab) moveTabToEnd(sourceTab);
+    handleTabDragEnd();
   };
 
   const handleTabDragEnd = () => {
     draggedTabRef.current = null;
     setDraggedTab(null);
+    setTabDropTarget(null);
   };
 
   const consoleCounts = useMemo(() => ({
@@ -636,15 +647,20 @@ export const BottomPanel = () => {
               key={tab.id}
               draggable
               onDragStart={() => handleTabDragStart(tab.id)}
-              onDragOver={(event) => event.preventDefault()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (draggedTabRef.current !== tab.id) setTabDropTarget(tab.id);
+              }}
+              onDragLeave={() => setTabDropTarget((target) => target === tab.id ? null : target)}
               onDrop={() => handleTabDrop(tab.id)}
               onDragEnd={handleTabDragEnd}
               className={cn(
-                'editor-panel-tab flex h-7 cursor-grab items-center gap-1.5 px-2 text-xs transition-colors active:cursor-grabbing',
+                'editor-panel-tab flex h-7 cursor-grab items-center gap-1.5 px-2 text-xs transition-[box-shadow,color,background,opacity] active:cursor-grabbing',
                 activeTab === tab.id 
                   ? 'active' 
                   : 'text-muted-foreground',
-                draggedTab === tab.id && 'opacity-55'
+                draggedTab === tab.id && 'opacity-55',
+                tabDropTarget === tab.id && 'shadow-[inset_2px_0_0_hsl(var(--primary))]'
               )}
             >
               <button
@@ -670,6 +686,22 @@ export const BottomPanel = () => {
             </div>
           );
         })}
+        {draggedTab && (
+          <div
+            data-testid="bottom-tab-end-drop"
+            onDragOver={(event) => {
+              event.preventDefault();
+              setTabDropTarget('end');
+            }}
+            onDragLeave={() => setTabDropTarget((target) => target === 'end' ? null : target)}
+            onDrop={handleTabDropEnd}
+            className={cn(
+              'ml-1 h-7 w-10 border border-dashed border-primary/45 bg-primary/5 transition-colors',
+              tabDropTarget === 'end' && 'border-solid bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]'
+            )}
+            title="Solte aqui para mover a aba ao fim"
+          />
+        )}
       </div>
 
       {/* Content */}

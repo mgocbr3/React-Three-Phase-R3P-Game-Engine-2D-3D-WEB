@@ -39,6 +39,7 @@ interface BottomPanelTabsState {
   closedTabs: BottomTabId[];
   setActiveTab: (tab: BottomTabId) => void;
   moveTabBefore: (source: BottomTabId, target: BottomTabId) => void;
+  moveTabToEnd: (source: BottomTabId) => void;
   closeTab: (tab: BottomTabId) => void;
   restoreTab: (tab: BottomTabId) => void;
   restoreAllTabs: () => void;
@@ -60,6 +61,9 @@ export const useBottomPanelTabsStore = create<BottomPanelTabsState>()(
         next.splice(Math.max(next.indexOf(target), 0), 0, source);
         return { tabOrder: next };
       }),
+      moveTabToEnd: (source) => set((state) => ({
+        tabOrder: [...normalizeBottomTabOrder(state.tabOrder).filter((id) => id !== source), source],
+      })),
       closeTab: (tab) => set((state) => {
         const closedTabs = normalizeClosedBottomTabs([...state.closedTabs, tab]);
         const visible = getVisibleBottomTabs(state.tabOrder, closedTabs);

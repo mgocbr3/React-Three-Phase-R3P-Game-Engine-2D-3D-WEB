@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { createElement } from 'react';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { getAvailableBottomTabs, normalizeBottomTabOrder, shouldRenderStorePane } from './BottomPanel';
+import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
+import { BottomPanel, getAvailableBottomTabs, normalizeBottomTabOrder, shouldRenderStorePane } from './BottomPanel';
 
 describe('BottomPanel tab availability', () => {
+  beforeEach(() => {
+    useBottomPanelTabsStore.getState().resetTabs();
+  });
+
   it('keeps only local engine tabs in local mode', () => {
     expect(getAvailableBottomTabs(false).map((tab) => tab.id)).toEqual([
       'assets',
@@ -36,5 +43,18 @@ describe('BottomPanel tab availability', () => {
     expect(shouldRenderStorePane('store', true)).toBe(false);
     expect(shouldRenderStorePane('store', false)).toBe(false);
     expect(shouldRenderStorePane('assets', true)).toBe(false);
+  });
+
+  it('shows an end drop target while a bottom tab is dragged', () => {
+    render(createElement(BottomPanel));
+
+    expect(screen.queryByTestId('bottom-tab-end-drop')).not.toBeInTheDocument();
+
+    const contentTab = screen.getByText('Content Browser').closest('[draggable="true"]');
+    expect(contentTab).not.toBeNull();
+
+    fireEvent.dragStart(contentTab!);
+
+    expect(screen.getByTestId('bottom-tab-end-drop')).toBeVisible();
   });
 });

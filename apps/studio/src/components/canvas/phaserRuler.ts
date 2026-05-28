@@ -18,6 +18,13 @@ export interface ViewportGridLine {
   major: boolean;
 }
 
+export interface ViewportWorldBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 export const getViewportRulerTicks = (
   scroll: number,
   viewportSize: number,
@@ -72,6 +79,28 @@ export const getZoomedScroll = (
   currentZoom: number,
   nextZoom: number,
 ): number => scroll + pointerScreen / currentZoom - pointerScreen / nextZoom;
+
+export const getFittedViewportCamera = (
+  bounds: ViewportWorldBounds,
+  viewport: { width: number; height: number },
+  padding = 96,
+): { scrollX: number; scrollY: number; zoom: number } => {
+  const contentW = Math.max(1, bounds.maxX - bounds.minX);
+  const contentH = Math.max(1, bounds.maxY - bounds.minY);
+  const viewW = Math.max(1, viewport.width);
+  const viewH = Math.max(1, viewport.height);
+  const zoom = Number(Math.min(4, Math.max(0.25, Math.min(
+    Math.max(1, viewW - padding * 2) / contentW,
+    Math.max(1, viewH - padding * 2) / contentH,
+  ))).toFixed(2));
+  const cx = bounds.minX + contentW / 2;
+  const cy = bounds.minY + contentH / 2;
+  return {
+    scrollX: Number((cx - viewW / (zoom * 2)).toFixed(2)),
+    scrollY: Number((cy - viewH / (zoom * 2)).toFixed(2)),
+    zoom,
+  };
+};
 
 export const formatPointerPosition = (x: number, y: number): string => (
   `X ${Math.round(x)}  Y ${Math.round(y)}`

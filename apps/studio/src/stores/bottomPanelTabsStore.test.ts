@@ -45,4 +45,15 @@ describe('bottomPanelTabsStore', () => {
     expect(useBottomPanelTabsStore.getState().closedTabs).toEqual([]);
     expect(useBottomPanelTabsStore.getState().activeTab).toBe('assets');
   });
+
+  it('moves a dragged tab to the end of the visible tab strip', () => {
+    useBottomPanelTabsStore.getState().moveTabToEnd('assets');
+
+    expect(useBottomPanelTabsStore.getState().tabOrder).toEqual([
+      'ui',
+      'timeline',
+      'console',
+      'assets',
+    ]);
+  });
 });

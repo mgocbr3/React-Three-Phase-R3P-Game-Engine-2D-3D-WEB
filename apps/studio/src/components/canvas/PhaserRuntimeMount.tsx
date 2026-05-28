@@ -15,7 +15,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
-import { getEditorZoom, getZoomedScroll } from './phaserRuler';
+import { getEditorZoom, getFittedViewportCamera, getZoomedScroll, type ViewportWorldBounds } from './phaserRuler';
 import { Viewport2DOverlay } from './Viewport2DOverlay';
 
 export interface PhaserRuntimeMountProps {
@@ -108,6 +108,55 @@ const stampPixlId = (go: any, id: string | undefined): void => {
   if (id && typeof go?.setData === 'function') {
     go.setData('pixlId', id);
   }
+};
+
+const num = (value: unknown, fallback: number): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback
+);
+
+const mergeBounds = (a: ViewportWorldBounds, b: ViewportWorldBounds): ViewportWorldBounds => ({
+  minX: Math.min(a.minX, b.minX),
+  minY: Math.min(a.minY, b.minY),
+  maxX: Math.max(a.maxX, b.maxX),
+  maxY: Math.max(a.maxY, b.maxY),
+});
+
+const getRenderBounds = (obj: GameObjectJSON): ViewportWorldBounds | null => {
+  if (obj.visible === false) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = (obj as any).data ?? {};
+  const { x, y } = obj.transform.position;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const sx = Math.abs(obj.transform.scale.x || 1);
+  const sy = Math.abs(obj.transform.scale.y || 1);
+  const mult = Math.abs(num(data.scale, 1));
+  let w = 40;
+  let h = 40;
+  if (obj.type === 'circle') w = h = num(data.radius, 20) * 2;
+  else if (obj.type === 'rectangle') [w, h] = [num(data.width, 40), num(data.height, 40)];
+  else if (obj.type === 'text') {
+    const font = num(data.fontSize, 16);
+    w = Math.max(24, String(data.text ?? '').length * font * 0.62);
+    h = font * 1.3;
+  } else if (obj.type === 'image' || obj.type === 'sprite') {
+    const explicitW = typeof data.displayWidth === 'number';
+    const explicitH = typeof data.displayHeight === 'number';
+    w = explicitW ? data.displayWidth : num(data.frameWidth, 64) * sx * mult;
+    h = explicitH ? data.displayHeight : num(data.frameHeight, 64) * sy * mult;
+    return { minX: x - w / 2, minY: y - h / 2, maxX: x + w / 2, maxY: y + h / 2 };
+  }
+  w *= sx;
+  h *= sy;
+  return { minX: x - w / 2, minY: y - h / 2, maxX: x + w / 2, maxY: y + h / 2 };
+};
+
+const getSceneBounds = (objects: GameObjectJSON[]): ViewportWorldBounds | null => {
+  let bounds: ViewportWorldBounds | null = null;
+  walkObjects(objects, (obj) => {
+    const next = getRenderBounds(obj);
+    if (next) bounds = bounds ? mergeBounds(bounds, next) : next;
+  });
+  return bounds;
 };
 
 // Draws a single PixlSceneObject into the given Phaser.Scene. Supports
@@ -875,16 +924,25 @@ export function PhaserRuntimeMount({
               );
 
               const cam = phaserScene.camera;
-              // Pixl 2D camera.position is interpreted as "scroll" offset
-              // (top-left corner of view in world coords). Only override
-              // when the project explicitly carries a non-zero offset; the
-              // default sample uses world (0,0) at top-left which matches
-              // Phaser's default and shouldn't be shifted.
-              if (cam?.position && (cam.position.x !== 0 || cam.position.y !== 0)) {
+              const hasCameraScroll = !!(cam?.position && (cam.position.x !== 0 || cam.position.y !== 0));
+              const hasCameraZoom = typeof cam?.zoom === 'number' && cam.zoom !== 1;
+              // Explicit project camera wins; default editor camera opens fitted/centered.
+              if (hasCameraScroll) {
                 this.cameras.main.setScroll(cam.position.x, cam.position.y);
               }
-              if (typeof cam?.zoom === 'number' && cam.zoom !== 1) {
+              if (hasCameraZoom) {
                 this.cameras.main.setZoom(cam.zoom);
+              }
+              if (!hasCameraScroll && !hasCameraZoom) {
+                const bounds = getSceneBounds(phaserScene.rootObjects);
+                if (bounds) {
+                  const fit = getFittedViewportCamera(bounds, {
+                    width: this.scale.width || container.clientWidth || 800,
+                    height: this.scale.height || container.clientHeight || 600,
+                  });
+                  this.cameras.main.setZoom(fit.zoom);
+                  this.cameras.main.setScroll(fit.scrollX, fit.scrollY);
+                }
               }
 
               // Scene-level runtime script — first step toward the PLAN
