@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDockDragGhostPosition, getDockPanelSize, resolveDockTargetFromRects } from './editorDockLayout';
+import { getDockDragGhostPosition, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects } from './editorDockLayout';
 import { defaultDockOrder, type EditorPanelId } from '@/stores/editorLayoutStore';
 
 const totalDefaultSize = (ids: EditorPanelId[]) => (
@@ -19,6 +19,21 @@ describe('editorDockLayout', () => {
     const inspector = getDockPanelSize('inspector', ['viewport', 'inspector', 'bottom']).defaultSize;
 
     expect(viewport).toBeGreaterThan(inspector);
+  });
+
+  it('lets the bottom zone fill the editor when it is the only visible zone', () => {
+    expect(getDockZoneLayout([], ['bottom'])).toEqual({
+      showMain: false,
+      showBottom: true,
+      mainDefaultSize: 0,
+      bottomDefaultSize: 100,
+    });
+    expect(getDockZoneLayout(['viewport'], ['bottom'])).toEqual({
+      showMain: true,
+      showBottom: true,
+      mainDefaultSize: 72,
+      bottomDefaultSize: 28,
+    });
   });
 
   it('uses panel halves to resolve live dock preview targets', () => {

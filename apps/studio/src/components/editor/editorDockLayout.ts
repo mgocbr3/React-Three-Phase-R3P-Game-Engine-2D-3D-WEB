@@ -33,6 +33,17 @@ export const getDockPanelSize = (id: EditorPanelId, visibleIds: EditorPanelId[])
   };
 };
 
+export const getDockZoneLayout = (mainIds: EditorPanelId[], bottomIds: EditorPanelId[]) => {
+  const showMain = mainIds.length > 0;
+  const showBottom = bottomIds.length > 0;
+  return {
+    showMain,
+    showBottom,
+    mainDefaultSize: showMain ? (showBottom ? 72 : 100) : 0,
+    bottomDefaultSize: showBottom ? (showMain ? 28 : 100) : 0,
+  };
+};
+
 export const resolveDockTargetFromRects = ({
   x,
   y,

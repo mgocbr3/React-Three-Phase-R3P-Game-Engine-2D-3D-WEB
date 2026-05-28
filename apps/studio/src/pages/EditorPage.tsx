@@ -11,7 +11,7 @@ import { BottomPanel } from '@/components/editor/BottomPanel';
 import { DockFrame } from '@/components/editor/DockFrame';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { getDockDragGhostPosition, getDockPanelSize, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
+import { getDockDragGhostPosition, getDockPanelSize, getDockZoneLayout, resolveDockTargetFromRects, type DockPanelRect } from '@/components/editor/editorDockLayout';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
@@ -367,6 +367,7 @@ const EditorPage = () => {
   ));
   const mainDockIds = idsInZone('main');
   const bottomDockIds = idsInZone('bottom');
+  const dockZoneLayout = getDockZoneLayout(mainDockIds, bottomDockIds);
   const dockPanelLabels: Record<EditorPanelId, string> = {
     scene: 'Hierarchy',
     viewport: activeSceneKind === '2d' ? 'Preview 2D' : 'Scene 3D',
@@ -456,13 +457,21 @@ const EditorPage = () => {
           visibleDockIds.length ? (
             <>
               <ResizablePanelGroup direction="vertical" className="flex-1">
-                <ResizablePanel id="dock-main-zone" order={0} defaultSize={bottomDockIds.length ? 72 : 100} minSize={35}>
-                  {renderDockRow(mainDockIds, 'main')}
-                </ResizablePanel>
-                {bottomDockIds.length > 0 && (
+                {dockZoneLayout.showMain && (
+                  <ResizablePanel id="dock-main-zone" order={0} defaultSize={dockZoneLayout.mainDefaultSize} minSize={35}>
+                    {renderDockRow(mainDockIds, 'main')}
+                  </ResizablePanel>
+                )}
+                {dockZoneLayout.showMain && dockZoneLayout.showBottom && <ResizableHandle withHandle />}
+                {dockZoneLayout.showBottom && (
                   <>
-                    <ResizableHandle withHandle />
-                    <ResizablePanel id="dock-bottom-zone" order={1} defaultSize={28} minSize={16} maxSize={55}>
+                    <ResizablePanel
+                      id="dock-bottom-zone"
+                      order={1}
+                      defaultSize={dockZoneLayout.bottomDefaultSize}
+                      minSize={dockZoneLayout.showMain ? 16 : 100}
+                      maxSize={dockZoneLayout.showMain ? 55 : 100}
+                    >
                       {renderDockRow(bottomDockIds, 'bottom')}
                     </ResizablePanel>
                   </>
