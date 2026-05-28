@@ -132,6 +132,12 @@ export const getDockDropPreviewRect = ({
   const slot = 6;
   const margin = 12;
   if (target === 'bottom-end') {
+    const row = panels.filter((panel) => panel.zone === 'bottom');
+    if (row.length) {
+      const top = Math.min(...row.map((panel) => panel.top));
+      const bottom = Math.max(...row.map((panel) => panel.top + panel.height));
+      return { left: Math.max(...row.map((panel) => panel.left + panel.width)) - slot, top, width: slot, height: bottom - top };
+    }
     const top = viewportHeight - Math.max(170, viewportHeight * 0.34);
     return { left: margin, top, width: Math.max(slot, viewportWidth - margin * 2), height: viewportHeight - top - margin };
   }

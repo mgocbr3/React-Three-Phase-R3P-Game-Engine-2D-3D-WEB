@@ -126,4 +126,21 @@ describe('editorDockLayout', () => {
       height: 294,
     });
   });
+
+  it('draws bottom-end as a row slot when bottom panels already exist', () => {
+    expect(getDockDropPreviewRect({
+      target: 'bottom-end',
+      panels: [
+        { id: 'viewport', zone: 'main', left: 0, top: 64, width: 900, height: 520 },
+        { id: 'bottom', zone: 'bottom', left: 0, top: 600, width: 900, height: 260 },
+      ],
+      viewportWidth: 1200,
+      viewportHeight: 900,
+    })).toEqual({
+      left: 894,
+      top: 600,
+      width: 6,
+      height: 260,
+    });
+  });
 });
