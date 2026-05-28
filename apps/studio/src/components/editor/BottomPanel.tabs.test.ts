@@ -3,11 +3,13 @@ import { createElement } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { BottomPanel, getAvailableBottomTabs, normalizeBottomTabOrder, shouldRenderStorePane } from './BottomPanel';
 
 describe('BottomPanel tab availability', () => {
   beforeEach(() => {
     useBottomPanelTabsStore.getState().resetTabs();
+    useEditorStore.setState({ activeSceneKind: '3d' });
   });
 
   it('keeps only local engine tabs in local mode', () => {
@@ -89,5 +91,15 @@ describe('BottomPanel tab availability', () => {
     fireEvent.dragOver(timelineTab!);
 
     expect(tabNames()).toEqual(['UI Editor', 'Content Browser', 'Timeline', 'Console']);
+  });
+
+  it('hides 3D model folders from the 2D content browser', () => {
+    useEditorStore.setState({ activeSceneKind: '2d' });
+
+    render(createElement(BottomPanel));
+
+    expect(screen.getByText('Sprites')).toBeVisible();
+    expect(screen.getByText('Tilemaps')).toBeVisible();
+    expect(screen.queryByText('3D_Models')).not.toBeInTheDocument();
   });
 });

@@ -78,6 +78,10 @@ const getFolderIcon = (folder: AssetFolder): LucideIcon => {
   return FolderOpen;
 };
 
+const getSceneAssetChildren = (children: AssetFolder[], sceneKind: '2d' | '3d') => (
+  sceneKind === '2d' ? children.filter((folder) => folder.id !== '3d_models') : children
+);
+
 const INITIAL_CONSOLE: ConsoleMessage[] = [
   { id: '1', type: 'info', message: 'React 3 Phase inicializado', timestamp: new Date().toLocaleTimeString() },
 ];
@@ -357,9 +361,13 @@ export const BottomPanel = () => {
     if (folder.id !== 'assets') return folder;
     return {
       ...folder,
-      children: [...(folder.children ?? []), ...customAssetFolders],
+      children: [...getSceneAssetChildren(folder.children ?? [], activeSceneKind), ...customAssetFolders],
     };
-  }), [customAssetFolders]);
+  }), [activeSceneKind, customAssetFolders]);
+
+  useEffect(() => {
+    if (activeSceneKind === '2d' && selectedFolder === '3d_models') setSelectedFolder('project');
+  }, [activeSceneKind, selectedFolder]);
 
   const handleFolderTreeResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
