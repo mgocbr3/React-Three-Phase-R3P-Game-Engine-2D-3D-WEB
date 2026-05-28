@@ -25,6 +25,7 @@ import { Game } from '@pixlland/three-runtime';
 import * as THREE from 'three';
 
 import { useEditorStore } from '@/stores/editorStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 import { useOrbitControls } from './useOrbitControls';
@@ -69,6 +70,14 @@ type EditorObjectSummary = {
   id: string;
   name?: string;
 };
+
+export const shouldEnableThreeEditorTools = ({
+  visible,
+  isRuntimePreview,
+}: {
+  visible: boolean;
+  isRuntimePreview: boolean;
+}) => visible && !isRuntimePreview;
 
 export const findThreeObjectForEditorSelection = (
   threeScene: THREE.Scene | null,
@@ -147,12 +156,14 @@ export function ThreeRuntimeMount({
   // controls hook activates when both fields are set.
   const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
   const [orbitTarget, setOrbitTarget] = useState<{ x: number; y: number; z: number } | undefined>(undefined);
+  const isRuntimePreview = useRuntimeGameStore((state) => state.isPlaying || Boolean(state.previewSession));
+  const editorToolsEnabled = shouldEnableThreeEditorTools({ visible, isRuntimePreview });
 
   useOrbitControls({
     canvas: canvasEl,
     camera,
     target: orbitTarget,
-    enabled: visible,
+    enabled: editorToolsEnabled,
   });
 
   // The OrbitControls instance is captured via the global hook side-effect
@@ -269,7 +280,7 @@ export function ThreeRuntimeMount({
     orbitControls: orbitControlsInstance,
     mode: effectiveGizmoMode,
     space: transformSpace,
-    enabled: visible,
+    enabled: editorToolsEnabled,
     externalSelected: externalSelectedThree,
     onTransformCommit: commitNativeGizmoTransform,
     snapSettings: { snapEnabled, snapTranslate, snapRotate, snapScale },
