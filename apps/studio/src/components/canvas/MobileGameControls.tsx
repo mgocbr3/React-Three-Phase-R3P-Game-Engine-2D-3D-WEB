@@ -1,7 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { MobileJoystick, MobileActionButtons } from './MobileJoystick';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useIsTouchDevice } from '@/hooks/use-touch-device';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { cn } from '@/lib/utils';
 
@@ -51,7 +50,6 @@ export const MobileGameControls = ({
   className,
 }: MobileGameControlsProps) => {
   const isMobile = useIsMobile();
-  const isTouchDevice = useIsTouchDevice();
   const { showTouchControls } = useEngineSettings();
   const lookAreaRef = useRef<HTMLDivElement>(null);
   const lastTouch = useRef({ x: 0, y: 0 });
@@ -119,9 +117,7 @@ export const MobileGameControls = ({
     };
   }, []);
   
-  // Importante: tablets (ex. iPad) podem estar em “desktop mode” e não cair no breakpoint.
-  // Ainda assim, se for um dispositivo touch, precisamos renderizar os controles.
-  if ((!isMobile && !isTouchDevice) || !showTouchControls) return null;
+  if (!isMobile || !showTouchControls) return null;
   
   return (
     <div className={cn("fixed inset-0 pointer-events-none z-50", className)}>

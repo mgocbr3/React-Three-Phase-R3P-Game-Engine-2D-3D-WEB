@@ -1,6 +1,7 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useCallback, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { X } from 'lucide-react';
 import { EditorCanvas } from '@/components/canvas/EditorCanvas';
 import { Viewport } from '@/components/canvas/Viewport';
 import { EditorHeader } from '@/components/editor/EditorHeader';
@@ -10,14 +11,12 @@ import { InspectorPanel } from '@/components/editor/InspectorPanel';
 import { BottomPanel } from '@/components/editor/BottomPanel';
 import { CameraSpeedIndicator } from '@/components/editor/CameraSpeedIndicator';
 import { RuntimeGameFrame } from '@/components/editor/RuntimeGameFrame';
-import { MobileEditorLayout } from '@/components/editor/mobile';
 import { MotionControlOverlay } from '@/components/canvas/MotionControlOverlay';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
 import { useEditorArrowNudge } from '@/hooks/useEditorArrowNudge';
-import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
+import { defaultDockOrder, useEditorLayoutStore, type EditorPanelId } from '@/stores/editorLayoutStore';
 import { useViewportStore } from '@/stores/viewportStore';
 import { hasSampleProject, openSampleProject } from '@/services/sampleProjects';
 import {
@@ -28,14 +27,64 @@ import {
 import { FilePickerBusyError } from '@/services/filePickerLock';
 import { toast } from 'sonner';
 
+const isPanelId = (id: string): id is EditorPanelId => (
+  (defaultDockOrder as string[]).includes(id)
+);
+
+const panelSize = (id: EditorPanelId) => ({
+  defaultSize: id === 'viewport' ? 46 : 18,
+  minSize: id === 'viewport' ? 30 : 12,
+  maxSize: id === 'viewport' ? 80 : 45,
+});
+
+const DockFrame = ({
+  id,
+  label,
+  children,
+  onClose,
+  onMoveBefore,
+}: {
+  id: EditorPanelId;
+  label: string;
+  children: ReactNode;
+  onClose: () => void;
+  onMoveBefore: (panel: EditorPanelId, target: EditorPanelId) => void;
+}) => (
+  <div data-testid={`dock-panel-${id}`} className="editor-dock editor-dock-outline flex h-full min-w-0 flex-col overflow-hidden">
+    <div
+      data-testid={`dock-tab-${id}`}
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData('application/x-pixl-dock', id);
+        event.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        const source = event.dataTransfer.getData('application/x-pixl-dock');
+        if (isPanelId(source)) onMoveBefore(source, id);
+      }}
+      className="panel-header h-8 cursor-grab select-none justify-between px-2 active:cursor-grabbing"
+      title="Arraste para reorganizar"
+    >
+      <span className="truncate text-xs font-medium text-foreground">{label}</span>
+      <button className="p-1 text-muted-foreground hover:text-foreground" onClick={onClose} title="Fechar painel">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+    <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+  </div>
+);
+
 const EditorPage = () => {
-  const isMobile = useIsMobile();
   const { templateId } = useParams<{ templateId: string }>();
-  const { loadTemplate, saveProject, loadSavedProject, hasSavedProject } = useEditorStore();
+  const { activeSceneKind, loadTemplate, saveProject, loadSavedProject, hasSavedProject } = useEditorStore();
   const hasLoadedTemplateRef = useRef<boolean>(false);
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const previewDisplayMode = useRuntimeGameStore((s) => s.previewDisplayMode);
   const panels = useEditorLayoutStore((s) => s.panels);
+  const dockOrder = useEditorLayoutStore((s) => s.dockOrder);
+  const setPanelVisible = useEditorLayoutStore((s) => s.setPanelVisible);
+  const movePanelBefore = useEditorLayoutStore((s) => s.movePanelBefore);
   const isRuntimeFullscreen = Boolean(previewSession) && previewDisplayMode === 'fullscreen';
 
   // Local autosave — writes `pixl-project-document` + per-id snapshot after
@@ -195,11 +244,6 @@ const EditorPage = () => {
     );
   }
 
-  // Mobile Layout
-  if (isMobile) {
-    return <MobileEditorLayout />;
-  }
-
   const shouldRenderEditorViewport = previewSession?.launchTarget.kind !== 'web-runtime';
   const editorRuntimeSurface = (
     <>
@@ -208,6 +252,16 @@ const EditorPage = () => {
       {previewSession && <RuntimeGameFrame session={previewSession} />}
     </>
   );
+  const visibleDockIds = dockOrder.filter((id) => panels[id]);
+  const dockContent: Record<EditorPanelId, { label: string; content: ReactNode }> = {
+    scene: { label: 'Hierarchy', content: <SceneGraphPanel /> },
+    viewport: {
+      label: activeSceneKind === '2d' ? 'Preview 2D' : 'Scene 3D',
+      content: <div className="relative h-full border-x border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]">{editorRuntimeSurface}</div>,
+    },
+    inspector: { label: 'Inspector', content: <InspectorPanel /> },
+    bottom: { label: 'Project', content: <BottomPanel /> },
+  };
 
   return (
     <div className="editor-shell fixed inset-0 flex flex-col">
@@ -221,55 +275,32 @@ const EditorPage = () => {
             {editorRuntimeSurface}
           </div>
         ) : (
-          <ResizablePanelGroup direction="horizontal" className="flex-1">
-            {/* Left + Center Section (Hierarchy, Canvas, Bottom) */}
-            <ResizablePanel defaultSize={panels.inspector ? 82 : 100} minSize={55}>
-              <ResizablePanelGroup direction="vertical" className="h-full">
-                {/* Top Section: Hierarchy + Canvas */}
-                <ResizablePanel defaultSize={panels.bottom ? 70 : 100} minSize={40}>
-                  <ResizablePanelGroup direction="horizontal" className="h-full">
-                    {/* Left Panel - Scene Graph / Hierarchy */}
-                    {panels.scene && (
-                      <>
-                        <ResizablePanel defaultSize={18} minSize={10} maxSize={28}>
-                          <SceneGraphPanel />
-                        </ResizablePanel>
-
-                        <ResizableHandle withHandle />
-                      </>
-                    )}
-
-                    {/* Center - Canvas */}
-                    <ResizablePanel defaultSize={panels.scene ? 82 : 100} minSize={50}>
-                      <div className="relative h-full border-x border-[var(--editor-border-dark)] bg-[var(--editor-border-dark)]">
-                        {editorRuntimeSurface}
-                      </div>
+          visibleDockIds.length ? (
+            <ResizablePanelGroup direction="horizontal" className="flex-1">
+              {visibleDockIds.map((id, index) => {
+                const size = panelSize(id);
+                return (
+                  <Fragment key={id}>
+                    {index > 0 && <ResizableHandle withHandle />}
+                    <ResizablePanel {...size}>
+                      <DockFrame
+                        id={id}
+                        label={dockContent[id].label}
+                        onClose={() => setPanelVisible(id, false)}
+                        onMoveBefore={movePanelBefore}
+                      >
+                        {dockContent[id].content}
+                      </DockFrame>
                     </ResizablePanel>
-                  </ResizablePanelGroup>
-                </ResizablePanel>
-
-                {/* Bottom Section: Assets Browser / Console */}
-                {panels.bottom && (
-                  <>
-                    <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
-                      <BottomPanel />
-                    </ResizablePanel>
-                  </>
-                )}
-              </ResizablePanelGroup>
-            </ResizablePanel>
-
-            {/* Right Panel - Inspector (full height) */}
-            {panels.inspector && (
-              <>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={18} minSize={14} maxSize={28}>
-                  <InspectorPanel />
-                </ResizablePanel>
-              </>
-            )}
-          </ResizablePanelGroup>
+                  </Fragment>
+                );
+              })}
+            </ResizablePanelGroup>
+          ) : (
+            <div className="flex h-full items-center justify-center bg-[var(--editor-bg)] text-xs text-muted-foreground">
+              Reabra painéis em Window.
+            </div>
+          )
         )}
       </div>
 

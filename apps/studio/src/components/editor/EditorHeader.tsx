@@ -22,7 +22,6 @@ import {
   Maximize2,
   Minimize2,
   Monitor,
-  MonitorSmartphone,
   Mountain,
   PanelBottom,
   PanelLeft,
@@ -32,7 +31,6 @@ import {
   Redo,
   Save,
   Settings,
-  Smartphone,
   Sun,
   Trash2,
   Undo,
@@ -51,7 +49,6 @@ import { BuildSettingsModal } from './BuildSettingsModal';
 import { defaultTerrainSettings, useTerrainStore, TerrainSettings } from '@/stores/terrainStore';
 import { TerrainSettingsModal } from '@/components/terrain/TerrainSettingsModal';
 import { toast } from 'sonner';
-import { useInterfaceStore } from '@/stores/interfaceStore';
 import { useEditorLayoutStore } from '@/stores/editorLayoutStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAssetStore } from '@/stores/assetStore';
@@ -140,7 +137,6 @@ export const EditorHeader = () => {
 
   const modalSettings = terrainSettings ?? defaultTerrainSettings;
   const { showGrid, showStats, updateSettings } = useEngineSettings();
-  const { interfaceMode, setInterfaceMode } = useInterfaceStore();
   const localProjectId = useProjectStore((s) => s.currentProjectId);
   const localProject = useProjectStore((s) => s.projects.find((project) => project.id === localProjectId));
   const projectAssets = useAssetStore((s) => s.projectAssets);
@@ -410,10 +406,7 @@ export const EditorHeader = () => {
       { label: showGrid ? 'Hide Grid' : 'Show Grid', shortcut: 'G', icon: Grid3X3, action: toggleGrid },
       { label: showStats ? 'Hide Stats' : 'Show Stats', icon: Eye, action: toggleStats },
       { label: '', divider: true },
-      { label: interfaceMode === 'auto' ? 'Auto Layout' : 'Set Auto Layout', icon: MonitorSmartphone, action: () => setInterfaceMode('auto') },
-      { label: interfaceMode === 'mobile' ? 'Mobile Layout' : 'Set Mobile Layout', icon: Smartphone, action: () => setInterfaceMode('mobile') },
-      { label: interfaceMode === 'desktop' ? 'Desktop Layout' : 'Set Desktop Layout', icon: Monitor, action: () => setInterfaceMode('desktop') },
-      { label: '', divider: true },
+      { label: 'Desktop Layout Only', icon: Monitor, disabled: true },
       { label: 'Engine Settings', icon: Wrench, action: () => setIsSettingsOpen(true) },
     ],
     Build: [
@@ -438,6 +431,7 @@ export const EditorHeader = () => {
     ],
     Window: [
       { label: panels.scene ? 'Hide Scene Dock' : 'Show Scene Dock', icon: PanelLeft, action: () => togglePanel('scene') },
+      { label: panels.viewport ? 'Hide Preview Dock' : 'Show Preview Dock', icon: Monitor, action: () => togglePanel('viewport') },
       { label: panels.inspector ? 'Hide Inspector Dock' : 'Show Inspector Dock', icon: PanelLeft, action: () => togglePanel('inspector') },
       { label: panels.bottom ? 'Hide Bottom Dock' : 'Show Bottom Dock', icon: PanelBottom, action: () => togglePanel('bottom') },
       { label: '', divider: true },

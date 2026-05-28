@@ -16,7 +16,6 @@ import { DefaultPlayer } from './primitives/DefaultPlayer';
 import { FPSController } from './controllers/FPSController';
 import { PlatformerController } from './controllers/PlatformerController';
 import { FlyCamera } from './FlyCamera';
-import { TouchCameraController } from './TouchCameraController';
 import { GameCamera } from './GameCamera';
 import { ScriptRunner } from './ScriptRunner';
 import { PostProcessingEffects } from './PostProcessingEffects';
@@ -36,8 +35,6 @@ import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { AtmosphericLighting } from './AtmosphericLighting';
 import { Skybox } from './primitives/Skybox';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useIsTouchDevice } from '@/hooks/use-touch-device';
 import { ActiveTerrain } from '@/components/terrain/ActiveTerrain';
 import { useTerrainStore } from '@/stores/terrainStore';
 import { toast } from 'sonner';
@@ -371,8 +368,6 @@ const EditorScene = () => {
   const isEditMode = useEditorStore((state) => state.isEditMode);
   const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
   const engineSettings = useEngineSettings();
-  const isMobile = useIsMobile();
-  const isTouchDevice = useIsTouchDevice();
   const { terrainSettings, isTerrainActive } = useTerrainStore();
   const playerRef = useRef<THREE.Object3D>(null!);
   const rigidBodies = useRef<Map<string, RapierRigidBody>>(new Map());
@@ -465,57 +460,9 @@ const EditorScene = () => {
   const targetId = cameraSettings?.targetId;
   const hasValidTarget = targetId && (targetId === 'main-player' || objects.some(obj => obj.id === targetId));
 
-  // Detect if a physical keyboard is likely available
-  // iPads with Magic Keyboard should get FlyCamera even if screen is "mobile" size
-  const [hasKeyboard, setHasKeyboard] = useState(false);
-
-  // Detect if a fine pointer (mouse/trackpad/pen) is present.
-  // This fixes iPad/hybrid devices where width is "mobile" but a mouse exists.
-  const [hasFinePointer, setHasFinePointer] = useState(false);
-  
-  // Listen for any keyboard event to enable FlyCamera on iPad with keyboard
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Any physical key press means keyboard is available
-      if (!hasKeyboard && ['w', 'a', 's', 'd', 'q', 'e'].includes(e.key.toLowerCase())) {
-        setHasKeyboard(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasKeyboard]);
-
-  // Mouse/trackpad detection via PointerEvents (more reliable than UA checks)
-  useEffect(() => {
-    // Initial media-query hint
-    try {
-      const mql = window.matchMedia?.('(any-pointer: fine)');
-      if (mql?.matches) setHasFinePointer(true);
-    } catch {
-      // ignore
-    }
-
-    const handlePointerDown = (e: PointerEvent) => {
-      if (!hasFinePointer && (e.pointerType === 'mouse' || e.pointerType === 'pen')) {
-        setHasFinePointer(true);
-      }
-    };
-
-    window.addEventListener('pointerdown', handlePointerDown, { passive: true });
-    return () => window.removeEventListener('pointerdown', handlePointerDown);
-  }, [hasFinePointer]);
-
   return (
     <>
-      {/* Fly Camera - In Edit Mode for devices with keyboard (desktop, iPad with Magic Keyboard, etc.) */}
-      {/* Enable if: not mobile OR keyboard detected OR mouse/trackpad detected */}
-      {isEditMode && (!isMobile || hasKeyboard || hasFinePointer) && (
-        <FlyCamera speed={15} fastSpeed={40} lookSpeed={0.003} />
-      )}
-      
-      {/* Touch Camera - In Edit Mode for any device with touch capability (mobile, iPad, touchscreen desktop) */}
-      {/* Can coexist with FlyCamera on hybrid devices like iPad with Magic Keyboard */}
-      {isEditMode && isTouchDevice && <TouchCameraController />}
+      {isEditMode && <FlyCamera speed={15} fastSpeed={40} lookSpeed={0.003} />}
       
       {/* Game Camera - Only in Play Mode when NOT using third-person or side-2d controllers 
           (those controllers have their own camera logic) */}

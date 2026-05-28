@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import { useEditorStore, SceneObject } from '@/stores/editorStore';
 import { useAssetDragStore } from '@/stores/assetDragStore';
 import { toast } from 'sonner';
+import { formatRulerMark, getRulerMarks } from './phaserRuler';
 
 type SceneSnapshot = {
   objects: SceneObject[];
@@ -272,6 +273,8 @@ class PixlPhaserEditorScene extends Phaser.Scene {
     originLabel.setDepth(5);
     this.labelLayer.push(originLabel);
 
+    this.drawRulers(half);
+
     // Camera-render frame — dashed rectangle showing what the in-game
     // camera will capture. Starts at world (0,0) and extends toward +X/+Y
     // (Phaser convention: top-left is world origin), matching the
@@ -289,6 +292,31 @@ class PixlPhaserEditorScene extends Phaser.Scene {
     });
     camLabel.setDepth(5);
     this.labelLayer.push(camLabel);
+  }
+
+  private drawRulers(half: number) {
+    if (!this.gridLayer) return;
+    const style = {
+      color: '#bcbcbc',
+      fontFamily: 'Roboto, Noto Sans, Arial, sans-serif',
+      fontSize: '10px',
+      backgroundColor: 'rgba(32,32,32,0.62)',
+      padding: { x: 3, y: 1 },
+    };
+
+    this.gridLayer.lineStyle(1, 0xbcbcbc, 0.6);
+    getRulerMarks(half, GRID_STEP * 8).forEach((mark) => {
+      if (mark === 0) return;
+      this.gridLayer!.moveTo(mark, -8);
+      this.gridLayer!.lineTo(mark, 8);
+      this.gridLayer!.moveTo(-8, mark);
+      this.gridLayer!.lineTo(8, mark);
+
+      const xLabel = this.add.text(mark + 4, 10, formatRulerMark(mark), style).setDepth(5);
+      const yLabel = this.add.text(10, mark + 4, formatRulerMark(mark), style).setDepth(5);
+      this.labelLayer.push(xLabel, yLabel);
+    });
+    this.gridLayer.strokePath();
   }
 
   private drawObject(object: SceneObject) {
