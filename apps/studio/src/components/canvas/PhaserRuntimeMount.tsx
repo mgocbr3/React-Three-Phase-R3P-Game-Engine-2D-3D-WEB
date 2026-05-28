@@ -552,7 +552,7 @@ export function PhaserRuntimeMount({
           pixelArt,
           roundPixels: pixelArt,
           scale: {
-            mode: Phaser.Scale.RESIZE,
+            mode: Phaser.Scale.NONE,
             autoCenter: Phaser.Scale.NO_CENTER,
           },
           physics: { default: 'arcade', arcade: { gravity } },
