@@ -56,6 +56,24 @@ describe('desktop-only studio build', () => {
     expect(settingsModal).not.toMatch(/bg-primary|text-primary|hsl\(var\(--primary\)/);
   });
 
+  it('keeps editor utility modals and overlays free of glass and neon chrome', () => {
+    const files = [
+      'components/editor/BuildSettingsModal.tsx',
+      'components/editor/InputMapPanel.tsx',
+      'components/terrain/TerrainSettingsModal.tsx',
+      'components/editor/CameraSpeedIndicator.tsx',
+      'components/canvas/MotionControlOverlay.tsx',
+      'components/canvas/EditorCanvas.tsx',
+    ];
+
+    for (const file of files) {
+      const source = readFileSync(src(file), 'utf8');
+
+      expect(source, file).not.toMatch(/backdrop-blur|backdropFilter|linear-gradient|boxShadow|shadow-2xl|shadow-xl|shadow-lg|glass-select/);
+      expect(source, file).not.toMatch(/bg-primary|text-primary|cyan-|#00ffff|#ff00ff|createRadialGradient/);
+    }
+  });
+
   it('keeps 3D play-mode post processing sober and dependency-local', () => {
     const postProcessing = readFileSync(src('components/canvas/PostProcessingEffects.tsx'), 'utf8');
 

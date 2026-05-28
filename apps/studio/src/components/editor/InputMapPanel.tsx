@@ -135,21 +135,14 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
   
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div 
-        className="relative w-[400px] rounded-xl p-5"
-        style={{
-          background: 'linear-gradient(135deg, hsl(225 15% 14%) 0%, hsl(225 15% 10%) 100%)',
-          border: '1px solid hsl(225 12% 22%)',
-          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.5)',
-        }}
-      >
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-[400px] border border-[var(--editor-border-dark)] bg-[var(--editor-panel)] p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold">
             {bindingType === 'keyboard' && 'Capturar Tecla'}
             {bindingType === 'gamepad' && 'Capturar Botão do Controle'}
           </h3>
-          <button onClick={onClose} className="p-1 rounded hover:bg-white/10">
+          <button onClick={onClose} className="p-1 hover:bg-[var(--editor-row-hover)]">
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
@@ -158,9 +151,9 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
           <div className="text-center py-8">
             {capturedKey ? (
               <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/20 border border-primary/40">
-                  <Keyboard className="w-4 h-4 text-primary" />
-                  <span className="text-lg font-mono font-bold text-primary">
+                <div className="inline-flex items-center gap-2 border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-4 py-2">
+                  <Keyboard className="w-4 h-4 text-foreground" />
+                  <span className="text-lg font-mono font-bold text-foreground">
                     {KEYBOARD_LABELS[capturedKey] || capturedKey}
                   </span>
                 </div>
@@ -183,7 +176,7 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
         {bindingType === 'gamepad' && (
           <div className="text-center py-8">
             {capturedGamepad ? (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/30 border border-border">
+              <div className="inline-flex items-center gap-2 border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-4 py-2">
                 <Gamepad2 className="w-4 h-4 text-muted-foreground" />
                 <span className="text-lg font-bold text-muted-foreground">
                   {capturedGamepad.button !== undefined 
@@ -201,10 +194,10 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
           </div>
         )}
         
-        <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-white/10">
+        <div className="mt-4 flex justify-end gap-2 border-t border-[var(--editor-border-dark)] pt-4">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-xs rounded-lg hover:bg-white/10 text-muted-foreground"
+            className="px-3 py-1.5 text-xs text-muted-foreground hover:bg-[var(--editor-row-hover)]"
           >
             Cancelar
           </button>
@@ -215,8 +208,8 @@ const KeyCaptureModal = ({ isOpen, bindingType, onCapture, onClose }: KeyCapture
               (bindingType === 'gamepad' && !capturedGamepad)
             }
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium',
-              'bg-primary text-primary-foreground hover:bg-primary/90',
+              'flex items-center gap-1.5 border border-[var(--editor-command-border)] px-3 py-1.5 text-xs font-medium',
+              'bg-[var(--editor-command-active)] text-foreground hover:bg-[var(--editor-command-hover)]',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
@@ -248,15 +241,11 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
   
   return (
     <div 
-      className="rounded-lg border overflow-hidden"
-      style={{
-        background: 'hsl(225 15% 11% / 0.6)',
-        borderColor: 'hsl(225 12% 18%)',
-      }}
+      className="overflow-hidden border border-[var(--editor-border-dark)] bg-[var(--editor-panel-sunken)]"
     >
       {/* Header */}
       <div 
-        className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/5"
+        className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-[var(--editor-row-hover)]"
         onClick={onToggle}
       >
         {isExpanded ? (
@@ -269,7 +258,7 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
           {bindings.slice(0, 3).map((b, i) => (
             <span 
               key={i}
-              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-white/10"
+              className="bg-[var(--editor-command)] px-1.5 py-0.5 text-[10px] font-mono"
             >
               {getBindingLabel(b)}
             </span>
@@ -283,7 +272,7 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
         {!action.isBuiltIn && (
           <button
             onClick={(e) => { e.stopPropagation(); removeAction(action.id); }}
-            className="p-1 rounded hover:bg-secondary/30 text-muted-foreground hover:text-muted-foreground"
+            className="p-1 text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -292,7 +281,7 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
       
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-white/5">
+        <div className="border-t border-[var(--editor-border-dark)] px-3 pb-3 pt-1">
           {action.description && (
             <p className="text-[11px] text-muted-foreground mb-3">{action.description}</p>
           )}
@@ -302,13 +291,13 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
             {bindings.map((binding, index) => (
               <div 
                 key={index}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-white/5"
+                className="flex items-center gap-2 bg-[var(--editor-command)] px-2 py-1.5"
               >
                 <BindingTypeIcon type={binding.type} />
                 <span className="text-xs flex-1 font-mono">{getBindingLabel(binding)}</span>
                 <button
                   onClick={() => removeBinding(action.id, index)}
-                  className="p-0.5 rounded hover:bg-secondary/30 text-muted-foreground hover:text-muted-foreground"
+                  className="p-0.5 text-muted-foreground hover:bg-[var(--editor-row-hover)] hover:text-foreground"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -320,14 +309,14 @@ const ActionRow = ({ action, isExpanded, onToggle }: ActionRowProps) => {
           <div className="flex gap-2">
             <button
               onClick={() => setCaptureType('keyboard')}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] bg-secondary/30 text-muted-foreground hover:bg-secondary/30"
+              className="flex items-center gap-1.5 border border-[var(--editor-command-border)] bg-[var(--editor-command)] px-2 py-1 text-[11px] text-muted-foreground hover:bg-[var(--editor-row-hover)]"
             >
               <Keyboard className="w-3 h-3" />
               Teclado
             </button>
             <button
               onClick={() => setCaptureType('gamepad')}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] bg-secondary/30 text-muted-foreground hover:bg-secondary/30"
+              className="flex items-center gap-1.5 border border-[var(--editor-command-border)] bg-[var(--editor-command)] px-2 py-1 text-[11px] text-muted-foreground hover:bg-[var(--editor-row-hover)]"
             >
               <Gamepad2 className="w-3 h-3" />
               Controle
@@ -377,15 +366,8 @@ const AddActionModal = ({ isOpen, onClose }: AddActionModalProps) => {
   
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div 
-        className="relative w-[360px] rounded-xl p-5"
-        style={{
-          background: 'linear-gradient(135deg, hsl(225 15% 14%) 0%, hsl(225 15% 10%) 100%)',
-          border: '1px solid hsl(225 12% 22%)',
-          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.5)',
-        }}
-      >
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-[360px] border border-[var(--editor-border-dark)] bg-[var(--editor-panel)] p-5">
         <h3 className="text-sm font-semibold mb-4">Nova Ação de Input</h3>
         
         <div className="space-y-3">
@@ -396,7 +378,7 @@ const AddActionModal = ({ isOpen, onClose }: AddActionModalProps) => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="ex: Usar Item"
-              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none"
+              className="w-full border border-[var(--editor-command-border)] bg-[var(--editor-panel-sunken)] px-3 py-2 text-sm focus:border-[var(--editor-command-highlight)] focus:outline-none"
             />
           </div>
           <div>
@@ -406,7 +388,7 @@ const AddActionModal = ({ isOpen, onClose }: AddActionModalProps) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="ex: Usa o item selecionado no inventário"
-              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none"
+              className="w-full border border-[var(--editor-command-border)] bg-[var(--editor-panel-sunken)] px-3 py-2 text-sm focus:border-[var(--editor-command-highlight)] focus:outline-none"
             />
           </div>
         </div>
@@ -414,7 +396,7 @@ const AddActionModal = ({ isOpen, onClose }: AddActionModalProps) => {
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-xs rounded-lg hover:bg-white/10 text-muted-foreground"
+            className="px-3 py-1.5 text-xs text-muted-foreground hover:bg-[var(--editor-row-hover)]"
           >
             Cancelar
           </button>
@@ -422,8 +404,8 @@ const AddActionModal = ({ isOpen, onClose }: AddActionModalProps) => {
             onClick={handleSubmit}
             disabled={!name.trim()}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium',
-              'bg-primary text-primary-foreground hover:bg-primary/90',
+              'flex items-center gap-1.5 border border-[var(--editor-command-border)] px-3 py-1.5 text-xs font-medium',
+              'bg-[var(--editor-command-active)] text-foreground hover:bg-[var(--editor-command-hover)]',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
@@ -457,7 +439,7 @@ export const InputMapPanel = () => {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
+          className="flex items-center gap-1.5 border border-[var(--editor-command-border)] bg-[var(--editor-command)] px-2.5 py-1.5 text-[11px] text-foreground hover:bg-[var(--editor-row-hover)]"
         >
           <Plus className="w-3.5 h-3.5" />
           Nova Ação

@@ -736,8 +736,8 @@ export const EditorCanvas = () => {
     >
       {/* Drop zone overlay */}
       {isDragOver && (
-        <div className="absolute inset-0 z-50 bg-primary/20 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
-          <div className="bg-card/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-xl text-center">
+        <div className="absolute inset-0 z-50 flex items-center justify-center border-2 border-dashed border-[var(--editor-command-highlight)] bg-black/35 pointer-events-none">
+          <div className="border border-[var(--editor-command-border)] bg-[var(--editor-panel)] px-6 py-4 text-center">
             <div className="text-4xl mb-2"></div>
             <p className="text-lg font-semibold text-foreground">Solte para adicionar à cena</p>
             <p className="text-sm text-muted-foreground">O asset será posicionado no local do drop</p>

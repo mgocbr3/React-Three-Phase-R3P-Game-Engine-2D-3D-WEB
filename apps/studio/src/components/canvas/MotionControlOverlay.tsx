@@ -65,21 +65,16 @@ export const MotionControlOverlay: React.FC<MotionControlOverlayProps> = ({ clas
     const cursorX = ((smoothedPosition.x + 1) / 2) * width;
     const cursorY = ((1 - smoothedPosition.y) / 2) * height;
 
-    // Outer glow
-    const gradient = ctx.createRadialGradient(cursorX, cursorY, 0, cursorX, cursorY, 40);
-    gradient.addColorStop(0, 'rgba(0, 255, 255, 0.6)');
-    gradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.2)');
-    gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-    
     ctx.beginPath();
-    ctx.arc(cursorX, cursorY, 40, 0, Math.PI * 2);
-    ctx.fillStyle = gradient;
-    ctx.fill();
+    ctx.arc(cursorX, cursorY, 22, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(230, 230, 230, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
     // Inner circle
     ctx.beginPath();
     ctx.arc(cursorX, cursorY, primaryHand.isPinching ? 15 : 10, 0, Math.PI * 2);
-    ctx.fillStyle = primaryHand.isPinching ? '#ff00ff' : '#00ffff';
+    ctx.fillStyle = primaryHand.isPinching ? '#f5f5f5' : '#bdbdbd';
     ctx.fill();
 
     // Gesture indicator
@@ -91,7 +86,7 @@ export const MotionControlOverlay: React.FC<MotionControlOverlayProps> = ({ clas
 
     if (gestureText) {
       ctx.font = 'bold 14px Roboto, Noto Sans, sans-serif';
-      ctx.fillStyle = '#00ffff';
+      ctx.fillStyle = '#e5e5e5';
       ctx.textAlign = 'center';
       ctx.fillText(gestureText, cursorX, cursorY - 25);
     }
@@ -114,12 +109,12 @@ export const MotionControlOverlay: React.FC<MotionControlOverlayProps> = ({ clas
       {/* Status indicator with close button */}
       <div className="absolute top-4 right-4 pointer-events-auto flex items-center gap-2">
         <div className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-xl border',
+          'flex items-center gap-2 border px-3 py-2',
           isActive 
-            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+            ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300'
             : error 
-              ? 'bg-red-500/20 border-red-500/50 text-red-400'
-              : 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400'
+              ? 'border-red-500/50 bg-red-500/15 text-red-300'
+              : 'border-[var(--editor-command-border)] bg-[var(--editor-panel)] text-foreground'
         )}>
           {isLoading ? (
             <>
@@ -151,7 +146,7 @@ export const MotionControlOverlay: React.FC<MotionControlOverlayProps> = ({ clas
             stopTracking();
             useMotionControlStore.getState().setEnabled(false);
           }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg backdrop-blur-xl border border-red-500/50 bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors"
+          className="flex h-8 w-8 items-center justify-center border border-red-500/50 bg-red-500/15 text-red-300 transition-colors hover:bg-red-500/25"
           title="Desativar Motion Control"
         >
           <X className="w-4 h-4" />
@@ -161,20 +156,20 @@ export const MotionControlOverlay: React.FC<MotionControlOverlayProps> = ({ clas
       {/* Debug overlay */}
       {showDebugOverlay && primaryHand && (
         <div className="absolute bottom-4 left-4 pointer-events-auto">
-          <div className="bg-black/80 backdrop-blur-xl rounded-lg p-4 border border-cyan-500/30 font-mono text-xs text-cyan-400">
+          <div className="border border-[var(--editor-command-border)] bg-[var(--editor-panel)] p-4 font-mono text-xs text-foreground">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <span>Position X:</span>
               <span>{smoothedPosition.x.toFixed(3)}</span>
               <span>Position Y:</span>
               <span>{smoothedPosition.y.toFixed(3)}</span>
               <span>Pinching:</span>
-              <span className={primaryHand.isPinching ? 'text-emerald-400' : ''}>{String(primaryHand.isPinching)}</span>
+              <span className={primaryHand.isPinching ? 'text-emerald-300' : ''}>{String(primaryHand.isPinching)}</span>
               <span>Pointing:</span>
-              <span className={primaryHand.isPointing ? 'text-emerald-400' : ''}>{String(primaryHand.isPointing)}</span>
+              <span className={primaryHand.isPointing ? 'text-emerald-300' : ''}>{String(primaryHand.isPointing)}</span>
               <span>Fist:</span>
-              <span className={primaryHand.isFist ? 'text-emerald-400' : ''}>{String(primaryHand.isFist)}</span>
+              <span className={primaryHand.isFist ? 'text-emerald-300' : ''}>{String(primaryHand.isFist)}</span>
               <span>Open:</span>
-              <span className={primaryHand.isOpen ? 'text-emerald-400' : ''}>{String(primaryHand.isOpen)}</span>
+              <span className={primaryHand.isOpen ? 'text-emerald-300' : ''}>{String(primaryHand.isOpen)}</span>
             </div>
           </div>
         </div>

@@ -45,16 +45,16 @@ export const CameraSpeedIndicator = () => {
 
   return (
     <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-      <div className="flex flex-col items-center gap-2 bg-card/90 backdrop-blur-md border border-border rounded-lg p-3 shadow-lg min-w-[200px]">
+      <div className="flex min-w-[200px] flex-col items-center gap-2 border border-[var(--editor-border-dark)] bg-[var(--editor-panel)] p-3">
         <div className="flex items-center justify-between w-full text-xs">
           <span className="text-muted-foreground">Camera Speed</span>
           <span className="text-foreground font-mono font-medium">{speed.toFixed(0)}</span>
         </div>
         
         {/* Speed bar */}
-        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-2 w-full overflow-hidden bg-[var(--editor-panel-sunken)]">
           <div 
-            className="h-full bg-gradient-to-r from-muted to-cyan-400 rounded-full transition-all duration-100"
+            className="h-full bg-[var(--editor-command-highlight)] transition-all duration-100"
             style={{ width: `${percentage}%` }}
           />
         </div>

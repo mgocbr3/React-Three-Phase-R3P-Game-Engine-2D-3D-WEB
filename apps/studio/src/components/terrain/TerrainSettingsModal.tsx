@@ -48,42 +48,35 @@ export const TerrainSettingsModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 pointer-events-auto">
       <Card 
-        className="w-[400px] p-6 max-h-[500px] overflow-y-auto rounded-2xl border-0"
-        style={{
-          background: 'linear-gradient(135deg, hsl(225 15% 12% / 0.95) 0%, hsl(225 15% 10% / 0.98) 100%)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid hsl(225 12% 20% / 0.6)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          fontFamily: 'Roboto, Noto Sans, sans-serif',
-        }}
+        className="max-h-[500px] w-[400px] overflow-y-auto border-[var(--editor-border-dark)] bg-[var(--editor-panel)] p-6 text-foreground"
       >
         <div className="flex justify-between items-center mb-5">
-          <h2 className="text-[15px] font-semibold text-white/95">Pixlland Terrain System</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">Terrain System</h2>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1.5 transition-colors hover:bg-[var(--editor-row-hover)]"
           >
-            <X size={18} className="text-white/70" />
+            <X size={18} className="text-muted-foreground" />
           </button>
         </div>
 
         <div className="space-y-4">
           {/* Seed */}
           <div>
-            <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">Seed</Label>
+            <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">Seed</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
                 value={localSettings.seed}
                 onChange={(e) => handleChange('seed', parseInt(e.target.value) || 0)}
-                className="bg-white/5 border-white/10 text-white/90 text-[13px] rounded-lg h-9 focus:border-primary/50"
+                className="h-9 border-[var(--editor-command-border)] bg-[var(--editor-panel-sunken)] text-[13px] text-foreground focus:border-[var(--editor-command-highlight)]"
               />
               <Button
                 onClick={handleRandomSeed}
                 size="sm"
-                className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-[13px] font-medium h-9 px-4"
+                className="h-9 px-4 text-[13px] font-medium"
               >
                 Random
               </Button>
@@ -92,8 +85,8 @@ export const TerrainSettingsModal = ({
 
           {/* Scale */}
           <div>
-            <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">
-              Scale: <span className="text-primary">{localSettings.scale.toFixed(3)}</span>
+            <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">
+              Scale: <span className="text-foreground">{localSettings.scale.toFixed(3)}</span>
             </Label>
             <Slider
               value={[localSettings.scale]}
@@ -107,8 +100,8 @@ export const TerrainSettingsModal = ({
 
           {/* Height */}
           <div>
-            <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">
-              Max Height: <span className="text-primary">{localSettings.height.toFixed(1)}</span>
+            <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">
+              Max Height: <span className="text-foreground">{localSettings.height.toFixed(1)}</span>
             </Label>
             <Slider
               value={[localSettings.height]}
@@ -122,8 +115,8 @@ export const TerrainSettingsModal = ({
 
           {/* Terrain Size */}
           <div>
-            <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">
-              Terrain Size: <span className="text-primary">{localSettings.terrainSize}m × {localSettings.terrainSize}m</span>
+            <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">
+              Terrain Size: <span className="text-foreground">{localSettings.terrainSize}m × {localSettings.terrainSize}m</span>
             </Label>
             <Slider
               value={[localSettings.terrainSize]}
@@ -137,8 +130,8 @@ export const TerrainSettingsModal = ({
 
           {/* Water Level */}
           <div>
-            <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">
-              Water Level: <span className="text-primary">{localSettings.waterLevel.toFixed(1)}</span>
+            <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">
+              Water Level: <span className="text-foreground">{localSettings.waterLevel.toFixed(1)}</span>
             </Label>
             <Slider
               value={[localSettings.waterLevel]}
@@ -152,8 +145,8 @@ export const TerrainSettingsModal = ({
 
           {/* Segments X */}
           <div>
-            <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">
-              Segments X: <span className="text-primary">{localSettings.segmentsX}</span>
+            <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">
+              Segments X: <span className="text-foreground">{localSettings.segmentsX}</span>
             </Label>
             <Slider
               value={[localSettings.segmentsX]}
@@ -167,8 +160,8 @@ export const TerrainSettingsModal = ({
 
           {/* Segments Y */}
           <div>
-            <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">
-              Segments Y: <span className="text-primary">{localSettings.segmentsY}</span>
+            <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">
+              Segments Y: <span className="text-foreground">{localSettings.segmentsY}</span>
             </Label>
             <Slider
               value={[localSettings.segmentsY]}
@@ -182,7 +175,7 @@ export const TerrainSettingsModal = ({
 
           {/* Enable Collision */}
           <div className="flex items-center justify-between py-1">
-            <Label className="text-[13px] font-medium text-white/70">Enable Collision</Label>
+            <Label className="text-[13px] font-medium text-muted-foreground">Enable Collision</Label>
             <Switch
               checked={localSettings.enableCollision}
               onCheckedChange={(value) => handleChange('enableCollision', value)}
@@ -191,7 +184,7 @@ export const TerrainSettingsModal = ({
 
           {/* Show Vegetation */}
           <div className="flex items-center justify-between py-1">
-            <Label className="text-[13px] font-medium text-white/70">Show Vegetation</Label>
+            <Label className="text-[13px] font-medium text-muted-foreground">Show Vegetation</Label>
             <Switch
               checked={localSettings.showVegetation}
               onCheckedChange={(value) => handleChange('showVegetation', value)}
@@ -201,8 +194,8 @@ export const TerrainSettingsModal = ({
           {/* Vegetation Density */}
           {localSettings.showVegetation && (
             <div>
-              <Label className="text-[13px] font-medium text-white/70 mb-1.5 block">
-                Vegetation Density: <span className="text-primary">{(localSettings.vegetationDensity * 100).toFixed(0)}%</span>
+              <Label className="text-[13px] font-medium text-muted-foreground mb-1.5 block">
+                Vegetation Density: <span className="text-foreground">{(localSettings.vegetationDensity * 100).toFixed(0)}%</span>
               </Label>
               <Slider
                 value={[localSettings.vegetationDensity]}
@@ -216,21 +209,17 @@ export const TerrainSettingsModal = ({
           )}
         </div>
 
-        <div className="flex gap-3 mt-6 pt-4 border-t border-white/10">
+        <div className="flex gap-3 mt-6 pt-4 border-t border-[var(--editor-border-dark)]">
           <Button
             onClick={handleApply}
-            className="flex-1 text-[13px] font-medium h-10 rounded-lg"
-            style={{
-              background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(210 100% 50%) 100%)',
-              boxShadow: '0 4px 15px hsl(var(--primary) / 0.3)',
-            }}
+            className="h-10 flex-1 text-[13px] font-medium"
           >
             Generate Terrain
           </Button>
           <Button
             onClick={onClose}
             variant="outline"
-            className="flex-1 text-[13px] font-medium h-10 rounded-lg bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+            className="h-10 flex-1 text-[13px] font-medium"
           >
             Cancel
           </Button>

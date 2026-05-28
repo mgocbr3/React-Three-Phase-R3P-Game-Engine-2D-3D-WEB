@@ -36,9 +36,9 @@ const targetIcons: Record<BuildTarget['id'], typeof Globe2> = {
 };
 
 const targetTone: Record<BuildTarget['id'], string> = {
-  'three-web': 'border-cyan-500/25 bg-cyan-500/10 text-cyan-200',
-  'phaser-web': 'border-amber-500/25 bg-amber-500/10 text-amber-100',
-  pixlland: 'border-primary/25 bg-primary/10 text-primary',
+  'three-web': 'border-[var(--editor-command-border)] bg-[var(--editor-command)] text-foreground',
+  'phaser-web': 'border-[var(--editor-command-border)] bg-[var(--editor-command)] text-foreground',
+  pixlland: 'border-[var(--editor-command-border)] bg-[var(--editor-command)] text-foreground',
 };
 
 const copyCommand = async (command: string): Promise<void> => {
@@ -66,14 +66,14 @@ export const BuildSettingsModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <button
         aria-label="Close build settings"
-        className="absolute inset-0 bg-black/50 backdrop-blur-md"
+        className="absolute inset-0 bg-black/45"
         onClick={onClose}
       />
 
-      <section className="relative flex h-[560px] w-[900px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-        <aside className="flex w-60 flex-col border-r border-border bg-sidebar-background p-3">
+      <section className="relative flex h-[560px] w-[900px] overflow-hidden border border-[var(--editor-border-dark)] bg-[var(--editor-panel)] text-foreground">
+        <aside className="flex w-60 flex-col border-r border-[var(--editor-border-dark)] bg-[var(--editor-panel-header)] p-3">
           <div className="flex items-center gap-2 px-3 py-2">
-            <FileArchive className="size-4 text-primary" />
+            <FileArchive className="size-4 text-muted-foreground" />
             <div className="min-w-0">
               <h2 className="truncate text-sm font-semibold text-foreground">Build Settings</h2>
               <p className="truncate text-[11px] text-muted-foreground">{project?.name ?? 'No project'}</p>
@@ -83,7 +83,7 @@ export const BuildSettingsModal = ({
           <div className="mt-3 flex flex-col gap-2 rounded-md border border-border bg-[var(--editor-panel-sunken)] p-3">
             <span className="text-[11px] font-medium text-muted-foreground">Active Runtime</span>
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <CheckCircle2 className="size-4 text-primary" />
+              <CheckCircle2 className="size-4 text-emerald-300" />
               {summary?.runtimeLabel ?? 'Unknown'}
             </div>
             <div className="text-[11px] text-muted-foreground">
@@ -102,11 +102,11 @@ export const BuildSettingsModal = ({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-12 items-center justify-between border-b border-border bg-background px-4">
+          <header className="flex h-12 items-center justify-between border-b border-[var(--editor-border-dark)] bg-[var(--editor-panel-header)] px-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-foreground">Targets</span>
               {primaryTarget && (
-                <span className="rounded-sm border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                <span className="rounded-sm border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-2 py-0.5 text-[11px] font-semibold text-foreground">
                   Primary: {primaryTarget.label}
                 </span>
               )}
@@ -131,13 +131,13 @@ export const BuildSettingsModal = ({
             ))}
           </div>
 
-          <footer className="flex items-center justify-between border-t border-border bg-background/60 px-4 py-3">
+          <footer className="flex items-center justify-between border-t border-[var(--editor-border-dark)] bg-[var(--editor-panel-header)] px-4 py-3">
             <div className="text-[11px] text-muted-foreground">
               Outputs land in <span className="font-mono text-foreground">Builds/</span>
             </div>
             <button
               onClick={onClose}
-              className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              className="border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-4 py-2 text-xs font-semibold text-foreground hover:bg-[var(--editor-command-hover)]"
             >
               Done
             </button>
@@ -195,7 +195,7 @@ const BuildTargetRow = ({ target, primary, buildBlocked }: BuildTargetRowProps) 
             'editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold',
             disabled
               ? 'cursor-not-allowed text-muted-foreground/45'
-              : 'text-foreground hover:text-primary',
+              : 'text-foreground hover:bg-[var(--editor-command-hover)]',
           )}
         >
           <Clipboard className="size-3.5" />
@@ -229,7 +229,7 @@ const readinessCopy = {
 const readinessTone = {
   blocked: 'border-destructive/30 bg-destructive/10 text-destructive',
   warning: 'border-amber-500/30 bg-amber-500/10 text-amber-100',
-  ready: 'border-primary/25 bg-primary/10 text-primary',
+  ready: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
 };
 
 const sourceLabels: Record<ProjectDiagnosticIssue['source'], string> = {
