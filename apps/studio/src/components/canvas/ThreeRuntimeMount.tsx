@@ -61,8 +61,47 @@ const DEFAULT_SCENE: string | undefined = undefined; // let project.activeSceneI
 const HELPER_USER_DATA = { pixlEditorHelper: true };
 type SceneAxisView = 'x' | 'y' | 'z' | 'free';
 type SceneAxisPose = { position: [number, number, number]; up: [number, number, number] };
+type SceneViewShortcutInput = Pick<KeyboardEvent, 'code' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey'>;
 type ThreeEditorPlacementApi = { getAddObjectPosition: () => [number, number, number] | undefined };
 type ThreeCameraTarget = { x: number; y: number; z: number };
+
+const sceneViewShortcuts: Record<string, SceneAxisView> = {
+  Digit1: 'z',
+  Digit3: 'x',
+  Digit5: 'free',
+  Digit7: 'y',
+  Numpad1: 'z',
+  Numpad3: 'x',
+  Numpad5: 'free',
+  Numpad7: 'y',
+};
+const sceneAxisLabels: Record<SceneAxisView, string> = {
+  x: 'Right View',
+  y: 'Top View',
+  z: 'Front View',
+  free: 'Free View',
+};
+const sceneAxisShortcutLabels: Record<SceneAxisView, string> = {
+  x: '3 / Numpad 3',
+  y: '7 / Numpad 7',
+  z: '1 / Numpad 1',
+  free: '5 / Numpad 5',
+};
+
+const isEditableSceneShortcutTarget = (target: EventTarget | null) => {
+  const el = target instanceof HTMLElement ? target : null;
+  return !!el && (
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement ||
+    el.isContentEditable ||
+    !!el.closest('[contenteditable]:not([contenteditable="false"])')
+  );
+};
+
+export const getThreeSceneViewShortcut = (event: Partial<SceneViewShortcutInput>): SceneAxisView | null => (
+  event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ? null : sceneViewShortcuts[event.code ?? ''] ?? null
+);
 
 const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => {
   const material = (object as THREE.LineSegments).material as THREE.Material | THREE.Material[] | undefined;
@@ -271,6 +310,7 @@ export function ThreeRuntimeMount({
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const gameRef = useRef<Game | null>(null);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
+  const [sceneAxisView, setSceneAxisView] = useState<SceneAxisView>('free');
   // Captured once the runtime's renderer is constructed. The orbit
   // controls hook activates when both fields are set.
   const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
@@ -411,6 +451,7 @@ export function ThreeRuntimeMount({
 
   const handleSceneAxisView = useCallback((axis: SceneAxisView) => {
     if (!camera) return;
+    setSceneAxisView(axis);
     const target = orbitControlsInstance?.target instanceof THREE.Vector3
       ? orbitControlsInstance.target.clone()
       : new THREE.Vector3(0, 0, 0);
@@ -422,6 +463,18 @@ export function ThreeRuntimeMount({
     orbitControlsInstance?.target?.copy?.(target);
     orbitControlsInstance?.update?.();
   }, [camera, orbitControlsInstance]);
+
+  useEffect(() => {
+    if (!editorToolsEnabled) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const axis = getThreeSceneViewShortcut(event);
+      if (!axis || isEditableSceneShortcutTarget(event.target)) return;
+      event.preventDefault();
+      handleSceneAxisView(axis);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editorToolsEnabled, handleSceneAxisView]);
 
   useSelectionGizmo({
     canvas: canvasEl,
@@ -523,7 +576,7 @@ export function ThreeRuntimeMount({
         position: 'relative',
       }}
     >
-      {editorToolsEnabled && showAxes && <SceneAxesWidget onSnap={handleSceneAxisView} />}
+      {editorToolsEnabled && showAxes && <SceneAxesWidget activeView={sceneAxisView} onSnap={handleSceneAxisView} />}
       <canvas
         ref={(node) => {
           canvasRef.current = node;
@@ -557,20 +610,20 @@ export function ThreeRuntimeMount({
   );
 }
 
-const SceneAxesWidget = ({ onSnap }: { onSnap: (axis: SceneAxisView) => void }) => (
-  <div className="pointer-events-none absolute right-3 top-3 z-10 h-20 w-20 text-[10px] font-bold text-[#c9c9c9]">
+const SceneAxesWidget = ({ activeView, onSnap }: { activeView: SceneAxisView; onSnap: (axis: SceneAxisView) => void }) => (
+  <div data-scene-axis-view={activeView} className="pointer-events-none absolute right-3 top-3 z-10 h-20 w-20 text-[10px] font-bold text-[#c9c9c9]">
     <div className="absolute left-1/2 top-1/2 h-px w-9 origin-left bg-[#d94b4b]" style={{ transform: 'rotate(-18deg)' }} />
     <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#55b96a]" style={{ transform: 'rotate(-96deg)' }} />
     <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#5c8fe8]" style={{ transform: 'rotate(42deg)' }} />
-    <AxisSnapButton axis="x" label="X" className="right-0 top-[24px] text-[#d94b4b]" onSnap={onSnap} />
-    <AxisSnapButton axis="y" label="Y" className="left-[31px] top-0 text-[#55b96a]" onSnap={onSnap} />
-    <AxisSnapButton axis="z" label="Z" className="right-2 bottom-1 text-[#5c8fe8]" onSnap={onSnap} />
+    <AxisSnapButton axis="x" label="X" active={activeView === 'x'} className="right-0 top-[24px] text-[#d94b4b]" onSnap={onSnap} />
+    <AxisSnapButton axis="y" label="Y" active={activeView === 'y'} className="left-[31px] top-0 text-[#55b96a]" onSnap={onSnap} />
+    <AxisSnapButton axis="z" label="Z" active={activeView === 'z'} className="right-2 bottom-1 text-[#5c8fe8]" onSnap={onSnap} />
     <button
       type="button"
-      title="Free View"
-      aria-label="Free View"
+      title={`${sceneAxisLabels.free} (${sceneAxisShortcutLabels.free})`}
+      aria-label={sceneAxisLabels.free}
       onClick={() => onSnap('free')}
-      className="pointer-events-auto absolute left-[33px] top-[33px] h-3 w-3 border border-[#a8a8a8] bg-[#1f1f1f] transition-colors hover:border-[#dddddd]"
+      className={`pointer-events-auto absolute left-[33px] top-[33px] h-3 w-3 border bg-[#1f1f1f] transition-colors hover:border-[#dddddd] ${activeView === 'free' ? 'border-[#e0e0e0]' : 'border-[#a8a8a8]'}`}
     />
   </div>
 );
@@ -578,20 +631,22 @@ const SceneAxesWidget = ({ onSnap }: { onSnap: (axis: SceneAxisView) => void }) 
 const AxisSnapButton = ({
   axis,
   label,
+  active,
   className,
   onSnap,
 }: {
   axis: SceneAxisView;
   label: string;
+  active: boolean;
   className: string;
   onSnap: (axis: SceneAxisView) => void;
 }) => (
   <button
     type="button"
-    title={`${label} View`}
-    aria-label={`${label} View`}
+    title={`${sceneAxisLabels[axis]} (${sceneAxisShortcutLabels[axis]})`}
+    aria-label={sceneAxisLabels[axis]}
     onClick={() => onSnap(axis)}
-    className={`pointer-events-auto absolute flex h-5 w-5 items-center justify-center transition-colors hover:text-foreground ${className}`}
+    className={`pointer-events-auto absolute flex h-5 w-5 items-center justify-center transition-colors hover:text-foreground ${active ? 'drop-shadow-[0_0_4px_currentColor]' : ''} ${className}`}
   >
     {label}
   </button>

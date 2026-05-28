@@ -7,6 +7,7 @@ import {
   getThreeAddObjectPosition,
   getThreeCameraTarget,
   getThreeSceneAxisView,
+  getThreeSceneViewShortcut,
   getThreeEditorGridConfig,
   shouldEnableThreeEditorTools,
 } from './ThreeRuntimeMount';
@@ -49,6 +50,16 @@ describe('ThreeRuntimeMount', () => {
       position: [1, 2, 13],
       up: [0, 1, 0],
     });
+  });
+
+  it('maps Unity-like numpad shortcuts to 3D Scene views', () => {
+    expect(getThreeSceneViewShortcut({ code: 'Numpad1' })).toBe('z');
+    expect(getThreeSceneViewShortcut({ code: 'Numpad3' })).toBe('x');
+    expect(getThreeSceneViewShortcut({ code: 'Numpad7' })).toBe('y');
+    expect(getThreeSceneViewShortcut({ code: 'Numpad5' })).toBe('free');
+    expect(getThreeSceneViewShortcut({ code: 'Digit1' })).toBe('z');
+    expect(getThreeSceneViewShortcut({ code: 'Digit7' })).toBe('y');
+    expect(getThreeSceneViewShortcut({ code: 'Numpad7', metaKey: true })).toBeNull();
   });
 
   it('creates 3D objects at the orbit pivot or in front of the scene camera', () => {
