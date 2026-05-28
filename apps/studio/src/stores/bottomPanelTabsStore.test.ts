@@ -4,6 +4,7 @@ import {
   defaultBottomTabOrder,
   getVisibleBottomTabs,
   normalizeBottomTabOrder,
+  previewBottomTabMove,
   useBottomPanelTabsStore,
 } from './bottomPanelTabsStore';
 
@@ -51,6 +52,20 @@ describe('bottomPanelTabsStore', () => {
 
     expect(useBottomPanelTabsStore.getState().tabOrder).toEqual([
       'ui',
+      'timeline',
+      'console',
+      'assets',
+    ]);
+  });
+
+  it('previews a dragged tab position before the drop commits', () => {
+    expect(previewBottomTabMove(defaultBottomTabOrder, [], 'assets', 'timeline')).toEqual([
+      'ui',
+      'assets',
+      'timeline',
+      'console',
+    ]);
+    expect(previewBottomTabMove(defaultBottomTabOrder, ['ui'], 'assets', 'end')).toEqual([
       'timeline',
       'console',
       'assets',

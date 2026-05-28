@@ -28,6 +28,7 @@ import {
 import {
   getVisibleBottomTabs,
   normalizeBottomTabOrder as normalizeBottomTabOrderState,
+  previewBottomTabMove,
   useBottomPanelTabsStore,
   type BottomTabId,
 } from '@/stores/bottomPanelTabsStore';
@@ -343,7 +344,10 @@ export const BottomPanel = () => {
     localStorage.setItem(CONTENT_BROWSER_SIDEBAR_WIDTH_KEY, String(contentBrowserSidebarWidth));
   }, [contentBrowserSidebarWidth]);
 
-  const tabs = getVisibleBottomTabs(tabOrder, closedTabs)
+  const visibleTabIds = draggedTab && tabDropTarget
+    ? previewBottomTabMove(tabOrder, closedTabs, draggedTab, tabDropTarget)
+    : getVisibleBottomTabs(tabOrder, closedTabs);
+  const tabs = visibleTabIds
     .map((id) => availableBottomTabs.find((tab) => tab.id === id))
     .filter((tab): tab is BottomTabDefinition => Boolean(tab));
 

@@ -57,4 +57,21 @@ describe('BottomPanel tab availability', () => {
 
     expect(screen.getByTestId('bottom-tab-end-drop')).toBeVisible();
   });
+
+  it('previews bottom tab order while dragging over another tab', () => {
+    render(createElement(BottomPanel));
+
+    const tabNames = () => Array
+      .from(document.querySelectorAll('[draggable="true"]'))
+      .map((element) => element.textContent?.trim());
+    const contentTab = screen.getByText('Content Browser').closest('[draggable="true"]');
+    const timelineTab = screen.getByText('Timeline').closest('[draggable="true"]');
+    expect(contentTab).not.toBeNull();
+    expect(timelineTab).not.toBeNull();
+
+    fireEvent.dragStart(contentTab!);
+    fireEvent.dragOver(timelineTab!);
+
+    expect(tabNames()).toEqual(['UI Editor', 'Content Browser', 'Timeline', 'Console']);
+  });
 });

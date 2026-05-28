@@ -33,6 +33,18 @@ export const getVisibleBottomTabs = (order: BottomTabId[], closedTabs: BottomTab
   normalizeBottomTabOrder(order).filter((id) => !closedTabs.includes(id))
 );
 
+export const previewBottomTabMove = (
+  order: BottomTabId[],
+  closedTabs: BottomTabId[],
+  source: BottomTabId,
+  target: BottomTabId | 'end',
+): BottomTabId[] => {
+  const next = getVisibleBottomTabs(order, closedTabs).filter((id) => id !== source);
+  if (target === 'end') return [...next, source];
+  next.splice(Math.max(next.indexOf(target), 0), 0, source);
+  return next;
+};
+
 interface BottomPanelTabsState {
   activeTab: BottomTabId | null;
   tabOrder: BottomTabId[];
