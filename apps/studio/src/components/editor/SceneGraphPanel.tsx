@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Box, Circle, Layers, Eye, EyeOff, Lock, Unlock, Trash2, Camera, User, Lightbulb, Search, MoreHorizontal, Link, Unlink, Sun, Cone, Mountain, Cylinder, Copy, Edit3, Focus, Play } from 'lucide-react';
+import { ChevronDown, ChevronRight, Box, Circle, Layers, Eye, EyeOff, Lock, Unlock, Trash2, Camera, User, Lightbulb, Search, MoreHorizontal, Link, Unlink, Sun, Cone, Mountain, Cylinder, Copy, Edit3, Focus, Play, Clipboard, Scissors } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useEditorStore, ObjectType, SceneObject } from '@/stores/editorStore';
 import { cn } from '@/lib/utils';
@@ -81,15 +81,19 @@ interface ContextMenuProps {
   object: SceneObject;
   onClose: () => void;
   onRename: () => void;
+  onCopy: () => void;
+  onCut: () => void;
+  onPasteAsChild: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onFocus: () => void;
   onDetachFromParent: () => void;
   onToggleVisible: () => void;
   onToggleLock: () => void;
+  canPasteObject: boolean;
 }
 
-const ContextMenu = ({ x, y, object, onClose, onRename, onDuplicate, onDelete, onFocus, onDetachFromParent, onToggleVisible, onToggleLock }: ContextMenuProps) => {
+const ContextMenu = ({ x, y, object, onClose, onRename, onCopy, onCut, onPasteAsChild, onDuplicate, onDelete, onFocus, onDetachFromParent, onToggleVisible, onToggleLock, canPasteObject }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,12 +135,37 @@ const ContextMenu = ({ x, y, object, onClose, onRename, onDuplicate, onDelete, o
         <span className="text-foreground">Renomear</span>
       </button>
       <button
+        onClick={() => { onCopy(); onClose(); }}
+        className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+      >
+        <Copy className="w-4 h-4 text-muted-foreground" />
+        <span className="text-foreground">Copiar</span>
+      </button>
+      {canDelete && (
+        <button
+          onClick={() => { onCut(); onClose(); }}
+          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        >
+          <Scissors className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground">Recortar</span>
+        </button>
+      )}
+      <button
         onClick={() => { onDuplicate(); onClose(); }}
         className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
       >
         <Copy className="w-4 h-4 text-muted-foreground" />
         <span className="text-foreground">Duplicar</span>
       </button>
+      {canPasteObject && (
+        <button
+          onClick={() => { onPasteAsChild(); onClose(); }}
+          className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
+        >
+          <Clipboard className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground">Colar como filho</span>
+        </button>
+      )}
       <button
         onClick={() => { onFocus(); onClose(); }}
         className="w-full px-3 py-2 text-left text-[13px] flex items-center gap-2.5 transition-colors hover:bg-secondary"
@@ -259,10 +288,11 @@ const SceneObjectItem = ({
   const [lastClickTime, setLastClickTime] = useState(0);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dropPlacement, setDropPlacement] = useState<SceneDropPlacement | null>(null);
-  const { duplicateObject } = useEditorStore();
+  const { duplicateObject, copyObject, cutObject, pasteObject, hasObjectClipboard } = useEditorStore();
   const Icon = getObjectIcon(object.type);
   const isSelected = object.id === selectedObjectId;
   const typeColor = getTypeColor(object.type);
+  const canPasteObject = hasObjectClipboard();
   
   // Find children of this object
   const children = childrenByParent.get(object.id) ?? [];
@@ -365,12 +395,16 @@ const SceneObjectItem = ({
           object={object}
           onClose={() => setContextMenu(null)}
           onRename={() => setIsEditing(true)}
+          onCopy={() => copyObject(object.id)}
+          onCut={() => cutObject(object.id)}
+          onPasteAsChild={() => pasteObject(object.id)}
           onDuplicate={() => duplicateObject(object.id)}
           onDelete={() => deleteObject(object.id)}
           onFocus={() => focusOnObject(object.id)}
           onDetachFromParent={() => reparentObject(object.id, null)}
           onToggleVisible={() => updateObject(object.id, { visible: object.visible === false ? true : false })}
           onToggleLock={() => updateObject(object.id, { locked: !object.locked })}
+          canPasteObject={canPasteObject}
         />
       )}
       
