@@ -25,6 +25,7 @@ import { Game } from '@pixlland/three-runtime';
 import * as THREE from 'three';
 
 import { useEditorStore } from '@/stores/editorStore';
+import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
@@ -56,6 +57,18 @@ interface LoadState {
 
 const DEFAULT_BASE_URL = '/sample-projects/harvest-rush-3d';
 const DEFAULT_SCENE: string | undefined = undefined; // let project.activeSceneId pick
+const HELPER_USER_DATA = { pixlEditorHelper: true };
+
+const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => {
+  const material = (object as THREE.LineSegments).material as THREE.Material | THREE.Material[] | undefined;
+  const materials = Array.isArray(material) ? material : material ? [material] : [];
+  materials.forEach((item) => {
+    item.transparent = true;
+    item.opacity = opacity;
+    item.depthTest = false;
+    item.depthWrite = false;
+  });
+};
 
 const fetchPixlProject = async (baseUrl: string): Promise<unknown> => {
   const url = `${baseUrl.replace(/\/$/, '')}/project.pixlproject.json`;
@@ -117,6 +130,51 @@ export const findThreeObjectForEditorSelection = (
 export const getEditorObjectIdForNativeSelection = (
   object: THREE.Object3D | null,
 ): string | null => getPixlObjectIdFromThreeObject(object);
+
+export const getThreeEditorGridConfig = (gridSize: number) => {
+  const size = Math.max(16, Math.min(500, Number.isFinite(gridSize) ? gridSize : 100));
+  return { size, divisions: Math.max(16, Math.min(200, Math.round(size))) };
+};
+
+export const createThreeEditorSceneHelpers = ({
+  showGrid,
+  showAxes,
+  gridSize,
+}: {
+  showGrid: boolean;
+  showAxes: boolean;
+  gridSize: number;
+}): THREE.Group => {
+  const root = new THREE.Group();
+  root.name = 'Pixl Editor 3D Helpers';
+  root.userData = { ...HELPER_USER_DATA };
+
+  if (showGrid) {
+    const { size, divisions } = getThreeEditorGridConfig(gridSize);
+    const grid = new THREE.GridHelper(size, divisions, '#c4cad1', '#6f7782');
+    grid.name = 'Editor Grid';
+    grid.position.y = 0.12;
+    grid.renderOrder = 999;
+    grid.userData = { ...HELPER_USER_DATA };
+    styleHelperMaterials(grid, 0.82);
+    root.add(grid);
+  }
+
+  if (showAxes) {
+    const axes = new THREE.AxesHelper(Math.min(8, Math.max(3, gridSize * 0.05)));
+    axes.name = 'Editor Axes';
+    axes.position.y = 0.06;
+    axes.renderOrder = 1000;
+    axes.userData = { ...HELPER_USER_DATA };
+    styleHelperMaterials(axes, 0.85);
+    root.add(axes);
+  }
+
+  root.traverse((object) => {
+    object.userData = { ...object.userData, ...HELPER_USER_DATA };
+  });
+  return root;
+};
 
 const getFrameForObject = (
   object: THREE.Object3D | null,
@@ -186,6 +244,9 @@ export function ThreeRuntimeMount({
   // Three scene reference for raycasting; captured from game.scene.threeJSScene
   // when the load resolves.
   const [threeScene, setThreeScene] = useState<THREE.Scene | null>(null);
+  const showGrid = useEngineSettings((state) => state.showGrid);
+  const showAxes = useEngineSettings((state) => state.showGizmo);
+  const gridSize = useEngineSettings((state) => state.gridSize);
 
   // Subscribe directly to the editor store so the toolbar's
   // Move(W)/Rotate(E)/Scale(R) buttons reach the native runtime gizmo. Prior
@@ -298,6 +359,22 @@ export function ThreeRuntimeMount({
   });
 
   useEffect(() => {
+    if (!threeScene || !editorToolsEnabled || (!showGrid && !showAxes)) return;
+    const helpers = createThreeEditorSceneHelpers({ showGrid, showAxes, gridSize });
+    threeScene.add(helpers);
+    return () => {
+      threeScene.remove(helpers);
+      helpers.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose?.();
+        const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+        if (Array.isArray(material)) material.forEach((item) => item.dispose?.());
+        else material?.dispose?.();
+      });
+    };
+  }, [editorToolsEnabled, gridSize, showAxes, showGrid, threeScene]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -376,6 +453,7 @@ export function ThreeRuntimeMount({
         position: 'relative',
       }}
     >
+      {editorToolsEnabled && showAxes && <SceneAxesWidget />}
       <canvas
         ref={(node) => {
           canvasRef.current = node;
@@ -408,3 +486,15 @@ export function ThreeRuntimeMount({
     </div>
   );
 }
+
+const SceneAxesWidget = () => (
+  <div className="pointer-events-none absolute right-3 top-3 z-10 h-20 w-20 text-[10px] font-bold text-[#c9c9c9]">
+    <div className="absolute left-1/2 top-1/2 h-px w-9 origin-left bg-[#d94b4b]" style={{ transform: 'rotate(-18deg)' }} />
+    <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#55b96a]" style={{ transform: 'rotate(-96deg)' }} />
+    <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#5c8fe8]" style={{ transform: 'rotate(42deg)' }} />
+    <span className="absolute right-1 top-[29px] text-[#d94b4b]">X</span>
+    <span className="absolute left-[35px] top-0 text-[#55b96a]">Y</span>
+    <span className="absolute right-3 bottom-2 text-[#5c8fe8]">Z</span>
+    <span className="absolute left-[34px] top-[34px] h-2 w-2 border border-[#a8a8a8] bg-[#1f1f1f]" />
+  </div>
+);

@@ -110,10 +110,24 @@ export const getPixlObjectIdFromThreeObject = (object: THREE.Object3D | null | u
   return null;
 };
 
+export const isNativeEditorHelperObject = (
+  object: THREE.Object3D | null | undefined,
+  scene?: THREE.Scene | null,
+): boolean => {
+  let current: THREE.Object3D | null | undefined = object;
+  while (current) {
+    if (current.userData?.pixlEditorHelper === true) return true;
+    if (scene && current === scene) return false;
+    current = current.parent;
+  }
+  return false;
+};
+
 export const resolveSelectableObject = (
   object: THREE.Object3D | null | undefined,
   scene?: THREE.Scene | null,
 ): THREE.Object3D | null => {
+  if (isNativeEditorHelperObject(object, scene)) return null;
   let current: THREE.Object3D | null | undefined = object;
   while (current) {
     const userData = current.userData as {
@@ -303,7 +317,7 @@ export const useSelectionGizmo = ({
         if (child !== helper) candidates.push(child);
       });
       const hits = raycaster.intersectObjects(candidates, true);
-      const first = hits.find((h) => h.object.visible);
+      const first = hits.find((h) => h.object.visible && !isNativeEditorHelperObject(h.object, scene));
       const newSelection = resolveSelectableObject(first?.object, scene);
       setSelected(newSelection);
     };

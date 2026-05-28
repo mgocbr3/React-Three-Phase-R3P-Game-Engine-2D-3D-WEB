@@ -8,6 +8,7 @@ import {
   getNativeGizmoTransformSpace,
   getThreeObjectTransform,
   hasThreeObjectTransformChanged,
+  isNativeEditorHelperObject,
   rayHitsTransformHelper,
   resolveSelectableObject,
 } from './useSelectionGizmo';
@@ -26,6 +27,16 @@ describe('resolveSelectableObject', () => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
 
     expect(resolveSelectableObject(mesh)).toBe(mesh);
+  });
+
+  it('never selects editor-only grid or axis helpers', () => {
+    const helper = new THREE.Group();
+    helper.userData.pixlEditorHelper = true;
+    const child = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    helper.add(child);
+
+    expect(isNativeEditorHelperObject(child)).toBe(true);
+    expect(resolveSelectableObject(child)).toBeNull();
   });
 
   it('detects transform helper hits before selecting objects behind it', () => {
