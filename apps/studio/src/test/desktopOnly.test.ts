@@ -74,6 +74,24 @@ describe('desktop-only studio build', () => {
     }
   });
 
+  it('keeps inspector, timeline, picker and asset chrome on neutral editor tokens', () => {
+    const files = [
+      'components/editor/InspectorPanel.tsx',
+      'components/editor/TimelinePanel.tsx',
+      'components/editor/TexturePicker.tsx',
+      'components/editor/TerrainSection.tsx',
+      'components/editor/BottomPanel.tsx',
+      'components/canvas/PhaserViewport2D.tsx',
+    ];
+
+    for (const file of files) {
+      const source = readFileSync(src(file), 'utf8');
+
+      expect(source, file).not.toMatch(/glass-select|shadow-xl|shadow-lg|from-sky|via-cyan|cyan-/);
+      expect(source, file).not.toMatch(/bg-primary|text-primary|border-primary|focus:border-primary|focus:ring-primary/);
+    }
+  });
+
   it('keeps 3D play-mode post processing sober and dependency-local', () => {
     const postProcessing = readFileSync(src('components/canvas/PostProcessingEffects.tsx'), 'utf8');
 

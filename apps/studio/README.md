@@ -31,3 +31,14 @@ VITE_DEV_AUTH_PASSWORD=change-me
 ```
 
 When enabled in `pnpm engine:dev`, the login modal shows `Entrar como dev`. This path is gated by Vite development mode and is not active in production builds.
+
+## Desktop Distribution
+
+This app now includes desktop packaging for both Electron and Tauri.
+
+- Electron dev shell: `pnpm --filter pixlplaygroundstudio electron:dev`
+- Electron installers: `pnpm --filter pixlplaygroundstudio electron:dist`
+- Tauri dev shell: `pnpm --filter pixlplaygroundstudio tauri:dev`
+- Tauri installers: `pnpm --filter pixlplaygroundstudio tauri:build`
+
+Detailed release steps: [DESKTOP_RELEASE.md](./DESKTOP_RELEASE.md)
