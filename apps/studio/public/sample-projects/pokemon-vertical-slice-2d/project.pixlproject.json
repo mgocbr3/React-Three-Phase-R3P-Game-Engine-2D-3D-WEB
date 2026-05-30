@@ -1,0 +1,171 @@
+{
+  "format": "pixlplayground-project",
+  "version": 2,
+  "id": "pokemon-vertical-slice-2d",
+  "slug": "pokemon-vertical-slice-2d",
+  "name": "Pokemon Vertical Slice 2D",
+  "createdAt": 1780158000000,
+  "savedAt": 1780158000000,
+  "engine": {
+    "name": "PixlPlayground",
+    "version": "0.2.0",
+    "schemaVersion": 2,
+    "runtimeManifest": {
+      "runtime": "phaser-2d",
+      "dependencies": { "phaser": "4.1.0" }
+    }
+  },
+  "runtime": {
+    "primary": "phaser-2d",
+    "renderers": ["phaser"],
+    "physics": ["arcade"]
+  },
+  "activeSceneId": "main",
+  "scenes": [
+    {
+      "id": "main",
+      "name": "Pokemon Slice Map",
+      "kind": "2d",
+      "runtimeScript": "runtime/src/editor-script.js",
+      "camera": {
+        "id": "main-camera-2d",
+        "name": "Main Camera 2D",
+        "position": [0, 0, 0],
+        "target": [0, 0, 0],
+        "zoom": 1
+      },
+      "environment": { "background": "#78c97a" },
+      "physics": { "engine": "arcade", "gravity": [0, 0] },
+      "rootObjects": [
+        {
+          "id": "map-base",
+          "name": "Map Base",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [800, 600, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["map"],
+          "components": [],
+          "data": { "color": "#6cbc64", "width": 1600, "height": 1200, "depth": -20 }
+        },
+        {
+          "id": "path-main",
+          "name": "Main Path",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [800, 600, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["path"],
+          "components": [],
+          "data": { "color": "#d8c48a", "width": 300, "height": 1200, "depth": -10 }
+        },
+        {
+          "id": "path-cross",
+          "name": "Cross Path",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [800, 620, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["path"],
+          "components": [],
+          "data": { "color": "#ccb87c", "width": 1300, "height": 220, "depth": -9 }
+        },
+        {
+          "id": "grass-west",
+          "name": "Tall Grass West",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [380, 410, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["grass"],
+          "components": [],
+          "data": { "color": "#3c8d3d", "width": 380, "height": 280, "depth": -8, "alpha": 0.92 }
+        },
+        {
+          "id": "grass-east",
+          "name": "Tall Grass East",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [1230, 770, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["grass"],
+          "components": [],
+          "data": { "color": "#3a873b", "width": 360, "height": 250, "depth": -8, "alpha": 0.92 }
+        },
+        {
+          "id": "lake",
+          "name": "Lake",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [1160, 300, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["block"],
+          "components": [],
+          "data": { "color": "#3f8ad8", "width": 320, "height": 220, "depth": -7 }
+        },
+        {
+          "id": "player",
+          "name": "Player",
+          "type": "circle",
+          "parentId": null,
+          "transform": { "position": [800, 940, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["player"],
+          "components": [],
+          "data": { "color": "#f2f2f2", "radius": 22, "depth": 40 }
+        },
+        {
+          "id": "trainer-a",
+          "name": "Trainer A",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [780, 420, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["trainer"],
+          "components": [],
+          "data": { "color": "#e95a5a", "width": 38, "height": 54, "depth": 30 }
+        },
+        {
+          "id": "trainer-b",
+          "name": "Trainer B",
+          "type": "rectangle",
+          "parentId": null,
+          "transform": { "position": [1060, 620, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["trainer"],
+          "components": [],
+          "data": { "color": "#d54444", "width": 38, "height": 54, "depth": 30 }
+        },
+        {
+          "id": "map-sign",
+          "name": "Map Sign",
+          "type": "text",
+          "parentId": null,
+          "transform": { "position": [300, 170, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          "visible": true,
+          "locked": false,
+          "tags": ["hud"],
+          "components": [],
+          "data": { "text": "Route 01 - Tall grass has wild monsters", "fontSize": 20, "fontFamily": "monospace", "color": "#173517", "depth": 70 }
+        }
+      ]
+    }
+  ],
+  "assets": { "root": "assets", "folders": [], "entries": [] },
+  "editor": { "mode": "2d" },
+  "game": {
+    "templateId": null,
+    "source": {
+      "notes": "Pokemon-like vertical slice fully executed by scene runtime script in PhaserRuntimeMount."
+    }
+  }
+}

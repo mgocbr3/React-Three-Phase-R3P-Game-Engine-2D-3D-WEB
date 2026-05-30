@@ -600,6 +600,16 @@ export function PhaserRuntimeMount({
               const initIsPlaying = useRuntimeGameStore.getState().isPlaying;
               if (this.input?.keyboard) {
                 this.input.keyboard.enabled = initIsPlaying;
+                // Keep plugin + manager in lockstep. Some Phaser paths can
+                // leave manager disabled after mode toggles, which makes
+                // addKey(...).isDown never update even with keyboard.enabled=true.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const kbManager = (this.input.keyboard as any).manager;
+                if (kbManager && typeof kbManager === 'object' && 'enabled' in kbManager) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (kbManager as any).enabled = initIsPlaying;
+                }
+                try { this.input.keyboard.resetKeys(); } catch { /* depends on Phaser version */ }
                 try {
                   if (!initIsPlaying) this.input.keyboard.clearCaptures();
                 } catch { /* depends on Phaser version */ }
@@ -1410,6 +1420,13 @@ export function PhaserRuntimeMount({
           }
           if (sceneRef?.input?.keyboard) {
             sceneRef.input.keyboard.enabled = playing;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const kbManager = (sceneRef.input.keyboard as any).manager;
+            if (kbManager && typeof kbManager === 'object' && 'enabled' in kbManager) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (kbManager as any).enabled = playing;
+            }
+            try { sceneRef.input.keyboard.resetKeys(); } catch { /* depends on Phaser version */ }
             try {
               if (!playing) sceneRef.input.keyboard.clearCaptures();
             } catch { /* depends on Phaser version */ }
@@ -1629,6 +1646,13 @@ export function PhaserRuntimeMount({
       const kb = scene.input?.keyboard;
       if (kb) {
         kb.enabled = !!isPlaying;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const kbManager = (kb as any).manager;
+        if (kbManager && typeof kbManager === 'object' && 'enabled' in kbManager) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (kbManager as any).enabled = !!isPlaying;
+        }
+        try { kb.resetKeys(); } catch { /* noop */ }
         // Release the captured keys so the browser (and React) get them.
         if (isPlaying) {
           // Re-capture the game keys in play mode so the script can use
@@ -1636,7 +1660,9 @@ export function PhaserRuntimeMount({
           try {
             kb.addCapture([
               'UP', 'DOWN', 'LEFT', 'RIGHT',
-              'W', 'A', 'S', 'D', 'SPACE',
+              'W', 'A', 'S', 'D', 'E',
+              'ONE', 'TWO', 'THREE', 'FOUR',
+              'SPACE',
             ]);
           } catch { /* depending on Phaser ver, may not exist */ }
         } else {

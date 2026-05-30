@@ -69,6 +69,20 @@ const SAMPLE_PROJECTS: Record<string, SampleProjectMeta> = {
     accent: 'cyan',
     hidden: true,
   },
+  'pokemon-vertical-slice-2d': {
+    projectUrl: '/sample-projects/pokemon-vertical-slice-2d/project.pixlproject.json',
+    displayName: 'Pokemon Vertical Slice 2D',
+    description: 'Mapa explorável, encontros aleatórios, 4 pokémons no time e batalhas por turno',
+    kind: '2d',
+    accent: 'blue',
+  },
+  'subway-vertical-slice-3d': {
+    projectUrl: '/sample-projects/subway-vertical-slice-3d/project.pixlproject.json',
+    displayName: 'Runner Vertical Slice 3D',
+    description: 'Corrida em 3 pistas com lane-switch, pulo, colisão, moedas e game over',
+    kind: '3d',
+    accent: 'orange',
+  },
   'where-angels-die': {
     projectUrl: '/sample-projects/where-angels-die/project.pixlproject.json',
     assetBaseUrl: import.meta.env.DEV && REPO_FS_ROOT ? `/@fs/${REPO_FS_ROOT}/doc/Three/WAD/` : undefined,

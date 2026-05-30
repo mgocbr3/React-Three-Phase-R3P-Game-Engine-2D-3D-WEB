@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore, TransformMode, ObjectType } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
+import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useTerrainStore } from '@/stores/terrainStore';
@@ -89,6 +90,7 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
     canUndo,
     canRedo,
   } = useEditorStore();
+  const isPlaying = useRuntimeGameStore((s) => s.isPlaying);
 
   const { setModalOpen: setTerrainModalOpen } = useTerrainStore();
   const { viewportMode, setViewportMode, lockedKind } = useViewportStore();
@@ -110,6 +112,8 @@ export const EditorToolbar = ({ variant = 'floating', className, disabled = fals
   // Keyboard shortcuts for undo/redo and transform tools
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+        // In Play Mode, runtime input owns keyboard (WASD/arrows/etc.).
+        if (isPlaying) return;
       if (editorLocked) return;
       if (isEditableShortcutTarget(e.target)) return;
       

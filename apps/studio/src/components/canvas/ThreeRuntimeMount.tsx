@@ -12,6 +12,7 @@ import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 import { useOrbitControls } from './useOrbitControls';
+import { useNativeFlyCamera } from './useNativeFlyCamera';
 import {
   getPixlObjectIdFromThreeObject,
   hasThreeObjectTransformChanged,
@@ -41,9 +42,17 @@ const DEFAULT_BASE_URL = '/sample-projects/harvest-rush-3d';
 const DEFAULT_SCENE: string | undefined = undefined; // let project.activeSceneId pick
 const HELPER_USER_DATA = { pixlEditorHelper: true };
 type SceneAxisView = 'x' | 'y' | 'z' | 'free';
+type ThreeTransformShortcutMode = 'translate' | 'rotate' | 'scale';
 type SceneAxisPose = { position: [number, number, number]; up: [number, number, number] };
 type SceneViewShortcutInput = Pick<KeyboardEvent, 'code' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey'>;
-type ThreeEditorPlacementApi = { getAddObjectPosition: () => [number, number, number] | undefined };
+type ThreeEditorPlacementApi = {
+  getAddObjectPosition: () => [number, number, number] | undefined;
+  getCameraPose: () => {
+    position: [number, number, number];
+    target: [number, number, number] | null;
+    quaternion: [number, number, number, number];
+  } | null;
+};
 type ThreeCameraTarget = { x: number; y: number; z: number };
 type ThreeNativeRenderSettings = Pick<
   EngineSettings,
@@ -62,27 +71,11 @@ type ThreeNativeRenderSettings = Pick<
   | 'maxDpr'
 >;
 
-const sceneViewShortcuts: Record<string, SceneAxisView> = {
-  Digit1: 'z',
-  Digit3: 'x',
-  Digit5: 'free',
-  Digit7: 'y',
-  Numpad1: 'z',
-  Numpad3: 'x',
-  Numpad5: 'free',
-  Numpad7: 'y',
-};
 const sceneAxisLabels: Record<SceneAxisView, string> = {
   x: 'Right View',
   y: 'Top View',
   z: 'Front View',
   free: 'Free View',
-};
-const sceneAxisShortcutLabels: Record<SceneAxisView, string> = {
-  x: '3 / Numpad 3',
-  y: '7 / Numpad 7',
-  z: '1 / Numpad 1',
-  free: '5 / Numpad 5',
 };
 
 const isEditableSceneShortcutTarget = (target: EventTarget | null) => {
@@ -97,8 +90,18 @@ const isEditableSceneShortcutTarget = (target: EventTarget | null) => {
 };
 
 export const getThreeSceneViewShortcut = (event: Partial<SceneViewShortcutInput>): SceneAxisView | null => (
-  event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ? null : sceneViewShortcuts[event.code ?? ''] ?? null
+  (void event, null)
 );
+
+export const getThreeTransformShortcutMode = (
+  event: Partial<Pick<KeyboardEvent, 'code' | 'altKey' | 'ctrlKey' | 'metaKey'>>,
+): ThreeTransformShortcutMode | null => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return null;
+  if (event.code === 'KeyR') return 'rotate';
+  if (event.code === 'KeyS') return 'scale';
+  if (event.code === 'KeyT' || event.code === 'KeyP') return 'translate';
+  return null;
+};
 
 const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => {
   const material = (object as THREE.LineSegments).material as THREE.Material | THREE.Material[] | undefined;
@@ -129,36 +132,21 @@ export const createThreeNativePostProcessingOptions = (
   settings: ThreeNativeRenderSettings,
   enabled = true,
 ): RendererPostProcessingOptions => {
-  if (!enabled) {
-    return {
-      enabled: false,
-      toneMapping: 'none',
-      toneMappingExposure: 1,
-      bloom: false,
-      bloomIntensity: 0,
-      bloomThreshold: 1,
-      bloomRadius: 0,
-      colorGrading: false,
-      brightness: 0,
-      contrast: 0,
-      saturation: 0,
-      hue: 0,
-    };
-  }
-
+  void settings;
+  void enabled;
   return {
-    enabled,
-    toneMapping: settings.toneMapping,
-    toneMappingExposure: num(settings.toneMappingExposure, 1.0),
-    bloom: settings.bloom,
-    bloomIntensity: clampNumber(num(settings.bloomIntensity, 0.18), 0, 0.25),
-    bloomThreshold: clampNumber(num(settings.bloomThreshold, 0.9), 0.88, 1),
-    bloomRadius: clampNumber(num(settings.bloomRadius, 0.24), 0, 0.35),
-    colorGrading: true,
-    brightness: settings.colorGrading ? num(settings.brightness, 0) : 0,
-    contrast: settings.colorGrading ? num(settings.contrast, 0.04) : 0.04,
-    saturation: settings.colorGrading ? num(settings.saturation, 0.02) : 0.02,
-    hue: settings.colorGrading ? num(settings.hue, 0) : 0,
+    enabled: false,
+    toneMapping: 'none',
+    toneMappingExposure: 1,
+    bloom: false,
+    bloomIntensity: 0,
+    bloomThreshold: 1,
+    bloomRadius: 0,
+    colorGrading: false,
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    hue: 0,
   };
 };
 
@@ -183,9 +171,114 @@ const fetchPixlProject = async (baseUrl: string): Promise<unknown> => {
   return response.json();
 };
 
+type ThreeRuntimeScriptTick = (ctx: { deltaTimeInSec: number; time: number }) => void;
+
+type ThreeRuntimeScriptSetupContext = {
+  game: Game;
+  scene: NonNullable<Game['scene']>;
+  THREE: typeof THREE;
+  project: unknown;
+  activeScene: Record<string, unknown>;
+  canvas: HTMLCanvasElement;
+  mount: HTMLElement | null;
+  getObject3DById: (id: string) => THREE.Object3D | null;
+};
+
+const installThreeRuntimeScript = async ({
+  game,
+  project,
+  activeScene,
+  assetBaseUrl,
+  canvas,
+  setTick,
+}: {
+  game: Game;
+  project: unknown;
+  activeScene: Record<string, unknown>;
+  assetBaseUrl: string;
+  canvas: HTMLCanvasElement;
+  setTick: (tick: ThreeRuntimeScriptTick | null, dispose?: (() => void) | null) => void;
+}): Promise<void> => {
+  const scriptPath = activeScene.runtimeScript;
+  if (typeof scriptPath !== 'string' || !scriptPath.trim()) {
+    setTick(null, null);
+    return;
+  }
+
+  const sceneRef = game.scene;
+  if (!sceneRef) {
+    setTick(null, null);
+    return;
+  }
+
+  const getObject3DById = (id: string): THREE.Object3D | null => {
+    let found: THREE.Object3D | null = null;
+    sceneRef.threeJSScene.traverse((object) => {
+      if (found) return;
+      const ud = object.userData as { pixlObjectId?: string; pixlId?: string } | undefined;
+      if (ud?.pixlObjectId === id || ud?.pixlId === id) {
+        found = object;
+      }
+    });
+    return found;
+  };
+
+  const fullUrl = `${assetBaseUrl.replace(/\/$/, '')}/${scriptPath}?t=${Date.now()}`;
+  const response = await fetch(fullUrl);
+  if (!response.ok) {
+    throw new Error(`runtimeScript fetch ${response.status} ${response.statusText} for ${fullUrl}`);
+  }
+  const code = await response.text();
+  const blob = new Blob([code], { type: 'application/javascript' });
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    const mod = await import(/* @vite-ignore */ blobUrl) as { default?: unknown; setup?: unknown };
+    const setup = (mod.default ?? mod.setup) as ((ctx: ThreeRuntimeScriptSetupContext) => unknown) | undefined;
+    if (typeof setup !== 'function') {
+      setTick(null, null);
+      return;
+    }
+
+    const ret = setup({
+      game,
+      scene: sceneRef,
+      THREE,
+      project,
+      activeScene,
+      canvas,
+      mount: canvas.parentElement,
+      getObject3DById,
+    });
+
+    if (typeof ret === 'function') {
+      setTick((ctx) => {
+        (ret as (deltaTimeInSec: number, time: number) => void)(ctx.deltaTimeInSec, ctx.time);
+      }, null);
+      return;
+    }
+
+    if (ret && typeof ret === 'object') {
+      const obj = ret as { tick?: unknown; dispose?: unknown };
+      const tick = typeof obj.tick === 'function'
+        ? ((ctx: { deltaTimeInSec: number; time: number }) => {
+          (obj.tick as (deltaTimeInSec: number, time: number) => void)(ctx.deltaTimeInSec, ctx.time);
+        })
+        : null;
+      const dispose = typeof obj.dispose === 'function' ? (obj.dispose as () => void) : null;
+      setTick(tick, dispose);
+      return;
+    }
+
+    setTick(null, null);
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
+};
+
 type EditorObjectSummary = {
   id: string;
   name?: string;
+  type?: string;
 };
 
 export const shouldEnableThreeEditorTools = ({
@@ -254,6 +347,25 @@ export const findThreeObjectForEditorSelection = (
 export const getEditorObjectIdForNativeSelection = (
   object: THREE.Object3D | null,
 ): string | null => getPixlObjectIdFromThreeObject(object);
+
+export const hasEditorObjectId = (
+  storeObjects: EditorObjectSummary[],
+  objectId: string | null,
+): boolean => Boolean(objectId && storeObjects.some((object) => object.id === objectId));
+
+export const isPreferredEditorSelectionObject = (
+  storeObjects: EditorObjectSummary[],
+  object: THREE.Object3D | null,
+): boolean => {
+  const objectId = getPixlObjectIdFromThreeObject(object);
+  const editorObject = storeObjects.find((item) => item.id === objectId);
+  if (!editorObject) return false;
+  const name = editorObject.name?.toLowerCase() ?? '';
+  return editorObject.type !== 'plane'
+    && editorObject.type !== 'terrain'
+    && name !== 'ground'
+    && !name.includes('terrain');
+};
 
 export const getThreeEditorGridConfig = (gridSize: number) => {
   const size = Math.max(16, Math.min(500, Number.isFinite(gridSize) ? gridSize : 100));
@@ -335,12 +447,12 @@ export const createThreeEditorSceneHelpers = ({
 
   if (showGrid) {
     const { size, divisions } = getThreeEditorGridConfig(gridSize);
-    const grid = new THREE.GridHelper(size, divisions, '#c4cad1', '#6f7782');
+    const grid = new THREE.GridHelper(size, divisions, '#8b949e', '#3f4750');
     grid.name = 'Editor Grid';
-    grid.position.y = 0.12;
-    grid.renderOrder = 999;
+    grid.position.y = 0.01;
+    grid.renderOrder = -1;
     grid.userData = { ...HELPER_USER_DATA };
-    styleHelperMaterials(grid, 0.82);
+    styleHelperMaterials(grid, 0.22);
     root.add(grid);
   }
 
@@ -377,7 +489,7 @@ const getFrameForObject = (
   if (!box.isEmpty()) {
     box.getCenter(center);
     const size = box.getSize(new THREE.Vector3()).length();
-    distance = Math.max(distance, size * 1.35, 6);
+    distance = fallbackDistance ?? Math.max(size * 1.15, 1.5);
   } else {
     const elements = object.matrixWorld.elements;
     center.set(elements[12] ?? fallbackPosition[0], elements[13] ?? fallbackPosition[1], elements[14] ?? fallbackPosition[2]);
@@ -425,6 +537,17 @@ export function ThreeRuntimeMount({
     onChange: requestEditorRender,
   });
 
+  useNativeFlyCamera({
+    canvas: canvasEl,
+    camera,
+    orbitControls: orbitControlsInstance,
+    enabled: editorToolsEnabled,
+    speed: 14,
+    fastMultiplier: 2.5,
+    lookSpeed: 0.003,
+    onChange: requestEditorRender,
+  });
+
   // Three scene reference for raycasting; captured from game.scene.threeJSScene
   // when the load resolves.
   const [threeScene, setThreeScene] = useState<THREE.Scene | null>(null);
@@ -442,6 +565,8 @@ export function ThreeRuntimeMount({
     () => getThreeNativePostProcessingEffects(nativePostProcessing),
     [nativePostProcessing],
   );
+  const runtimeScriptTickRef = useRef<ThreeRuntimeScriptTick | null>(null);
+  const runtimeScriptDisposeRef = useRef<(() => void) | null>(null);
 
   // Subscribe directly to the editor store so the toolbar's
   // Move(W)/Rotate(E)/Scale(R) buttons reach the native runtime gizmo. Prior
@@ -485,6 +610,7 @@ export function ThreeRuntimeMount({
   const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
   const focusTarget = useEditorStore((state) => state.focusTarget);
   const [externalSelectedThree, setExternalSelectedThree] = useState<THREE.Object3D | null>(null);
+  const lastFocusFrameTimestampRef = useRef<number | null>(null);
   useEffect(() => {
     setExternalSelectedThree(findThreeObjectForEditorSelection(
       threeScene,
@@ -495,6 +621,8 @@ export function ThreeRuntimeMount({
 
   useEffect(() => {
     if (!focusTarget || !camera || !orbitControlsInstance) return;
+    if (lastFocusFrameTimestampRef.current === focusTarget.timestamp) return;
+    lastFocusFrameTimestampRef.current = focusTarget.timestamp;
 
     const objectToFrame = externalSelectedThree
       ?? findThreeObjectForEditorSelection(
@@ -536,6 +664,19 @@ export function ThreeRuntimeMount({
             : null;
         return getThreeAddObjectPosition(target, camera);
       },
+      getCameraPose: () => {
+        if (!camera) return null;
+        const target = orbitControlsInstance?.target instanceof THREE.Vector3
+          ? orbitControlsInstance.target
+          : orbitTarget
+            ? new THREE.Vector3(orbitTarget.x, orbitTarget.y, orbitTarget.z)
+            : null;
+        return {
+          position: [camera.position.x, camera.position.y, camera.position.z],
+          target: target ? [target.x, target.y, target.z] : null,
+          quaternion: [camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w],
+        };
+      },
     };
     runtime.__pixlThreeEditor = placementApi;
     return () => {
@@ -545,19 +686,48 @@ export function ThreeRuntimeMount({
 
   const commitNativeGizmoTransform = useCallback((object: THREE.Object3D, transform: ThreeObjectTransform) => {
     const objectId = getPixlObjectIdFromThreeObject(object) ?? selectedObjectId;
-    if (!objectId) return;
+    if (!objectId) return false;
     const store = useEditorStore.getState();
     const current = store.objects.find((item) => item.id === objectId);
-    if (!current || !hasThreeObjectTransformChanged(current, transform)) return;
+    if (!current || !hasThreeObjectTransformChanged(current, transform)) return false;
     store.updateObject(objectId, transform);
-    store.saveToHistory();
+    return true;
   }, [selectedObjectId]);
 
+  const syncNativeGizmoTransform = useCallback((object: THREE.Object3D, transform: ThreeObjectTransform) => {
+    commitNativeGizmoTransform(object, transform);
+  }, [commitNativeGizmoTransform]);
+
+  const persistNativeGizmoTransform = useCallback((object: THREE.Object3D, transform: ThreeObjectTransform) => {
+    if (!commitNativeGizmoTransform(object, transform)) return;
+    useEditorStore.getState().saveToHistory();
+  }, [commitNativeGizmoTransform]);
+
   const handleNativeSelectionChange = useCallback((object: THREE.Object3D | null) => {
-    const objectId = getEditorObjectIdForNativeSelection(object);
+    const nextObjectId = getEditorObjectIdForNativeSelection(object);
+    if (!nextObjectId) return;
     const store = useEditorStore.getState();
-    if (store.selectedObjectId !== objectId) store.selectObject(objectId);
+    if (!hasEditorObjectId(store.objects, nextObjectId)) return;
+    if (store.selectedObjectId !== nextObjectId) store.selectObject(nextObjectId);
   }, []);
+
+  const handleNativeSelectionFocus = useCallback((object: THREE.Object3D) => {
+    const objectId = getEditorObjectIdForNativeSelection(object);
+    if (!objectId) return;
+    const store = useEditorStore.getState();
+    if (!hasEditorObjectId(store.objects, objectId)) return;
+    if (store.selectedObjectId !== objectId) store.selectObject(objectId);
+    store.focusOnObject(objectId);
+  }, []);
+
+  const resolveNativeGameObjectSelection = useCallback((object: THREE.Object3D): THREE.Object3D | null => {
+    const gameObject = gameRef.current?.scene?.getGameObjectWithThreeJSObject(object);
+    return gameObject?.threeJSGroup ?? null;
+  }, []);
+
+  const isPreferredNativeSelection = useCallback((object: THREE.Object3D): boolean => (
+    isPreferredEditorSelectionObject(useEditorStore.getState().objects, object)
+  ), []);
 
   const handleSceneAxisView = useCallback((axis: SceneAxisView) => {
     if (!camera) return;
@@ -578,14 +748,30 @@ export function ThreeRuntimeMount({
   useEffect(() => {
     if (!editorToolsEnabled) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      const axis = getThreeSceneViewShortcut(event);
-      if (!axis || isEditableSceneShortcutTarget(event.target)) return;
-      event.preventDefault();
-      handleSceneAxisView(axis);
+      if (isEditableSceneShortcutTarget(event.target)) return;
+
+      // Mirror three-game-engine scene_editor/MainArea keymap.
+      // T/P => translate, R => rotate, S => scale.
+      const transformMode = getThreeTransformShortcutMode(event);
+      if (transformMode) {
+        useEditorStore.getState().setTransformMode(transformMode);
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === 'Delete') {
+        const store = useEditorStore.getState();
+        if (store.selectedObjectId) {
+          store.deleteObject(store.selectedObjectId);
+          event.preventDefault();
+          return;
+        }
+      }
+
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editorToolsEnabled, handleSceneAxisView]);
+  }, [editorToolsEnabled]);
 
   useSelectionGizmo({
     canvas: canvasEl,
@@ -596,8 +782,12 @@ export function ThreeRuntimeMount({
     space: transformSpace,
     enabled: editorToolsEnabled,
     externalSelected: externalSelectedThree,
+    resolveSelectionFromObject: resolveNativeGameObjectSelection,
+    isPreferredSelectionObject: isPreferredNativeSelection,
     onSelectionChange: handleNativeSelectionChange,
-    onTransformCommit: commitNativeGizmoTransform,
+    onSelectionFocus: handleNativeSelectionFocus,
+    onTransformChange: syncNativeGizmoTransform,
+    onTransformCommit: persistNativeGizmoTransform,
     onChange: requestEditorRender,
     snapSettings: { snapEnabled, snapTranslate, snapRotate, snapScale },
   });
@@ -667,6 +857,10 @@ export function ThreeRuntimeMount({
         shadows: initialRenderSettings.shadows,
         shadowMapType: initialRenderSettings.shadowMapType,
         postProcessing: createThreeNativePostProcessingOptions(initialRenderSettings, false),
+        beforeRender: ({ deltaTimeInSec, time }) => {
+          if (!useRuntimeGameStore.getState().isPlaying) return;
+          runtimeScriptTickRef.current?.({ deltaTimeInSec, time });
+        },
       },
     });
     gameRef.current = game;
@@ -690,6 +884,42 @@ export function ThreeRuntimeMount({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await game.loadFromPixlProject(project as any, initialScene);
         if (disposed) return;
+        const scenes = (project as { scenes?: unknown[]; activeSceneId?: string }).scenes;
+        const activeSceneId = (project as { activeSceneId?: string }).activeSceneId;
+        const activeScene = Array.isArray(scenes)
+          ? (scenes.find((scene) => (
+            scene
+            && typeof scene === 'object'
+            && (scene as { id?: string }).id === activeSceneId
+          )) ?? scenes[0])
+          : null;
+        const is3DScene = !!(
+          activeScene
+          && typeof activeScene === 'object'
+          && (activeScene as { kind?: unknown }).kind === '3d'
+        );
+
+        if (is3DScene && activeScene && typeof activeScene === 'object') {
+          try {
+            await installThreeRuntimeScript({
+              game,
+              project,
+              activeScene: activeScene as Record<string, unknown>,
+              assetBaseUrl,
+              canvas,
+              setTick: (tick, disposeFn) => {
+                runtimeScriptTickRef.current = tick;
+                runtimeScriptDisposeRef.current?.();
+                runtimeScriptDisposeRef.current = disposeFn ?? null;
+              },
+            });
+          } catch (error) {
+            console.error('[ThreeRuntimeMount] runtimeScript load failed:', error);
+            runtimeScriptTickRef.current = null;
+            runtimeScriptDisposeRef.current?.();
+            runtimeScriptDisposeRef.current = null;
+          }
+        }
         // Activate OrbitControls now that the renderer has a camera.
         setCamera(game.renderer.threeJSCamera);
         setThreeScene(game.scene?.threeJSScene ?? null);
@@ -712,6 +942,9 @@ export function ThreeRuntimeMount({
     return () => {
       disposed = true;
       try {
+        runtimeScriptDisposeRef.current?.();
+        runtimeScriptDisposeRef.current = null;
+        runtimeScriptTickRef.current = null;
         gameRef.current?.dispose();
         gameRef.current = null;
       } catch {
@@ -736,7 +969,9 @@ export function ThreeRuntimeMount({
         position: 'relative',
       }}
     >
-      {editorToolsEnabled && showAxes && <SceneAxesWidget activeView={sceneAxisView} onSnap={handleSceneAxisView} />}
+      {editorToolsEnabled && showAxes && (
+        <SceneOrientationGizmo camera={camera} activeView={sceneAxisView} onSnap={handleSceneAxisView} />
+      )}
       <canvas
         ref={(node) => {
           canvasRef.current = node;
@@ -770,44 +1005,176 @@ export function ThreeRuntimeMount({
   );
 }
 
-const SceneAxesWidget = ({ activeView, onSnap }: { activeView: SceneAxisView; onSnap: (axis: SceneAxisView) => void }) => (
-  <div data-scene-axis-view={activeView} className="pointer-events-none absolute right-3 top-3 z-10 h-20 w-20 text-[10px] font-bold text-[#c9c9c9]">
-    <div className="absolute left-1/2 top-1/2 h-px w-9 origin-left bg-[#d94b4b]" style={{ transform: 'rotate(-18deg)' }} />
-    <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#55b96a]" style={{ transform: 'rotate(-96deg)' }} />
-    <div className="absolute left-1/2 top-1/2 h-px w-8 origin-left bg-[#5c8fe8]" style={{ transform: 'rotate(42deg)' }} />
-    <AxisSnapButton axis="x" label="X" active={activeView === 'x'} className="right-0 top-[24px] text-[#d94b4b]" onSnap={onSnap} />
-    <AxisSnapButton axis="y" label="Y" active={activeView === 'y'} className="left-[31px] top-0 text-[#55b96a]" onSnap={onSnap} />
-    <AxisSnapButton axis="z" label="Z" active={activeView === 'z'} className="right-2 bottom-1 text-[#5c8fe8]" onSnap={onSnap} />
-    <button
-      type="button"
-      title={`${sceneAxisLabels.free} (${sceneAxisShortcutLabels.free})`}
-      aria-label={sceneAxisLabels.free}
-      onClick={() => onSnap('free')}
-      className={`pointer-events-auto absolute left-[33px] top-[33px] h-3 w-3 border bg-[#1f1f1f] transition-colors hover:border-[#dddddd] ${activeView === 'free' ? 'border-[#e0e0e0]' : 'border-[#a8a8a8]'}`}
-    />
-  </div>
-);
+const ORIENTATION_GIZMO_SIZE = 96;
+const ORIENTATION_AXIS_COLORS: Record<Exclude<SceneAxisView, 'free'>, string> = {
+  x: '#d94b4b',
+  y: '#55b96a',
+  z: '#5c8fe8',
+};
+const ORIENTATION_AXIS_VECTORS: Record<Exclude<SceneAxisView, 'free'>, THREE.Vector3> = {
+  x: new THREE.Vector3(1, 0, 0),
+  y: new THREE.Vector3(0, 1, 0),
+  z: new THREE.Vector3(0, 0, 1),
+};
 
-const AxisSnapButton = ({
-  axis,
-  label,
-  active,
-  className,
+const SceneOrientationGizmo = ({
+  camera,
+  activeView,
   onSnap,
 }: {
+  camera: THREE.PerspectiveCamera | null;
+  activeView: SceneAxisView;
+  onSnap: (axis: SceneAxisView) => void;
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const labelRefs = useRef<Record<'x' | 'y' | 'z', HTMLButtonElement | null>>({ x: null, y: null, z: null });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !camera) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(ORIENTATION_GIZMO_SIZE, ORIENTATION_GIZMO_SIZE, false);
+    renderer.setClearColor(0x000000, 0);
+
+    const gizmoScene = new THREE.Scene();
+    const gizmoCamera = new THREE.OrthographicCamera(-1.25, 1.25, 1.25, -1.25, 0.01, 10);
+    gizmoCamera.position.set(0, 0, 4);
+    gizmoCamera.lookAt(0, 0, 0);
+
+    const root = new THREE.Group();
+    gizmoScene.add(root);
+
+    const endpoints: THREE.Mesh[] = [];
+    const endpointGeometry = new THREE.SphereGeometry(0.075, 24, 12);
+    const center = new THREE.Mesh(
+      new THREE.SphereGeometry(0.07, 24, 12),
+      new THREE.MeshBasicMaterial({ color: '#f2f2f2' }),
+    );
+    root.add(center);
+
+    (['x', 'y', 'z'] as const).forEach((axis) => {
+      const vector = ORIENTATION_AXIS_VECTORS[axis];
+      const color = ORIENTATION_AXIS_COLORS[axis];
+      const material = new THREE.LineBasicMaterial({ color, linewidth: 2 });
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        vector.clone().multiplyScalar(0.78),
+      ]);
+      const line = new THREE.Line(lineGeometry, material);
+      root.add(line);
+
+      const endpoint = new THREE.Mesh(endpointGeometry, new THREE.MeshBasicMaterial({ color }));
+      endpoint.position.copy(vector).multiplyScalar(0.92);
+      endpoint.userData.axis = axis;
+      root.add(endpoint);
+      endpoints.push(endpoint);
+    });
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const labelWorldPosition = new THREE.Vector3();
+    const labelScreenPosition = new THREE.Vector3();
+    let frame = 0;
+
+    const updateLabels = () => {
+      (['x', 'y', 'z'] as const).forEach((axis) => {
+        const label = labelRefs.current[axis];
+        if (!label) return;
+        labelWorldPosition.copy(ORIENTATION_AXIS_VECTORS[axis]).multiplyScalar(1.08).applyQuaternion(root.quaternion);
+        labelScreenPosition.copy(labelWorldPosition).project(gizmoCamera);
+        const x = ((labelScreenPosition.x + 1) / 2) * ORIENTATION_GIZMO_SIZE;
+        const y = ((-labelScreenPosition.y + 1) / 2) * ORIENTATION_GIZMO_SIZE;
+        label.style.transform = `translate(${x - 10}px, ${y - 10}px)`;
+      });
+    };
+
+    const render = () => {
+      root.quaternion.copy(camera.quaternion).invert();
+      updateLabels();
+      renderer.render(gizmoScene, gizmoCamera);
+      frame = window.requestAnimationFrame(render);
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, gizmoCamera);
+      const hit = raycaster.intersectObjects(endpoints, false)[0];
+      const axis = hit?.object.userData.axis;
+      if (axis === 'x' || axis === 'y' || axis === 'z') {
+        event.preventDefault();
+        event.stopPropagation();
+        onSnap(axis);
+      }
+    };
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    render();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      endpointGeometry.dispose();
+      root.traverse((object) => {
+        const mesh = object as THREE.Mesh | THREE.Line;
+        const geometry = (mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+        const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+        geometry?.dispose?.();
+        if (Array.isArray(material)) material.forEach((item) => item.dispose());
+        else material?.dispose?.();
+      });
+      renderer.dispose();
+    };
+  }, [camera, onSnap]);
+
+  return (
+    <div
+      data-scene-axis-view={activeView}
+      className="absolute bottom-3 right-3 z-10 h-24 w-24"
+    >
+      <canvas ref={canvasRef} width={ORIENTATION_GIZMO_SIZE} height={ORIENTATION_GIZMO_SIZE} className="absolute inset-0 h-full w-full" />
+      {(['x', 'y', 'z'] as const).map((axis) => (
+        <AxisSnapButton
+          key={axis}
+          ref={(node) => { labelRefs.current[axis] = node; }}
+          axis={axis}
+          label={axis.toUpperCase()}
+          active={activeView === axis}
+          style={{ color: ORIENTATION_AXIS_COLORS[axis] }}
+          onSnap={onSnap}
+        />
+      ))}
+    <button
+      type="button"
+      title={sceneAxisLabels.free}
+      aria-label={sceneAxisLabels.free}
+      onClick={() => onSnap('free')}
+        className={`absolute left-[42px] top-[42px] h-3 w-3 rounded-full border bg-[#f2f2f2]/90 shadow-[0_1px_4px_rgba(0,0,0,0.45)] transition-colors hover:border-[#ffffff] ${activeView === 'free' ? 'border-[#ffffff]' : 'border-[#777777]'}`}
+    />
+  </div>
+  );
+};
+
+const AxisSnapButton = React.forwardRef<HTMLButtonElement, {
   axis: SceneAxisView;
   label: string;
   active: boolean;
-  className: string;
+  style?: React.CSSProperties;
   onSnap: (axis: SceneAxisView) => void;
-}) => (
+}>(({ axis, label, active, style, onSnap }, ref) => (
   <button
+    ref={ref}
     type="button"
-    title={`${sceneAxisLabels[axis]} (${sceneAxisShortcutLabels[axis]})`}
+    title={sceneAxisLabels[axis]}
     aria-label={sceneAxisLabels[axis]}
     onClick={() => onSnap(axis)}
-    className={`pointer-events-auto absolute flex h-5 w-5 items-center justify-center transition-colors hover:text-foreground ${active ? 'drop-shadow-[0_0_4px_currentColor]' : ''} ${className}`}
+    style={style}
+    className={`absolute left-0 top-0 flex h-5 w-5 items-center justify-center text-[10px] font-bold [text-shadow:0_1px_3px_rgba(0,0,0,0.9)] transition-transform hover:scale-110 ${active ? 'drop-shadow-[0_0_4px_currentColor]' : ''}`}
   >
     {label}
   </button>
-);
+));
+AxisSnapButton.displayName = 'AxisSnapButton';
