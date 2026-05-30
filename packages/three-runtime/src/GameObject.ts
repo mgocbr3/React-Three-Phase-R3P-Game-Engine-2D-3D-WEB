@@ -14,6 +14,7 @@ import ModelComponent from './components/ModelComponent.js';
 import PrimitiveComponent from './components/PrimitiveComponent.js';
 import RigidBodyComponent from './components/RigidBodyComponent.js';
 import SoundComponent from './components/SoundComponent.js';
+import UserInterfaceComponent from './components/UserInterfaceComponent.js';
 import type Scene from './Scene.js';
 import type { GameObjectOptions } from './types.js';
 import Util from './Util.js';
@@ -43,6 +44,7 @@ class GameObject {
     light: LightComponent,
     sound: SoundComponent,
     primitive: PrimitiveComponent,
+    userInterface: UserInterfaceComponent,
   };
 
   static registerClassForComponentType(type: string, klass: ComponentClass): void {

@@ -11,6 +11,7 @@ import JSONAsset from './assets/JSONAsset.js';
 import InputManager from './input/InputManager.js';
 import Renderer from './Renderer.js';
 import Scene from './Scene.js';
+import type GameObject from './GameObject.js';
 import type { GameJSON, GameOptions, RendererPostProcessingOptions, SceneJSON } from './types.js';
 import {
   pixlProjectToWesGame,
@@ -26,6 +27,8 @@ class Game {
   scene: Scene | null;
   assetStore: AssetStore;
   loadingScene: boolean;
+  gameObjectTypes: Record<string, JSONAsset<Record<string, unknown>>>;
+  gameObjectClasses: Record<string, new (...args: never[]) => GameObject>;
 
   private readonly assetSourceInput: AssetSourceInput;
 
@@ -38,6 +41,8 @@ class Game {
     this.inputManager = null;
     this.loadingScene = false;
     this.assetStore = new AssetStore(source, gameOptions.assetOptions);
+    this.gameObjectTypes = {};
+    this.gameObjectClasses = {};
   }
 
   async _init(): Promise<void> {
@@ -50,6 +55,16 @@ class Game {
       throw new Error('Game: game.json must be a JSONAsset');
     }
     this.gameJSONAsset = gameJsonAsset as JSONAsset<GameJSON>;
+
+    const gameObjectTypes = this.gameJSONAsset?.data?.gameObjectTypes ?? {};
+    for (const gameObjectType of Object.keys(gameObjectTypes)) {
+      const assetPath = gameObjectTypes[gameObjectType];
+      if (!assetPath) continue;
+      const asset = await this.assetStore.load(assetPath);
+      if (asset instanceof JSONAsset) {
+        this.gameObjectTypes[gameObjectType] = asset as JSONAsset<Record<string, unknown>>;
+      }
+    }
 
     this.renderer = new Renderer(this, this.gameOptions.rendererOptions);
     this.inputManager = new InputManager(this.renderer.getCanvas(), this.gameOptions.inputOptions);
@@ -121,6 +136,20 @@ class Game {
     this.assetStore.unloadAll();
     this.renderer?.dispose();
     this.initialized = false;
+  }
+
+  registerGameObjectClasses(types: Record<string, new (...args: never[]) => GameObject>): void {
+    for (const type of Object.keys(types)) {
+      this.gameObjectClasses[type] = types[type];
+    }
+  }
+
+  getGameObjectTypeJSON(type: string): JSONAsset<Record<string, unknown>> | null {
+    return this.gameObjectTypes[type] ?? null;
+  }
+
+  getGameObjectClass(type: string): (new (...args: never[]) => GameObject) | null {
+    return this.gameObjectClasses[type] ?? null;
   }
 
   isPlaying(): boolean {

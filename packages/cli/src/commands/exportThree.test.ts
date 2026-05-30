@@ -87,12 +87,13 @@ describe('exportProjectToThree (pure)', () => {
     expect(result.mainJsSource).toContain("addEventListener('resize'");
   });
 
-  it('exports with the native Three clean filmic post-processing profile enabled', () => {
+  it('exports native Three games without forced post-processing', () => {
     const project = buildMinimalProject();
     const result = exportProjectToThree(project);
-    expect(result.mainJsSource).toContain('postProcessing');
-    expect(result.mainJsSource).toContain('toneMapping: "aces"');
-    expect(result.mainJsSource).toContain('bloom: true');
+    expect(result.mainJsSource).toContain('const rendererOptions = {};');
+    expect(result.mainJsSource).not.toContain('toneMapping: "aces"');
+    expect(result.mainJsSource).not.toContain('bloom: true');
+    expect(result.mainJsSource).not.toContain('colorGrading: true');
     expect(result.mainJsSource).not.toContain('chromaticAberration');
     expect(result.mainJsSource).not.toContain('noise: true');
     expect(result.mainJsSource).not.toContain('vignette: true');

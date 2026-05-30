@@ -7,5 +7,10 @@ describe('@pixlland/three-runtime public API', () => {
     expect(runtime.PrimitiveComponent).toBeTypeOf('function');
     expect(runtime.GltfNodeComponent).toBeTypeOf('function');
     expect(runtime.AnimationComponent).toBeTypeOf('function');
+    expect(runtime.UserInterfaceComponent).toBeTypeOf('function');
+    expect(runtime.Settings).toBeTypeOf('function');
+    expect(runtime.VRMode).toBeTypeOf('function');
+    expect(runtime.THREE).toBeTypeOf('object');
+    expect(runtime.RAPIER).toBeTypeOf('object');
   });
 });

@@ -284,7 +284,11 @@ const synthesizeGltfNodeComponents = (
   ];
 };
 
-const buildGameObjectJSON = (object: PixlSceneObject, children: PixlSceneObject[]): GameObjectJSON => {
+const buildGameObjectJSON = (
+  object: PixlSceneObject,
+  children: PixlSceneObject[],
+  sceneObjects: PixlSceneObject[],
+): GameObjectJSON => {
   const rawMapped = (object.components ?? [])
     .map(mapComponent)
     .filter((c): c is ComponentJSON => c !== null);
@@ -308,14 +312,16 @@ const buildGameObjectJSON = (object: PixlSceneObject, children: PixlSceneObject[
       pixlVisible: object.visible !== false,
     },
     components,
-    children: children.map((child) => buildGameObjectJSON(child, getChildren(child.id, allSceneObjects))),
+    children: children.map((child) => buildGameObjectJSON(
+      child,
+      getChildren(child.id, sceneObjects),
+      sceneObjects,
+    )),
   };
 };
 
 // Tree reconstruction from a flat list with parentId. The flat list is the
 // shape the editor store keeps; the tree shape is what Wes' SceneJSON wants.
-
-let allSceneObjects: PixlSceneObject[] = [];
 
 const flattenPixlSceneObjects = (
   objects: PixlSceneObject[],
@@ -384,10 +390,10 @@ const synthesizeEnvironmentLights = (
 };
 
 export const pixlSceneToWesScene = (scene: PixlSceneDocument): SceneJSON => {
-  allSceneObjects = flattenPixlSceneObjects(scene.rootObjects);
-  const roots = getRoots(allSceneObjects);
+  const sceneObjects = flattenPixlSceneObjects(scene.rootObjects);
+  const roots = getRoots(sceneObjects);
   const gameObjects = roots.map((root) => (
-    buildGameObjectJSON(root, getChildren(root.id, allSceneObjects))
+    buildGameObjectJSON(root, getChildren(root.id, sceneObjects), sceneObjects)
   ));
 
   return {

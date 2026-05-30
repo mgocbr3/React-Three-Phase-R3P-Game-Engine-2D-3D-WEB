@@ -7,6 +7,8 @@ export { default as GameObject } from './GameObject.js';
 export { default as Renderer } from './Renderer.js';
 export { default as Logger } from './Logger.js';
 export { default as Util } from './Util.js';
+export { default as Settings } from './Settings.js';
+export { default as VRMode } from './VR/VRMode.js';
 
 export { default as Component } from './Component.js';
 export type { ComponentJSON, ComponentTickContext } from './Component.js';
@@ -22,6 +24,7 @@ export { default as JSONAsset } from './assets/JSONAsset.js';
 export { default as GLTFAsset } from './assets/GLTFAsset.js';
 export { default as SoundAsset } from './assets/SoundAsset.js';
 export { default as TextureAsset } from './assets/TextureAsset.js';
+export { default as CubeTextureAsset } from './assets/CubeTextureAsset.js';
 
 export { default as ModelComponent } from './components/ModelComponent.js';
 export type { ModelComponentJSON } from './components/ModelComponent.js';
@@ -31,6 +34,7 @@ export { default as LightComponent } from './components/LightComponent.js';
 export type { LightComponentJSON } from './components/LightComponent.js';
 export { default as SoundComponent } from './components/SoundComponent.js';
 export type { SoundComponentJSON } from './components/SoundComponent.js';
+export { default as UserInterfaceComponent } from './components/UserInterfaceComponent.js';
 export { default as RigidBodyComponent } from './components/RigidBodyComponent.js';
 export type { RigidBodyComponentJSON, ColliderData } from './components/RigidBodyComponent.js';
 export { default as PrimitiveComponent } from './components/PrimitiveComponent.js';
@@ -47,6 +51,16 @@ export { default as CharacterController } from './util/CharacterController.js';
 export { default as KinematicCharacterController } from './util/KinematicCharacterController.js';
 export type { KinematicCharacterControllerOptions } from './util/KinematicCharacterController.js';
 export { default as DynamicCharacterController } from './util/DynamicCharacterController.js';
+export { initRAPIER, createRapierWorld } from './physics/PhysicsHelpers.js';
+export {
+  createUIComponent,
+  updateThreeMeshUI,
+  updateThreeMeshUIIfLoaded,
+  type UserInterfaceJSON,
+} from './ui/UIHelpers.js';
+
+export * as THREE from 'three';
+export { default as RAPIER } from '@dimforge/rapier3d-compat';
 
 export {
   pixlSceneToWesScene,

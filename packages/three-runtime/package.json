@@ -24,7 +24,8 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
     "@pixlland/engine-core": "workspace:*",
-    "three": "0.184.0"
+    "three": "0.184.0",
+    "three-mesh-ui": "5.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.16.5",

@@ -11,6 +11,8 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 import type Game from './Game.js';
+import VRMode from './VR/VRMode.js';
+import { updateThreeMeshUIIfLoaded } from './ui/UIHelpers.js';
 import type {
   RendererOptions,
   RendererPostProcessingOptions,
@@ -80,7 +82,7 @@ export const resolveRendererToneMapping = (toneMapping?: RendererToneMapping) =>
     case 'reinhard': return THREE.ReinhardToneMapping;
     case 'linear': return THREE.LinearToneMapping;
     case 'none': return THREE.NoToneMapping;
-    default: return THREE.ACESFilmicToneMapping;
+    default: return THREE.NoToneMapping;
   }
 };
 
@@ -96,7 +98,10 @@ export const resolveRendererShadowMapType = (shadowMapType?: RendererShadowMapTy
 
 export const shouldUseRendererPostProcessing = (
   options?: RendererPostProcessingOptions,
-): boolean => options?.enabled === true;
+): boolean => {
+  void options;
+  return false;
+};
 
 class Renderer {
   game: Game;
@@ -112,6 +117,7 @@ class Renderer {
   private bloomPass: UnrealBloomPass | null;
   private gradePass: ShaderPass | null;
   private defaultEnvironment: THREE.Texture | null;
+  vrMode: VRMode | null;
 
   constructor(game: Game, options: RendererOptions = {}) {
     this.game = game;
@@ -124,6 +130,7 @@ class Renderer {
     this.bloomPass = null;
     this.gradePass = null;
     this.defaultEnvironment = null;
+    this.vrMode = null;
 
     const rendererOpts: THREE.WebGLRendererParameters = { antialias: true };
     if (options.canvas) {
@@ -166,6 +173,10 @@ class Renderer {
 
     this.threeJSCameraAudioListener = new THREE.AudioListener();
     this.threeJSCamera.add(this.threeJSCameraAudioListener);
+
+    if (options.enableVR) {
+      this.initVR();
+    }
   }
 
   getCanvas(): HTMLCanvasElement {
@@ -223,6 +234,7 @@ class Renderer {
   }
 
   renderStillFrame(): void {
+    updateThreeMeshUIIfLoaded();
     this.renderScene();
   }
 
@@ -243,13 +255,24 @@ class Renderer {
     scene.forEachGameObject((g) => g.beforeRender({ deltaTimeInSec: ctx.deltaTimeInSec }));
 
     this.options.beforeRender?.({ deltaTimeInSec: ctx.deltaTimeInSec, time: ctx.time });
+    updateThreeMeshUIIfLoaded();
     this.renderScene();
+  }
+
+  private initVR(): void {
+    this.vrMode = new VRMode();
+    this.threeJSRenderer.xr.enabled = true;
+
+    this.vrMode.on('SESSION_STARTED', (session) => {
+      this.threeJSRenderer.xr.setSession(session as XRSession)
+        .catch((error) => console.error('Renderer.initVR: setSession failed', error));
+    });
   }
 
   private applyRendererColorSettings(): void {
     const post = this.options.postProcessing;
-    this.threeJSRenderer.toneMapping = resolveRendererToneMapping(post?.toneMapping ?? (post?.enabled ? 'aces' : 'none'));
-    this.threeJSRenderer.toneMappingExposure = asNumber(post?.toneMappingExposure, post?.enabled ? 1.08 : 1);
+    this.threeJSRenderer.toneMapping = resolveRendererToneMapping(post?.toneMapping ?? 'none');
+    this.threeJSRenderer.toneMappingExposure = asNumber(post?.toneMappingExposure, 1);
   }
 
   private disposeComposer(): void {
@@ -325,7 +348,8 @@ class Renderer {
   private renderScene(): void {
     const scene = this.game.scene;
     if (!scene) return;
-    this.applySceneRenderDefaults(scene.threeJSScene);
+    // WesUnwin/three-game-engine renders the scene directly. Keep the native
+    // runtime path visually literal and avoid editor-side post-processing drift.
 
     if (!shouldUseRendererPostProcessing(this.options.postProcessing)) {
       this.threeJSRenderer.render(scene.threeJSScene, this.threeJSCamera);
