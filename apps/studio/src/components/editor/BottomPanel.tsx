@@ -216,7 +216,7 @@ const consoleToneClass: Record<ConsoleMessage['type'], string> = {
 
 const getAssetPreviewStyle = (asset: ProjectAsset) => {
   const text = `${asset.name} ${getAssetFileName(asset)} ${getAssetMetadataLabel(asset)}`.toLowerCase();
-  if (['texture', 'image', 'sprite', 'spritesheet'].includes(asset.type)) return 'from-sky-500/35 via-cyan-300/20 to-slate-950';
+  if (['texture', 'image', 'sprite', 'spritesheet'].includes(asset.type)) return 'from-zinc-500/30 via-zinc-300/15 to-zinc-950';
   if (asset.type === 'audio') return 'from-emerald-500/35 via-lime-300/20 to-slate-950';
   if (asset.type === 'script') return 'from-violet-500/35 via-fuchsia-300/20 to-slate-950';
   if (text.includes('tractor') || text.includes('harvester')) return 'from-amber-500/35 via-lime-300/20 to-stone-950';
@@ -760,7 +760,7 @@ export const BottomPanel = () => {
                     placeholder="Buscar..."
                     value={assetSearch}
                     onChange={(e) => setAssetSearch(e.target.value)}
-                    className="w-full border border-border bg-[var(--editor-panel-sunken)] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full border border-border bg-[var(--editor-panel-sunken)] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
                   />
                 </div>
               </div>
@@ -870,7 +870,7 @@ export const BottomPanel = () => {
                       placeholder="Buscar..."
                       value={assetSearch}
                       onChange={(e) => setAssetSearch(e.target.value)}
-                      className="w-40 border border-border bg-[var(--editor-panel-sunken)] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-40 border border-border bg-[var(--editor-panel-sunken)] pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
                     />
                   </div>
                   <button 
@@ -895,8 +895,8 @@ export const BottomPanel = () => {
               {/* Loading Progress */}
               {loadingAssets.length > 0 && (
                 <div className="px-3 py-2 border-b border-border bg-secondary/30">
-                  {loadingAssets.map(asset => (
-                    <div key={asset.id} className="flex items-center gap-2 text-xs">
+                  {loadingAssets.map((asset, index) => (
+                    <div key={`${asset.id}-${index}`} className="flex items-center gap-2 text-xs">
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
                           <span className="truncate">{asset.name}</span>
@@ -904,7 +904,7 @@ export const BottomPanel = () => {
                         </div>
                         <div className="h-1 bg-muted rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-primary transition-all"
+                            className="h-full bg-[var(--editor-command-highlight)] transition-all"
                             style={{ width: `${asset.progress}%` }}
                           />
                         </div>
@@ -919,10 +919,10 @@ export const BottomPanel = () => {
                 <div className="flex-1 overflow-y-auto p-3">
                   {viewMode === 'grid' ? (
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(116px,132px))] content-start gap-2.5">
-                      {filteredProjectAssets.map((asset) => {
+                      {filteredProjectAssets.map((asset, index) => {
                         return (
                           <div 
-                            key={asset.id}
+                            key={`${asset.id}-${index}`}
                             draggable={!!asset.url}
                             onDragStart={(event) => handleDragStart(event, asset.name, asset.url, asset.type, asset.thumbnail, asset.id, asset.path)}
                             onDragEnd={handleDragEnd}
@@ -946,7 +946,7 @@ export const BottomPanel = () => {
                                   e.stopPropagation();
                                   removeProjectAsset(asset.id);
                                 }}
-                                className="rounded-sm border border-[#3a1515] bg-destructive/90 p-1 text-destructive-foreground shadow-lg"
+                                className="rounded-sm border border-[#3a1515] bg-destructive/90 p-1 text-destructive-foreground"
                                 title="Remover asset"
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -967,10 +967,10 @@ export const BottomPanel = () => {
                           <span>Detalhes</span>
                           <span />
                         </div>
-                        {filteredProjectAssets.map((asset) => {
+                        {filteredProjectAssets.map((asset, index) => {
                           return (
                             <div
-                              key={asset.id}
+                              key={`${asset.id}-${index}`}
                               draggable={!!asset.url}
                               onDragStart={(event) => handleDragStart(event, asset.name, asset.url, asset.type, asset.thumbnail, asset.id, asset.path)}
                               onDragEnd={handleDragEnd}
@@ -1032,7 +1032,7 @@ export const BottomPanel = () => {
             {/* Console Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
               <div className="flex items-center gap-1">
-                <Terminal className="w-3.5 h-3.5 text-primary" />
+                <Terminal className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-xs font-medium">Engine Console</span>
                 {diagnostics && (
                   <span className="ml-1 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
@@ -1050,7 +1050,7 @@ export const BottomPanel = () => {
                     placeholder="Filtrar..."
                     value={consoleSearch}
                     onChange={(event) => setConsoleSearch(event.target.value)}
-                    className="w-32 bg-muted border-0 rounded pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-32 rounded border-0 bg-muted pl-7 pr-2 py-1 text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
                   />
                 </div>
                 <button 

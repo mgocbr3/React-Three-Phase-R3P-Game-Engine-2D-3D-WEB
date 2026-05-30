@@ -205,7 +205,7 @@ export const TimelinePanel = () => {
           key={track.id}
           className={cn(
             "flex border-b border-border",
-            selectedTrackId === track.id && "bg-primary/5"
+            selectedTrackId === track.id && "bg-[var(--editor-row-selected)]"
           )}
         >
           {/* Track header */}
@@ -251,8 +251,8 @@ export const TimelinePanel = () => {
                   "absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-sm rotate-45 cursor-pointer transition-all",
                   "border-2 hover:scale-125",
                   selectedKeyframeIds.includes(kf.id)
-                    ? "bg-primary border-primary-foreground"
-                    : "bg-secondary border-primary/50 hover:border-primary"
+                    ? "border-foreground bg-[var(--editor-command-highlight)]"
+                    : "border-[var(--editor-command-highlight)] bg-[var(--editor-command)] hover:border-foreground"
                 )}
                 style={{ left: `${timeToX(kf.time) - 6}px` }}
                 onClick={(e) => {
@@ -278,7 +278,7 @@ export const TimelinePanel = () => {
           <select
             value={activeClipId || ''}
             onChange={(e) => setActiveClip(e.target.value || null)}
-            className="bg-muted border-0 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+            className="rounded border border-[var(--editor-command-border)] bg-[var(--editor-panel-sunken)] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
           >
             <option value="">Selecione um clip</option>
             {clips.map((clip) => (
@@ -326,7 +326,7 @@ export const TimelinePanel = () => {
             onClick={() => isPlaying ? pause() : play()}
             className={cn(
               "p-2 rounded-full transition-colors",
-              isPlaying ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"
+              isPlaying ? "bg-[var(--editor-command-active)] text-foreground" : "bg-secondary hover:bg-secondary/80"
             )}
             title={isPlaying ? "Pause" : "Play"}
           >
@@ -353,7 +353,7 @@ export const TimelinePanel = () => {
             onClick={toggleSnapToGrid}
             className={cn(
               "p-1.5 rounded transition-colors",
-              snapToGrid ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-secondary"
+              snapToGrid ? "bg-[var(--editor-command-active)] text-foreground" : "text-muted-foreground hover:bg-secondary"
             )}
             title="Snap to Grid"
           >
@@ -381,7 +381,7 @@ export const TimelinePanel = () => {
               onClick={() => updateClip(activeClipId!, { loop: !activeClip.loop })}
               className={cn(
                 "p-1.5 rounded transition-colors",
-                activeClip.loop ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-secondary"
+                activeClip.loop ? "bg-[var(--editor-command-active)] text-foreground" : "text-muted-foreground hover:bg-secondary"
               )}
               title="Loop"
             >
@@ -407,10 +407,10 @@ export const TimelinePanel = () => {
                   {renderRuler()}
                   {/* Playhead */}
                   <div
-                    className="absolute top-0 bottom-0 w-0.5 bg-primary z-10 pointer-events-none"
+                    className="absolute top-0 bottom-0 z-10 w-0.5 bg-[var(--editor-command-highlight)] pointer-events-none"
                     style={{ left: `${timeToX(currentTime)}px` }}
                   >
-                    <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rotate-45" />
+                    <div className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-[var(--editor-command-highlight)]" />
                   </div>
                 </div>
               </div>
@@ -432,7 +432,7 @@ export const TimelinePanel = () => {
                   
                   {/* Add track dropdown */}
                   {isAddingTrack && (
-                    <div className="absolute left-48 right-0 top-full bg-card border border-border rounded-lg shadow-xl z-20 p-2 grid grid-cols-3 gap-1">
+                    <div className="absolute left-48 right-0 top-full z-20 grid grid-cols-3 gap-1 border border-border bg-[var(--editor-panel)] p-2">
                       {Object.entries(PROPERTY_CONFIG).map(([prop, config]) => {
                         const Icon = config.icon;
                         return (
@@ -462,7 +462,7 @@ export const TimelinePanel = () => {
             {selectedObjectId && (
               <button
                 onClick={handleCreateClip}
-                className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs hover:bg-primary/90"
+                className="mt-4 flex items-center gap-1.5 border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-4 py-2 text-xs text-foreground hover:bg-[var(--editor-command-hover)]"
               >
                 <Plus className="w-4 h-4" />
                 Criar Clip para "{selectedObject?.name}"
@@ -482,7 +482,7 @@ export const TimelinePanel = () => {
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted-foreground">Easing:</label>
             <select
-              className="bg-muted border-0 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+              className="rounded border border-[var(--editor-command-border)] bg-[var(--editor-panel-sunken)] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
               onChange={(e) => {
                 activeClip.tracks.forEach((track) => {
                   track.keyframes.forEach((kf) => {

@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { createElement, useMemo, useState } from 'react';
+import { fireEvent, render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
 import {
@@ -11,7 +13,59 @@ import {
   isNativeEditorHelperObject,
   rayHitsTransformHelper,
   resolveSelectableObject,
+  resolveSelectionFromRaycastHits,
+  useSelectionGizmo,
 } from './useSelectionGizmo';
+
+const SelectionGizmoHarness = ({
+  onSelectionFocus,
+}: {
+  onSelectionFocus: (object: THREE.Object3D) => void;
+}) => {
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  const { camera, scene } = useMemo(() => {
+    const nextScene = new THREE.Scene();
+    const nextCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    nextCamera.position.set(0, 0, 5);
+    nextCamera.lookAt(0, 0, 0);
+    nextCamera.updateMatrixWorld(true);
+
+    const owner = new THREE.Group();
+    owner.userData.pixlObjectId = 'tree-01';
+    owner.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
+    nextScene.add(owner);
+    nextScene.updateMatrixWorld(true);
+
+    return { camera: nextCamera, scene: nextScene };
+  }, []);
+
+  useSelectionGizmo({
+    canvas,
+    camera,
+    scene,
+    onSelectionFocus,
+  });
+
+  return createElement('canvas', {
+    'data-testid': 'scene-canvas',
+    ref: (node: HTMLCanvasElement | null) => {
+      if (node) {
+        node.getBoundingClientRect = () => ({
+          x: 0,
+          y: 0,
+          left: 0,
+          top: 0,
+          right: 100,
+          bottom: 100,
+          width: 100,
+          height: 100,
+          toJSON: () => ({}),
+        });
+      }
+      setCanvas(node);
+    },
+  });
+};
 
 describe('resolveSelectableObject', () => {
   it('attaches native selection to the owning Pixl object instead of a child mesh', () => {
@@ -23,10 +77,10 @@ describe('resolveSelectableObject', () => {
     expect(resolveSelectableObject(mesh)).toBe(owner);
   });
 
-  it('keeps non-Pixl objects selectable as-is', () => {
+  it('ignores non-Pixl objects without runtime ids', () => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
 
-    expect(resolveSelectableObject(mesh)).toBe(mesh);
+    expect(resolveSelectableObject(mesh)).toBeNull();
   });
 
   it('never selects editor-only grid or axis helpers', () => {
@@ -37,6 +91,57 @@ describe('resolveSelectableObject', () => {
 
     expect(isNativeEditorHelperObject(child)).toBe(true);
     expect(resolveSelectableObject(child)).toBeNull();
+  });
+
+  it('uses the first runtime-resolved GameObject instead of the first raw Three hit', () => {
+    const helperHit = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    const owner = new THREE.Group();
+    owner.userData.pixlObjectId = 'cube-01';
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    owner.add(mesh);
+
+    const hits = [
+      { object: helperHit },
+      { object: mesh },
+    ] as unknown as THREE.Intersection[];
+
+    expect(resolveSelectionFromRaycastHits(hits, null, (object) => (object === mesh ? owner : null))).toBe(owner);
+  });
+
+  it('prefers concrete selectable objects over broad fallback hits', () => {
+    const ground = new THREE.Group();
+    ground.userData.pixlObjectId = 'ground-1';
+    const groundMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 10));
+    ground.add(groundMesh);
+    const player = new THREE.Group();
+    player.userData.pixlObjectId = 'main-player';
+    const playerMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1));
+    player.add(playerMesh);
+
+    const hits = [
+      { object: groundMesh },
+      { object: playerMesh },
+    ] as unknown as THREE.Intersection[];
+
+    expect(resolveSelectionFromRaycastHits(
+      hits,
+      null,
+      undefined,
+      (object) => object.userData.pixlObjectId === 'main-player',
+    )).toBe(player);
+  });
+
+  it('focuses native scene selection only on double click', () => {
+    const onSelectionFocus = vi.fn();
+    const { getByTestId } = render(createElement(SelectionGizmoHarness, { onSelectionFocus }));
+    const canvas = getByTestId('scene-canvas');
+
+    fireEvent.click(canvas, { button: 0, clientX: 50, clientY: 50 });
+    expect(onSelectionFocus).not.toHaveBeenCalled();
+
+    fireEvent.dblClick(canvas, { button: 0, clientX: 50, clientY: 50 });
+    expect(onSelectionFocus).toHaveBeenCalledTimes(1);
+    expect(onSelectionFocus.mock.calls[0]?.[0].userData.pixlObjectId).toBe('tree-01');
   });
 
   it('detects transform helper hits before selecting objects behind it', () => {

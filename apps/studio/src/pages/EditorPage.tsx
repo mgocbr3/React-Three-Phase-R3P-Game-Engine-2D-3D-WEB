@@ -151,12 +151,11 @@ const EditorPage = () => {
   useEditorArrowNudge();
 
   const searchParams = new URLSearchParams(window.location.search);
-  // GDD §6.6 — Phase 6A. New native mount toggled via ?engine=native.
-  // Phase 6B will remove the flag and make Viewport the only path
-  // (which is when the §5.3 R3F deletion happens). For now both paths
-  // coexist so the studio keeps working while the new runtime is proven
-  // against the real Harvest Rush data.
-  const useNativeViewport = searchParams.get('engine') === 'native';
+  // Prefer native runtime for 3D by default. Legacy canvas stays reachable
+  // through explicit `?engine=legacy` during the migration window.
+  const requestedEngine = searchParams.get('engine');
+  const useNativeViewport = requestedEngine === 'native'
+    || (requestedEngine !== 'legacy' && activeSceneKind === '3d');
   const rawProjectParam = searchParams.get('project');
   const sampleProjectSlug = searchParams.get('sampleProject') || (rawProjectParam && hasSampleProject(rawProjectParam) ? rawProjectParam : null);
   const localProjectId = searchParams.get('localProject');

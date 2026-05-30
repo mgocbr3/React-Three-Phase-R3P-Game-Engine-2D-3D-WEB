@@ -4,6 +4,9 @@ import {
   DEFAULT_PROJECT_FOLDERS,
   PIXL_PROJECT_FORMAT,
   PIXL_PROJECT_VERSION,
+  PIXL_2D_COMPONENT_TYPES,
+  PIXL_3D_COMPONENT_TYPES,
+  PIXL_SHARED_COMPONENT_TYPES,
   PixlAssetEntry,
   PixlAssetKind,
   PixlComponentInstance,
@@ -39,6 +42,16 @@ const VALID_OBJECT_TYPES = new Set<ObjectType>([
   'circle',
   'text',
 ]);
+
+const PIXL_2D_COMPONENT_SET = new Set<string>(PIXL_2D_COMPONENT_TYPES);
+const PIXL_3D_COMPONENT_SET = new Set<string>(PIXL_3D_COMPONENT_TYPES);
+const PIXL_SHARED_COMPONENT_SET = new Set<string>(PIXL_SHARED_COMPONENT_TYPES);
+
+const isSceneCompatibleComponent = (type: string, sceneKind: PixlSceneKind): boolean => {
+  if (PIXL_SHARED_COMPONENT_SET.has(type)) return true;
+  if (sceneKind === '2d') return !PIXL_3D_COMPONENT_SET.has(type);
+  return !PIXL_2D_COMPONENT_SET.has(type);
+};
 
 export interface EditorProjectSnapshot {
   gameScript: string;
@@ -106,8 +119,20 @@ const componentFromSettings = (
   };
 };
 
-const buildComponentsFromEditorObject = (object: SceneObject): PixlComponentInstance[] => (
-  [
+const buildComponentsFromEditorObject = (
+  object: SceneObject,
+  sceneKind: PixlSceneKind,
+): PixlComponentInstance[] => {
+  const common = [
+    scriptComponentFromInstances(object.scriptInstances),
+    componentFromSettings('pixl.audio', object.audioSettings),
+  ];
+
+  if (sceneKind === '2d') {
+    return common.filter(Boolean) as PixlComponentInstance[];
+  }
+
+  return [
     componentFromSettings('pixl.visual', object.visualSettings),
     componentFromSettings('pixl.physics', object.physicsSettings),
     componentFromSettings('pixl.logic', object.logicSettings),
@@ -115,22 +140,25 @@ const buildComponentsFromEditorObject = (object: SceneObject): PixlComponentInst
     componentFromSettings('pixl.light3d', object.lightSettings),
     componentFromSettings('pixl.camera3d', object.cameraSettings),
     componentFromSettings('pixl.player', object.playerSettings),
-    scriptComponentFromInstances(object.scriptInstances),
+    ...common,
     componentFromSettings('pixl.animation', object.animationSettings),
-    componentFromSettings('pixl.audio', object.audioSettings),
     componentFromSettings('pixl.particles', object.particleSettings),
     componentFromSettings('pixl.terrain', object.terrainSettings),
-  ].filter(Boolean) as PixlComponentInstance[]
-);
+  ].filter(Boolean) as PixlComponentInstance[];
+};
 
-const mergeEditorComponents = (object: SceneObject): PixlComponentInstance[] => {
+const mergeEditorComponents = (
+  object: SceneObject,
+  sceneKind: PixlSceneKind,
+): PixlComponentInstance[] => {
   const byType = new Map<string, PixlComponentInstance>();
 
   for (const component of object.components ?? []) {
+    if (!isSceneCompatibleComponent(component.type, sceneKind)) continue;
     byType.set(component.type, cloneJson(component));
   }
 
-  for (const component of buildComponentsFromEditorObject(object)) {
+  for (const component of buildComponentsFromEditorObject(object, sceneKind)) {
     byType.set(component.type, component);
   }
 
@@ -183,8 +211,11 @@ const editorDataFromSceneObject = (object: PixlSceneObject): Record<string, unkn
   return Object.keys(data).length ? data : undefined;
 };
 
-export const editorObjectToSceneObject = (object: SceneObject): PixlSceneObject => {
-  const components = mergeEditorComponents(object);
+export const editorObjectToSceneObject = (
+  object: SceneObject,
+  sceneKind: PixlSceneKind,
+): PixlSceneObject => {
+  const components = mergeEditorComponents(object, sceneKind);
 
   return {
     id: object.id,
@@ -218,9 +249,12 @@ const wouldCreateParentCycle = (
   return false;
 };
 
-const buildSceneObjectTree = (objects: SceneObject[]): PixlSceneObject[] => {
+const buildSceneObjectTree = (
+  objects: SceneObject[],
+  sceneKind: PixlSceneKind,
+): PixlSceneObject[] => {
   const editorObjectsById = new Map(objects.map((object) => [object.id, object]));
-  const sceneObjectsById = new Map(objects.map((object) => [object.id, editorObjectToSceneObject(object)]));
+  const sceneObjectsById = new Map(objects.map((object) => [object.id, editorObjectToSceneObject(object, sceneKind)]));
   const roots: PixlSceneObject[] = [];
 
   for (const object of objects) {
@@ -344,6 +378,21 @@ const ASSET_KIND_TO_PROJECT_TYPE: Partial<Record<PixlAssetKind, EditorProjectSna
   script: 'script',
 };
 
+const withUniqueProjectAssetIds = (
+  assets: EditorProjectSnapshot['projectAssets'],
+): EditorProjectSnapshot['projectAssets'] => {
+  const seen = new Map<string, number>();
+  return assets.map((asset) => {
+    const count = seen.get(asset.id) ?? 0;
+    seen.set(asset.id, count + 1);
+    if (count === 0) return asset;
+    return {
+      ...asset,
+      id: `${asset.id}-${count + 1}`,
+    };
+  });
+};
+
 const collectAssetEntries = (objects: SceneObject[]): PixlAssetEntry[] => {
   const entries = new Map<string, PixlAssetEntry>();
 
@@ -427,7 +476,7 @@ export const createProjectDocumentFromEditorState = (
     name: 'Main',
     kind: sceneKind,
     units: runtime.units,
-    rootObjects: buildSceneObjectTree(state.objects),
+    rootObjects: buildSceneObjectTree(state.objects, sceneKind),
     camera: {
       id: 'editor-camera',
       name: 'Editor Camera',
@@ -668,7 +717,7 @@ export const createEditorSnapshotFromProjectDocument = (
     snapScale: project.editor.snapScale ?? 0.25,
     activeSceneKind: scene.kind,
     objects: flattenSceneObjectsForEditor(scene.rootObjects),
-    projectAssets,
+    projectAssets: withUniqueProjectAssetIds(projectAssets),
   };
 };
 

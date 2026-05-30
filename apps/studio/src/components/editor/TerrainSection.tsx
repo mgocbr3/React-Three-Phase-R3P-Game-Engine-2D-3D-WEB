@@ -42,7 +42,7 @@ export const TerrainSection = ({ terrainSettings, onUpdate }: TerrainSectionProp
         <select
           value={terrainSettings.biome}
           onChange={(event) => handleBiomeChange(event.target.value as TerrainBiome)}
-          className="glass-select"
+          className="inspector-input w-full"
         >
           {biomeOptions.map((biome) => (
             <option key={biome.id} value={biome.id}>

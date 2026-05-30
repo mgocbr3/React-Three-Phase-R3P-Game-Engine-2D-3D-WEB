@@ -36,6 +36,38 @@ describe('editorStore hierarchy actions', () => {
     resetHierarchy();
   });
 
+  it('keeps 3D selection when empty canvas selection asks to clear it', () => {
+    useEditorStore.getState().selectObject('child');
+
+    useEditorStore.getState().selectObject(null);
+
+    expect(useEditorStore.getState().selectedObjectId).toBe('child');
+  });
+
+  it('still allows 2D empty canvas selection to clear it', () => {
+    useEditorStore.setState({ activeSceneKind: '2d' });
+    useEditorStore.getState().selectObject('child');
+
+    useEditorStore.getState().selectObject(null);
+
+    expect(useEditorStore.getState().selectedObjectId).toBeNull();
+  });
+
+  it('uses explicit 3D route kind to protect selection when store kind is stale', () => {
+    const originalUrl = window.location.href;
+    window.history.pushState({}, '', '/editor?kind=3d');
+    try {
+      useEditorStore.setState({ activeSceneKind: '2d' });
+      useEditorStore.getState().selectObject('child');
+
+      useEditorStore.getState().selectObject(null);
+
+      expect(useEditorStore.getState().selectedObjectId).toBe('child');
+    } finally {
+      window.history.pushState({}, '', originalUrl);
+    }
+  });
+
   it('reparents objects and records history', () => {
     const changed = useEditorStore.getState().reparentObject('child', 'other');
 

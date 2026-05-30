@@ -631,8 +631,8 @@ export const PhaserViewport2D = () => {
         style={{ left: RULER_THICKNESS, top: RULER_THICKNESS, right: 0, bottom: 0 }}
       />
       {isDragOver && (
-        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center border-2 border-dashed border-primary bg-primary/20">
-          <div className="border border-border bg-card/95 px-5 py-3 text-center shadow-xl">
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center border-2 border-dashed border-[var(--editor-command-highlight)] bg-black/35">
+          <div className="border border-[var(--editor-command-border)] bg-[var(--editor-panel)] px-5 py-3 text-center">
             <p className="text-sm font-semibold text-foreground">Solte para criar sprite 2D</p>
             <p className="text-xs text-muted-foreground">O asset entra na cena exatamente neste ponto.</p>
           </div>

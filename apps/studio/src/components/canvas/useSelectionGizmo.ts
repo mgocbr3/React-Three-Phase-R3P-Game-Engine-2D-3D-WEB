@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { TransformControls, TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 
 export type GizmoMode = 'translate' | 'rotate' | 'scale';
 export type NativeGizmoSpace = 'world' | 'local';
@@ -42,7 +42,11 @@ export interface UseSelectionGizmoArgs {
    * to this object regardless of canvas raycast. Passing `null` detaches.
    */
   externalSelected?: THREE.Object3D | null;
+  resolveSelectionFromObject?: (object: THREE.Object3D) => THREE.Object3D | null;
+  isPreferredSelectionObject?: (object: THREE.Object3D) => boolean;
   onSelectionChange?: (object: THREE.Object3D | null) => void;
+  onSelectionFocus?: (object: THREE.Object3D) => void;
+  onTransformChange?: (object: THREE.Object3D, transform: ThreeObjectTransform) => void;
   onTransformCommit?: (object: THREE.Object3D, transform: ThreeObjectTransform) => void;
   onChange?: () => void;
   snapSettings?: NativeGizmoSnapSettings;
@@ -95,9 +99,8 @@ export const getPixlObjectIdFromThreeObject = (object: THREE.Object3D | null | u
   const userData = object?.userData as {
     pixlObjectId?: unknown;
     pixlId?: unknown;
-    gameObjectID?: unknown;
   } | undefined;
-  for (const value of [userData?.pixlObjectId, userData?.pixlId, userData?.gameObjectID]) {
+  for (const value of [userData?.pixlObjectId, userData?.pixlId]) {
     if (typeof value === 'string' && value) return value;
   }
   return null;
@@ -123,18 +126,33 @@ export const resolveSelectableObject = (
   if (isNativeEditorHelperObject(object, scene)) return null;
   let current: THREE.Object3D | null | undefined = object;
   while (current) {
-    const userData = current.userData as {
-      pixlObjectId?: unknown;
-      pixlId?: unknown;
-      gameObjectID?: unknown;
-    };
     if (getPixlObjectIdFromThreeObject(current)) {
       return current;
     }
     if (scene && current === scene) break;
     current = current.parent;
   }
-  return object ?? null;
+  return null;
+};
+
+export const resolveSelectionFromRaycastHits = (
+  hits: THREE.Intersection[],
+  scene?: THREE.Scene | null,
+  resolveSelectionFromObject?: (object: THREE.Object3D) => THREE.Object3D | null,
+  isPreferredSelectionObject?: (object: THREE.Object3D) => boolean,
+): THREE.Object3D | null => {
+  let fallback: THREE.Object3D | null = null;
+  for (const hit of hits) {
+    if (hit.object instanceof TransformControlsPlane) continue;
+    if (!hit.object.visible) continue;
+    if (isNativeEditorHelperObject(hit.object, scene)) continue;
+    const selection = resolveSelectionFromObject?.(hit.object) ?? resolveSelectableObject(hit.object, scene);
+    if (!selection) continue;
+    if (!isPreferredSelectionObject) return selection;
+    fallback ??= selection;
+    if (isPreferredSelectionObject(selection)) return selection;
+  }
+  return fallback;
 };
 
 const findVisibleTransformHit = (
@@ -196,20 +214,44 @@ export const useSelectionGizmo = ({
   space = 'world',
   enabled = true,
   externalSelected,
+  resolveSelectionFromObject,
+  isPreferredSelectionObject,
   onSelectionChange,
+  onSelectionFocus,
+  onTransformChange,
   onTransformCommit,
   onChange,
   snapSettings,
 }: UseSelectionGizmoArgs): void => {
   const transformRef = useRef<TransformControls | null>(null);
+  const onTransformChangeRef = useRef(onTransformChange);
   const onTransformCommitRef = useRef(onTransformCommit);
+  const resolveSelectionFromObjectRef = useRef(resolveSelectionFromObject);
+  const isPreferredSelectionObjectRef = useRef(isPreferredSelectionObject);
+  const onSelectionFocusRef = useRef(onSelectionFocus);
   const onChangeRef = useRef(onChange);
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const [selected, setSelected] = useState<THREE.Object3D | null>(null);
 
   useEffect(() => {
+    onTransformChangeRef.current = onTransformChange;
+  }, [onTransformChange]);
+
+  useEffect(() => {
     onTransformCommitRef.current = onTransformCommit;
   }, [onTransformCommit]);
+
+  useEffect(() => {
+    resolveSelectionFromObjectRef.current = resolveSelectionFromObject;
+  }, [resolveSelectionFromObject]);
+
+  useEffect(() => {
+    isPreferredSelectionObjectRef.current = isPreferredSelectionObject;
+  }, [isPreferredSelectionObject]);
+
+  useEffect(() => {
+    onSelectionFocusRef.current = onSelectionFocus;
+  }, [onSelectionFocus]);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -221,25 +263,33 @@ export const useSelectionGizmo = ({
     const transform = new TransformControls(camera, canvas);
     const transformWithPickers = transform as TransformControlsWithPickers;
     enlargeTransformPickerHitArea(Object.values(transformWithPickers._gizmo?.picker ?? {}));
+    transform.setSize(0.5);
     scene.add(transform.getHelper());
 
-    const onDraggingChanged = (event: { value: unknown }): void => {
-      if (orbitControls) orbitControls.enabled = !event.value;
+    const onMouseDown = (): void => {
+      if (orbitControls) orbitControls.enabled = false;
+    };
+    const onMouseUp = (): void => {
+      if (orbitControls) orbitControls.enabled = true;
       onChangeRef.current?.();
-      if (!event.value && transform.object) {
+      if (transform.object) {
         onTransformCommitRef.current?.(transform.object, getThreeObjectTransform(transform.object));
       }
     };
-    const requestRender = (): void => onChangeRef.current?.();
-    transform.addEventListener('dragging-changed', onDraggingChanged);
-    transform.addEventListener('change', requestRender);
-    transform.addEventListener('objectChange', requestRender);
+    const onChangeEvent = (): void => {
+      onChangeRef.current?.();
+      if (!transform.object) return;
+      onTransformChangeRef.current?.(transform.object, getThreeObjectTransform(transform.object));
+    };
+    transform.addEventListener('mouseDown', onMouseDown);
+    transform.addEventListener('mouseUp', onMouseUp);
+    transform.addEventListener('change', onChangeEvent);
 
     transformRef.current = transform;
     return () => {
-      transform.removeEventListener('dragging-changed', onDraggingChanged);
-      transform.removeEventListener('change', requestRender);
-      transform.removeEventListener('objectChange', requestRender);
+      transform.removeEventListener('mouseDown', onMouseDown);
+      transform.removeEventListener('mouseUp', onMouseUp);
+      transform.removeEventListener('change', onChangeEvent);
       transform.detach();
       scene.remove(transform.getHelper());
       transform.dispose();
@@ -273,66 +323,65 @@ export const useSelectionGizmo = ({
   }, [snapSettings?.snapEnabled, snapSettings?.snapTranslate, snapSettings?.snapRotate, snapSettings?.snapScale]);
 
   // Click-to-select via raycast against the scene root.
+  // Mirrors Wes' scene_editor/MainArea.jsx flow: intersect scene,
+  // ignore TransformControlsPlane, pick first valid GameObject.
   useEffect(() => {
     if (!canvas || !camera || !scene || !enabled) return;
     const raycaster = raycasterRef.current;
     const ndc = new THREE.Vector2();
 
-    const syncRaycasterFromPointer = (event: PointerEvent): void => {
+    const syncRaycasterFromPointer = (event: { clientX: number; clientY: number }): void => {
       const rect = canvas.getBoundingClientRect();
       ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
     };
 
-    const getActivePicker = (): {
-      helper: THREE.Object3D | undefined;
-      picker: THREE.Object3D | undefined;
-      transform: TransformControlsWithPickers | null;
-    } => {
-      const transform = transformRef.current as TransformControlsWithPickers | null;
-      const helper = transform?.getHelper();
-      const picker = transform?._gizmo?.picker?.[mode] ?? helper;
-      return { helper, picker, transform };
+    const resolveSelectionFromPointer = (event: { clientX: number; clientY: number }): THREE.Object3D | null => {
+      syncRaycasterFromPointer(event);
+      const hits = raycaster.intersectObject(scene, true);
+      return resolveSelectionFromRaycastHits(
+        hits,
+        scene,
+        resolveSelectionFromObjectRef.current,
+        isPreferredSelectionObjectRef.current,
+      );
     };
 
-    const onPointerDownCapture = (event: PointerEvent): void => {
+    const onCanvasPointerDown = (event: PointerEvent): void => {
       if (event.button !== 0) return;
-      const { picker, transform } = getActivePicker();
-      if (!transform?.object) return;
       syncRaycasterFromPointer(event);
-      const axis = findTransformPickerHitAxis(raycaster, picker, true);
-      transform.axis = axis as TransformControls['axis'];
+      const transform = transformRef.current;
+      if (transform && rayHitsTransformHelper(raycaster, transform.getHelper(), Boolean(transform.object))) return;
+      if (!resolveSelectionFromPointer(event)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
     };
 
-    const onPointerDown = (event: PointerEvent): void => {
-      // Skip if the gizmo itself is being grabbed (TransformControls handles).
-      if (transformRef.current && (transformRef.current as unknown as { dragging?: boolean }).dragging) return;
-      // Only respond to primary mouse button.
+    const onCanvasClick = (event: MouseEvent): void => {
       if (event.button !== 0) return;
-      syncRaycasterFromPointer(event);
-      const { helper, picker, transform } = getActivePicker();
-      if (rayHitsTransformHelper(raycaster, picker, Boolean(transform?.object))) {
-        return;
-      }
-
-      // Exclude the gizmo helper from the scene-object raycast.
-      const candidates: THREE.Object3D[] = [];
-      scene.children.forEach((child) => {
-        if (child !== helper) candidates.push(child);
-      });
-      const hits = raycaster.intersectObjects(candidates, true);
-      const first = hits.find((h) => h.object.visible && !isNativeEditorHelperObject(h.object, scene));
-      const newSelection = resolveSelectableObject(first?.object, scene);
+      const newSelection = resolveSelectionFromPointer(event);
+      if (!newSelection) return;
       setSelected(newSelection);
       onChangeRef.current?.();
     };
 
-    canvas.addEventListener('pointerdown', onPointerDownCapture, { capture: true });
-    canvas.addEventListener('pointerdown', onPointerDown);
+    const onCanvasDoubleClick = (event: MouseEvent): void => {
+      if (event.button !== 0) return;
+      const newSelection = resolveSelectionFromPointer(event);
+      if (!newSelection) return;
+      setSelected(newSelection);
+      onSelectionFocusRef.current?.(newSelection);
+      onChangeRef.current?.();
+    };
+
+    canvas.addEventListener('pointerdown', onCanvasPointerDown, { capture: true });
+    canvas.addEventListener('click', onCanvasClick);
+    canvas.addEventListener('dblclick', onCanvasDoubleClick);
     return () => {
-      canvas.removeEventListener('pointerdown', onPointerDownCapture, { capture: true });
-      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointerdown', onCanvasPointerDown, { capture: true });
+      canvas.removeEventListener('click', onCanvasClick);
+      canvas.removeEventListener('dblclick', onCanvasDoubleClick);
     };
   }, [canvas, camera, scene, enabled]);
 

@@ -11,7 +11,9 @@ import {
   getThreeNativePostProcessingEffects,
   getThreeSceneAxisView,
   getThreeSceneViewShortcut,
+  getThreeTransformShortcutMode,
   getThreeEditorGridConfig,
+  hasEditorObjectId,
   shouldEnableThreeEditorTools,
   shouldRunThreeEditorRenderLoop,
   shouldRunThreeRuntimeSimulation,
@@ -34,7 +36,35 @@ describe('ThreeRuntimeMount', () => {
     expect(shouldRunThreeEditorRenderLoop({ visible: false, editorToolsEnabled: true, loadStatus: 'ready' })).toBe(false);
   });
 
-  it('maps engine render settings into a clean native Three realism profile', () => {
+  it('keeps native Three play mode direct by default', () => {
+    const options = createThreeNativePostProcessingOptions({
+      toneMapping: 'none',
+      toneMappingExposure: 1,
+      bloom: false,
+      bloomIntensity: 0,
+      bloomThreshold: 1,
+      bloomRadius: 0,
+      colorGrading: false,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      hue: 0,
+      dpr: 1,
+      maxDpr: 2,
+    });
+
+    expect(options).toMatchObject({
+      enabled: false,
+      toneMapping: 'none',
+      bloom: false,
+      colorGrading: false,
+      contrast: 0,
+      saturation: 0,
+    });
+    expect(getThreeNativePostProcessingEffects(options)).toBe('off');
+  });
+
+  it('keeps native Three play mode direct even when settings request effects', () => {
     const options = createThreeNativePostProcessingOptions({
       toneMapping: 'aces',
       toneMappingExposure: 1.1,
@@ -52,18 +82,15 @@ describe('ThreeRuntimeMount', () => {
     });
 
     expect(options).toMatchObject({
-      enabled: true,
-      toneMapping: 'aces',
-      bloom: true,
-      colorGrading: true,
-      bloomIntensity: 0.25,
-      bloomThreshold: 0.88,
-      bloomRadius: 0.35,
-      contrast: 0.04,
-      saturation: 0.02,
+      enabled: false,
+      toneMapping: 'none',
+      bloom: false,
+      colorGrading: false,
+      bloomIntensity: 0,
+      bloomThreshold: 1,
+      bloomRadius: 0,
     });
-    expect(getThreeNativePostProcessingEffects(options)).toBe('tone:aces,bloom,grade');
-    expect(getThreeNativePostProcessingEffects({ ...options, enabled: false })).toBe('off');
+    expect(getThreeNativePostProcessingEffects(options)).toBe('off');
   });
 
   it('keeps the native 3D editor scene free of runtime post-processing', () => {
@@ -106,7 +133,16 @@ describe('ThreeRuntimeMount', () => {
     object.userData.pixlObjectId = 'player-body';
 
     expect(getEditorObjectIdForNativeSelection(object)).toBe('player-body');
+    object.userData.pixlObjectId = undefined;
+    object.userData.gameObjectID = 'runtime-only-id';
+    expect(getEditorObjectIdForNativeSelection(object)).toBeNull();
     expect(getEditorObjectIdForNativeSelection(null)).toBeNull();
+  });
+
+  it('keeps runtime-only Pixl ids from selecting missing editor objects', () => {
+    expect(hasEditorObjectId([{ id: 'cube-1', name: 'Cube' }], 'cube-1')).toBe(true);
+    expect(hasEditorObjectId([{ id: 'cube-1', name: 'Cube' }], 'farm-node-00004-ground-005-001')).toBe(false);
+    expect(hasEditorObjectId([{ id: 'cube-1', name: 'Cube' }], null)).toBe(false);
   });
 
   it('creates non-selectable native scene helpers from editor settings', () => {
@@ -134,14 +170,22 @@ describe('ThreeRuntimeMount', () => {
     });
   });
 
-  it('maps Unity-like numpad shortcuts to 3D Scene views', () => {
-    expect(getThreeSceneViewShortcut({ code: 'Numpad1' })).toBe('z');
-    expect(getThreeSceneViewShortcut({ code: 'Numpad3' })).toBe('x');
-    expect(getThreeSceneViewShortcut({ code: 'Numpad7' })).toBe('y');
-    expect(getThreeSceneViewShortcut({ code: 'Numpad5' })).toBe('free');
-    expect(getThreeSceneViewShortcut({ code: 'Digit1' })).toBe('z');
-    expect(getThreeSceneViewShortcut({ code: 'Digit7' })).toBe('y');
+  it('does not move the 3D Scene camera from number-key shortcuts', () => {
+    expect(getThreeSceneViewShortcut({ code: 'Numpad1' })).toBeNull();
+    expect(getThreeSceneViewShortcut({ code: 'Numpad3' })).toBeNull();
+    expect(getThreeSceneViewShortcut({ code: 'Numpad7' })).toBeNull();
+    expect(getThreeSceneViewShortcut({ code: 'Numpad5' })).toBeNull();
+    expect(getThreeSceneViewShortcut({ code: 'Digit1' })).toBeNull();
+    expect(getThreeSceneViewShortcut({ code: 'Digit7' })).toBeNull();
     expect(getThreeSceneViewShortcut({ code: 'Numpad7', metaKey: true })).toBeNull();
+  });
+
+  it('maps MainArea-like transform hotkeys in native 3D', () => {
+    expect(getThreeTransformShortcutMode({ code: 'KeyR' })).toBe('rotate');
+    expect(getThreeTransformShortcutMode({ code: 'KeyS' })).toBe('scale');
+    expect(getThreeTransformShortcutMode({ code: 'KeyT' })).toBe('translate');
+    expect(getThreeTransformShortcutMode({ code: 'KeyP' })).toBe('translate');
+    expect(getThreeTransformShortcutMode({ code: 'KeyR', ctrlKey: true })).toBeNull();
   });
 
   it('creates 3D objects at the orbit pivot or in front of the scene camera', () => {

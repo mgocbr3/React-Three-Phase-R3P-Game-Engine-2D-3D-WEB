@@ -43,6 +43,11 @@ const readSceneKindFromUrl = (): SceneKind => {
   return k === '2d' ? '2d' : '3d';
 };
 
+const hasExplicitThreeSceneKindInUrl = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('kind') === '3d';
+};
+
 // Light types for realistic lighting
 export type LightType = 'point' | 'directional' | 'spot' | 'area';
 
@@ -1255,7 +1260,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ isEditMode: !current, selectedObjectId: !current ? get().selectedObjectId : null });
   },
   
-  selectObject: (id) => set({ selectedObjectId: id }),
+  selectObject: (id) => {
+    if (
+      id === null
+      && get().selectedObjectId
+      && (get().activeSceneKind === '3d' || hasExplicitThreeSceneKindInUrl())
+    ) return;
+    set({ selectedObjectId: id });
+  },
   
   focusOnObject: (id) => {
     const obj = get().objects.find((o) => o.id === id);

@@ -95,9 +95,9 @@ export const TexturePicker = ({
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "w-full flex items-center gap-2 px-2 py-1.5 bg-muted rounded text-xs text-left transition-colors",
-            "hover:bg-muted/80 border border-transparent focus:border-primary focus:outline-none",
+            "hover:bg-muted/80 border border-transparent focus:border-[var(--editor-command-highlight)] focus:outline-none",
             value && "pr-8",
-            isOpen && "border-primary"
+            isOpen && "border-[var(--editor-command-highlight)]"
           )}
         >
           {/* Preview */}
@@ -140,7 +140,7 @@ export const TexturePicker = ({
         
         {/* Dropdown */}
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden border border-border bg-[var(--editor-panel)]">
             {/* Tabs */}
             <div className="flex border-b border-border">
               <button
@@ -148,7 +148,7 @@ export const TexturePicker = ({
                 className={cn(
                   "flex-1 px-3 py-2 text-xs font-medium transition-colors",
                   activeTab === 'assets' 
-                    ? "bg-primary/10 text-primary border-b-2 border-primary -mb-px" 
+                    ? "border-b-2 border-[var(--editor-command-highlight)] bg-[var(--editor-command-active)] text-foreground -mb-px"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -160,7 +160,7 @@ export const TexturePicker = ({
                 className={cn(
                   "flex-1 px-3 py-2 text-xs font-medium transition-colors",
                   activeTab === 'url' 
-                    ? "bg-primary/10 text-primary border-b-2 border-primary -mb-px" 
+                    ? "border-b-2 border-[var(--editor-command-highlight)] bg-[var(--editor-command-active)] text-foreground -mb-px"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -175,15 +175,15 @@ export const TexturePicker = ({
                 <div className="p-2">
                   {textureAssets.length > 0 ? (
                     <div className="grid grid-cols-4 gap-1.5">
-                      {textureAssets.map((asset) => (
+                      {textureAssets.map((asset, index) => (
                         <button
-                          key={asset.id}
+                          key={`${asset.id}-${index}`}
                           onClick={() => handleSelectAsset(asset)}
                           className={cn(
                             "relative group aspect-square rounded overflow-hidden border-2 transition-all",
                             value === asset.url 
-                              ? "border-primary ring-1 ring-primary" 
-                              : "border-transparent hover:border-primary/50"
+                              ? "border-[var(--editor-command-highlight)]"
+                              : "border-transparent hover:border-[var(--editor-border-light)]"
                           )}
                         >
                           <img 
@@ -192,8 +192,8 @@ export const TexturePicker = ({
                             className="w-full h-full object-cover"
                           />
                           {value === asset.url && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                              <Check className="w-4 h-4 text-primary" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-[rgba(61,61,61,0.45)]">
+                              <Check className="w-4 h-4 text-foreground" />
                             </div>
                           )}
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -238,12 +238,12 @@ export const TexturePicker = ({
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleUrlSubmit()}
-                    className="w-full px-2 py-1.5 bg-muted rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded bg-muted px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
                   />
                   <button
                     onClick={handleUrlSubmit}
                     disabled={!urlInput.trim()}
-                    className="w-full px-3 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full rounded border border-[var(--editor-command-border)] bg-[var(--editor-command-active)] px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[var(--editor-command-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Aplicar URL
                   </button>

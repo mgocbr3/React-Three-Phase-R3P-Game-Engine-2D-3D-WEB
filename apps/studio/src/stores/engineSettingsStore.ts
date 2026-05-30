@@ -161,8 +161,7 @@ export const QUALITY_PRESETS: Record<QualityPreset, Partial<EngineSettings>> = {
     maxDpr: 1.5,
     shadowMapSize: 1536,
     shadows: true,
-    bloom: true,
-    bloomIntensity: 0.3,
+    bloom: false,
     ssao: false,
     antialias: true,
     lodEnabled: true,
@@ -174,8 +173,7 @@ export const QUALITY_PRESETS: Record<QualityPreset, Partial<EngineSettings>> = {
     maxDpr: 2,
     shadowMapSize: 2048,
     shadows: true,
-    bloom: true,
-    bloomIntensity: 0.5,
+    bloom: false,
     ssao: false,
     antialias: true,
     lodEnabled: true,
@@ -194,7 +192,7 @@ const defaultSettings: EngineSettings = {
   textureFilterDefault: 'trilinear',
   
   // Color & Tone
-  toneMapping: 'aces',
+  toneMapping: 'none',
   toneMappingExposure: 1.0,
   colorSpace: 'srgb',
   
@@ -204,10 +202,10 @@ const defaultSettings: EngineSettings = {
   frameloop: 'always',
   
   // Post-Processing - Basic
-  bloom: true,
-  bloomIntensity: 0.18,
-  bloomThreshold: 0.9,
-  bloomRadius: 0.24,
+  bloom: false,
+  bloomIntensity: 0,
+  bloomThreshold: 1,
+  bloomRadius: 0,
   vignette: false,
   vignetteIntensity: 0,
   vignetteOffset: 0.5,
@@ -232,10 +230,10 @@ const defaultSettings: EngineSettings = {
   motionBlurSamples: 16,
   
   // Color Grading
-  colorGrading: true,
+  colorGrading: false,
   brightness: 0,
-  contrast: 0.04,
-  saturation: 0.02,
+  contrast: 0,
+  saturation: 0,
   hue: 0,
   
   // Screen Space Reflections
@@ -310,9 +308,17 @@ const sanitizePersistedSettings = (persistedState: unknown): Partial<EngineSetti
 
   return {
     ...settings,
-    bloomIntensity: Math.min(finite(settings.bloomIntensity, 0.18), 0.25),
-    bloomThreshold: Math.max(finite(settings.bloomThreshold, 0.9), 0.88),
-    bloomRadius: Math.min(finite(settings.bloomRadius, 0.24), 0.35),
+    toneMapping: 'none',
+    toneMappingExposure: 1,
+    bloom: false,
+    bloomIntensity: 0,
+    bloomThreshold: 1,
+    bloomRadius: 0,
+    colorGrading: false,
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    hue: 0,
     ssaoRadius: Math.min(Math.max(finite(settings.ssaoRadius, 1.2), 0.05), 12),
     ssaoBias: Math.min(Math.max(finite(settings.ssaoBias, 1), 0.05), 4),
     vignette: false,
@@ -347,7 +353,7 @@ export const useEngineSettings = create<EngineSettingsStore>()(
     }),
     {
       name: 'pixl-engine-settings',
-      version: 3,
+      version: 4,
       migrate: (persistedState) => sanitizePersistedSettings(persistedState),
       merge: (persistedState, currentState) => ({
         ...currentState,

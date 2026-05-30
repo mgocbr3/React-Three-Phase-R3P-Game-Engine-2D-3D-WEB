@@ -618,7 +618,7 @@ const ComponentStackSection = ({
           value={selectedAddableType}
           onChange={(event) => setSelectedType(event.target.value)}
           disabled={!addableDefinitions.length}
-          className="min-w-0 flex-1 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="min-w-0 flex-1 rounded-sm border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
         >
           {addableDefinitions.length ? addableDefinitions.map((definition) => (
             <option key={definition.type} value={definition.type}>{definition.label}</option>
@@ -632,7 +632,7 @@ const ComponentStackSection = ({
           className={cn(
             'editor-command-chip flex h-7 items-center gap-1.5 px-2 text-xs font-semibold',
             addableDefinitions.length
-              ? 'text-foreground hover:text-primary'
+              ? 'text-foreground hover:text-foreground'
               : 'cursor-not-allowed text-muted-foreground/45',
           )}
         >
@@ -715,7 +715,7 @@ const ComponentDataField = ({ component, fieldKey, value, onUpdate }: ComponentD
             const next = Number(event.target.value);
             if (Number.isFinite(next)) onUpdate(component, fieldKey, next);
           }}
-          className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
         />
       </div>
     );
@@ -735,7 +735,7 @@ const ComponentDataField = ({ component, fieldKey, value, onUpdate }: ComponentD
           type="text"
           value={value}
           onChange={(event) => onUpdate(component, fieldKey, event.target.value)}
-          className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
         />
       </div>
     );
@@ -748,7 +748,7 @@ const ComponentDataField = ({ component, fieldKey, value, onUpdate }: ComponentD
         type="text"
         value={value ?? ''}
         onChange={(event) => onUpdate(component, fieldKey, event.target.value)}
-        className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        className="min-w-0 rounded-sm border border-border bg-background px-1.5 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]"
       />
     </div>
   );
@@ -1987,7 +1987,7 @@ const TagsSection = ({ object, updateObject }: TagsSectionProps) => {
         />
         <button
           onClick={addTag}
-          className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 transition-colors"
+          className="border border-[var(--editor-command-border)] bg-[var(--editor-command)] px-2 py-1 text-xs text-foreground transition-colors hover:bg-[var(--editor-row-hover)]"
         >
           +
         </button>
@@ -1997,7 +1997,7 @@ const TagsSection = ({ object, updateObject }: TagsSectionProps) => {
           {logic.tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/15 text-primary text-[10px] rounded"
+              className="inline-flex items-center gap-1 bg-[var(--editor-command)] px-1.5 py-0.5 text-[10px] text-foreground"
             >
               {tag}
               <button onClick={() => removeTag(tag)} className="hover:text-destructive">×</button>
@@ -2110,8 +2110,8 @@ const EntitySection = ({ object, updateObject }: EntitySectionProps) => {
               className={cn(
                 'flex flex-col items-center gap-1 p-2 rounded border text-[9px] transition-all',
                 entity.team === team.value
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border hover:border-primary/50'
+                  ? 'border-[var(--editor-command-highlight)] bg-[var(--editor-command-active)] text-foreground'
+                  : 'border-border hover:border-[var(--editor-border-light)]'
               )}
             >
               <div className={cn('w-3 h-3 rounded-full', team.color)} />
@@ -2996,7 +2996,7 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
         <select
           value={playerSettings.gamePreset || 'custom'}
           onChange={(e) => applyPreset(e.target.value as GamePreset)}
-          className="glass-select text-xs font-medium"
+          className="inspector-input w-full text-xs font-medium"
         >
           {GAME_PRESETS.map((preset) => (
             <option key={preset.value} value={preset.value}>
@@ -3170,7 +3170,7 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
                     onClick={() => updateSetting('attackType', type.value)}
                     className={`p-2 rounded-md text-xs flex flex-col items-start gap-1 transition-colors ${
                       playerSettings.attackType === type.value 
-                        ? 'bg-primary text-primary-foreground' 
+                        ? 'bg-[var(--editor-command-active)] text-foreground'
                         : 'bg-secondary/50 hover:bg-secondary'
                     }`}
                   >
@@ -3432,7 +3432,7 @@ const PropertyRow = ({ label, value, children }: PropertyRowProps) => (
   <div className="space-y-1.5">
     <div className="flex justify-between items-center">
       <label className="inspector-label">{label}</label>
-      <span className="text-[10px] text-primary font-semibold tabular-nums">{value}</span>
+      <span className="text-[10px] font-semibold tabular-nums text-foreground">{value}</span>
     </div>
     {children}
   </div>
@@ -3449,7 +3449,7 @@ const ToggleSwitch = ({ checked, onChange }: ToggleSwitchProps) => (
     className={cn(
       'relative h-4 w-7 flex-shrink-0 rounded-full border transition-colors',
       checked 
-        ? 'border-primary/55 bg-primary/75' 
+        ? 'border-[var(--editor-command-highlight)] bg-[var(--editor-command-active)]'
         : 'border-border bg-muted'
     )}
   >

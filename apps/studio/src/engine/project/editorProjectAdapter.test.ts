@@ -225,6 +225,124 @@ describe('editor project adapter', () => {
     expect(snapshot.objects[0].components?.[0].type).toBe('pixl.physics2d');
   });
 
+  it('does not auto-generate 3D components for inferred 2D objects', () => {
+    const project = createProjectDocumentFromEditorState({
+      gameScript: '// 2d inferred',
+      transformSpace: 'world',
+      snapEnabled: false,
+      snapTranslate: 1,
+      snapRotate: 15,
+      snapScale: 0.25,
+      activeSceneKind: '2d',
+      objects: [
+        {
+          id: 'square-1',
+          name: 'Square 1',
+          type: 'rectangle',
+          position: [400, 300, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          color: '#4aa3ff',
+          visible: true,
+          locked: false,
+          components: [
+            {
+              id: 'legacy-visual',
+              type: 'pixl.visual',
+              enabled: true,
+              data: { opacity: 1 },
+            },
+          ],
+          visualSettings: {
+            textureUrl: '',
+            textureRepeat: [1, 1],
+            textureOffset: [0, 0],
+            textureRotation: 0,
+            textureFlipY: false,
+            textureAutoScale: true,
+            textureFilter: undefined,
+            opacity: 1,
+            metalness: 0.3,
+            roughness: 0.5,
+            emissiveIntensity: 0,
+            wireframe: false,
+            castShadow: false,
+            receiveShadow: false,
+          },
+          physicsSettings: {
+            bodyType: 'fixed',
+            mass: 1,
+            friction: 0.5,
+            restitution: 0.2,
+            colliderShape: 'cuboid',
+            linearDamping: 0,
+            angularDamping: 0,
+            isSensor: false,
+          },
+          logicSettings: {
+            tags: ['ui'],
+            behavior: 'none',
+            behaviorSpeed: 1,
+            patrolDistance: 5,
+            customData: {},
+          },
+          data: {
+            width: 64,
+            height: 64,
+            color: '#4aa3ff',
+          },
+        },
+      ],
+    }, {
+      name: '2D Inferred Components',
+    });
+
+    const components = project.scenes[0].rootObjects[0].components?.map((component) => component.type) ?? [];
+
+    expect(project.scenes[0].kind).toBe('2d');
+    expect(components).not.toContain('pixl.visual');
+    expect(components).not.toContain('pixl.physics');
+    expect(components).not.toContain('pixl.logic');
+    expect(components).not.toContain('pixl.light3d');
+  });
+
+  it('normalizes duplicate asset ids from imported documents', () => {
+    const project = createProjectDocumentFromEditorState({
+      gameScript: '// assets',
+      transformSpace: 'world',
+      snapEnabled: false,
+      snapTranslate: 1,
+      snapRotate: 15,
+      snapScale: 0.25,
+      activeSceneKind: '3d',
+      objects: [],
+    }, {
+      name: 'Duplicate Assets',
+    });
+
+    project.assets.entries = [
+      {
+        id: 'asset-1',
+        name: 'A',
+        kind: 'image',
+        path: 'Assets/A.png',
+        url: 'Assets/A.png',
+        tags: [],
+      },
+      {
+        id: 'asset-1',
+        name: 'B',
+        kind: 'image',
+        path: 'Assets/B.png',
+        url: 'Assets/B.png',
+        tags: [],
+      },
+    ];
+
+    const snapshot = createEditorSnapshotFromProjectDocument(project);
+    expect(snapshot.projectAssets.map((asset) => asset.id)).toEqual(['asset-1', 'asset-1-2']);
+  });
+
   it('serializes parented editor objects as a scene tree and restores a flat editor hierarchy', () => {
     const project = createProjectDocumentFromEditorState({
       gameScript: '// hierarchy',
