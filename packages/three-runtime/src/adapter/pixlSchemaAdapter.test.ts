@@ -40,6 +40,7 @@ describe('pixlSceneToWesScene', () => {
     const out = pixlSceneToWesScene(scene);
     expect(out.sky).toMatchObject({
       enabled: true,
+      textureUrl: '/skybox/clear_blue_sky.jpg',
       horizonColor: '#9fd5df',
       zenithColor: '#6ea8dc',
     });

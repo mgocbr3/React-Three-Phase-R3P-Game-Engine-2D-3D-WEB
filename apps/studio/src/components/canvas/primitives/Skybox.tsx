@@ -1,29 +1,12 @@
 // Skybox renderer.
 //
-// Loads a CC0 HDR (Radiance) skybox via drei's `useEnvironment` hook,
-// which handles RGBELoader + PMREM baking automatically. The result is
-// a pre-filtered cubemap-like environment texture that gets bound as
-// `scene.background`.
-//
-// We pivoted to HDR because the original UE4 sky GLB was authored at
-// 1024x1024 (not the 2:1 equirect aspect Three.js expects) and bled
-// the clouds onto the floor regardless of how we set `flipY` /
-// `backgroundRotation` / PMREM. Standard 2:1 equirect HDRs from
-// Polyhaven (HDRI Haven) ship with the canonical UV layout where V=0
-// is the bottom (ground) and V=1 is the top (zenith) — Three.js
-// samples them correctly out of the box.
-//
-// IBL (image-based lighting) is still owned by the `<Environment
-// preset>` in `AtmosphericLighting.tsx` so the time-of-day variations
-// (night/sunset/morning/day) keep working. This component touches only
-// `scene.background`.
-//
-// Default model: Polyhaven "Kloofendal 43d Clear (Pure Sky)" CC0,
-// stored at `public/models/skybox/clear-sky.hdr`. See
-// `docs/THIRD-PARTY-ASSETS.md`.
+// Loads the downloaded cloud equirectangular skybox used as the base R3P sky.
+// IBL remains owned by `<Environment>` in `AtmosphericLighting.tsx`; this only
+// controls the visible scene background.
 
-import { useEffect } from 'react';
-import { useEnvironment } from '@react-three/drei';
+import { useEffect, useMemo } from 'react';
+import * as THREE from 'three';
+import { useTexture } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 
 interface SkyboxProps {
@@ -31,18 +14,25 @@ interface SkyboxProps {
 }
 
 export const Skybox = ({
-  url = '/models/skybox/clear-sky.hdr',
+  url = '/skybox/clear_blue_sky.jpg',
 }: SkyboxProps) => {
-  const texture = useEnvironment({ files: url });
+  const texture = useTexture(url);
   const { scene } = useThree();
+
+  const skyTexture = useMemo(() => {
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }, [texture]);
 
   useEffect(() => {
     const previousBackground = scene.background;
-    scene.background = texture;
+    scene.background = skyTexture;
     return () => {
       scene.background = previousBackground;
     };
-  }, [texture, scene]);
+  }, [skyTexture, scene]);
 
   return null;
 };

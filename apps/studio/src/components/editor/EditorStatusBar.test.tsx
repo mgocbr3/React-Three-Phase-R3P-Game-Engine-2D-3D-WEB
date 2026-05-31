@@ -67,11 +67,12 @@ describe('EditorStatusBar scene metrics', () => {
     expect(within(status).getByText('tris')).toBeVisible();
   });
 
-  it('hides editor metrics while Play Mode is active', () => {
+  it('keeps the status bar mounted while Play Mode is active', () => {
     useRuntimeGameStore.setState({ previewSession, isPlaying: true });
 
     render(<EditorStatusBar />);
 
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    const status = screen.getByRole('contentinfo');
+    expect(within(status).getByText('Play Mode · Phaser 2D')).toBeVisible();
   });
 });

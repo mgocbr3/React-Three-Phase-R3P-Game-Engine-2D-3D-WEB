@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
 import { createSkyDome } from './Scene.js';
@@ -19,6 +19,27 @@ describe('Scene sky dome', () => {
 
     sky.onBeforeRender({} as THREE.WebGLRenderer, {} as THREE.Scene, camera, sky.geometry, sky.material as THREE.Material, null);
     expect(sky.position.toArray()).toEqual([4, 5, 6]);
+  });
+
+  it('uses a configured equirectangular texture for skybox backgrounds', async () => {
+    const texture = new THREE.Texture();
+    const loadAsync = vi.spyOn(THREE.TextureLoader.prototype, 'loadAsync').mockResolvedValue(texture);
+    const scene = new Scene({ getGameObjectClass: () => null } as unknown as ConstructorParameters<typeof Scene>[0]);
+
+    try {
+      await scene.setBackground({
+        background: '#123456',
+        sky: { enabled: true, textureUrl: '/skybox/clear_blue_sky.jpg' },
+      });
+
+      expect(loadAsync).toHaveBeenCalledWith('/skybox/clear_blue_sky.jpg');
+      expect(scene.threeJSScene.background).toBe(texture);
+      expect(texture.mapping).toBe(THREE.EquirectangularReflectionMapping);
+      expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
+      expect(scene.threeJSScene.userData.pixlSkyboxTextureUrl).toBe('/skybox/clear_blue_sky.jpg');
+    } finally {
+      loadAsync.mockRestore();
+    }
   });
 });
 

@@ -43,15 +43,10 @@ export const AtmosphericLighting = () => {
 
   return (
     <>
-      {/* Fallback solid background color (shows during Suspense load
-          of the UE4 sky GLB, and at night when the skydome textures
-          are intentionally dark). */}
+        {/* Fallback solid background color while the downloaded skybox loads. */}
       <color attach="background" args={[skyColor]} />
 
-      {/* Default skybox — Unreal Engine 4 sky GLB (CC-BY-4.0). The
-          dome is parented to the camera inside <Skybox> so it always
-          surrounds the viewport regardless of where the user flies.
-          Hidden at night so the Stars below take over the background. */}
+        {/* Default cloud skybox. Hidden at night so Stars take over. */}
       {!isNight && (
         <Suspense fallback={null}>
           <Skybox />

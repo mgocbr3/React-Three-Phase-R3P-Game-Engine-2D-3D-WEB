@@ -29,6 +29,7 @@ export interface SceneJSON {
 
 export interface SceneSkyJSON {
   enabled?: boolean;
+  textureUrl?: string;
   zenithColor?: string;
   horizonColor?: string;
   groundColor?: string;

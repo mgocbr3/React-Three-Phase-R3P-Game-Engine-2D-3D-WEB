@@ -66,6 +66,8 @@ type ThreeRuntimeDebugApi = {
     playerLookYaw: number | null;
     locomotion: unknown;
     controllerDebug: unknown;
+    skyboxTextureUrl: string | null;
+    sceneSkyTextureUrl: string | null;
   } | null;
 };
 type ThreeCameraTarget = { x: number; y: number; z: number };
@@ -878,6 +880,8 @@ export function ThreeRuntimeMount({
         ));
         const position = player?.threeJSGroup.position;
         const lookYaw = player?.threeJSGroup.userData.pixlLookYaw;
+        const sceneSkyTextureUrl = game.scene.sceneJSONAsset?.data?.sky?.textureUrl;
+        const skyboxTextureUrl = game.scene.threeJSScene.userData.pixlSkyboxTextureUrl;
         return {
           isPlaying: game.isPlaying(),
           verticalAxis: input?.readVerticalAxis() ?? 0,
@@ -886,6 +890,8 @@ export function ThreeRuntimeMount({
           playerLookYaw: typeof lookYaw === 'number' && Number.isFinite(lookYaw) ? lookYaw : null,
           locomotion: player?.threeJSGroup.userData.pixlLocomotionState ?? null,
           controllerDebug: player?.threeJSGroup.userData.pixlControllerDebug ?? null,
+          skyboxTextureUrl: typeof skyboxTextureUrl === 'string' ? skyboxTextureUrl : null,
+          sceneSkyTextureUrl: typeof sceneSkyTextureUrl === 'string' ? sceneSkyTextureUrl : null,
         };
       },
     };

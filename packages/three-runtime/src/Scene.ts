@@ -66,6 +66,10 @@ const safeColor = (value: string | undefined | null, fallback: string): THREE.Co
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
+const isExternalTextureUrl = (value: string): boolean => (
+  /^[a-z][a-z0-9+.-]*:/i.test(value) || value.startsWith('/')
+);
+
 export const createSkyDome = (sky: SceneSkyJSON | null | undefined, background?: string | null): THREE.Mesh => {
   const radius = Math.max(100, Math.min(5000, sky?.radius ?? 950));
   const material = new THREE.ShaderMaterial({
@@ -103,6 +107,7 @@ class Scene {
   initialGravity: { x: number; y: number; z: number };
   rapierWorld: RAPIER.World | null;
   private physicsStepWarningShown: boolean;
+  private skyTexture: THREE.Texture | null;
 
   constructor(game: Game, jsonAssetPath?: string) {
     this.game = game;
@@ -115,6 +120,7 @@ class Scene {
     this.initialGravity = { x: 0, y: -9.8, z: 0 };
     this.rapierWorld = null;
     this.physicsStepWarningShown = false;
+    this.skyTexture = null;
   }
 
   async load(): Promise<void> {
@@ -128,7 +134,7 @@ class Scene {
 
     const data: SceneJSON = this.sceneJSONAsset?.data ?? {};
 
-    this.setBackground(data);
+    await this.setBackground(data);
 
     this.setFog(data.fog ?? null);
     this.setLights(data.lights ?? []);
@@ -216,10 +222,34 @@ class Scene {
     cam.lookAt(lookAtTarget);
   }
 
-  setBackground(data: SceneJSON): void {
+  private async loadSkyTexture(textureUrl: string): Promise<THREE.Texture> {
+    const url = isExternalTextureUrl(textureUrl)
+      ? textureUrl
+      : await this.game.assetStore.source.resolve(textureUrl);
+    const texture = await new THREE.TextureLoader().loadAsync(url);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  async setBackground(data: SceneJSON): Promise<void> {
     const background = data.background ?? '#9fd5df';
     this.threeJSScene.background = safeColor(background, '#9fd5df');
     if (data.sky?.enabled === false) return;
+
+    if (data.sky?.textureUrl) {
+      try {
+        this.skyTexture?.dispose();
+        this.skyTexture = await this.loadSkyTexture(data.sky.textureUrl);
+        this.threeJSScene.background = this.skyTexture;
+        this.threeJSScene.userData.pixlSkyboxTextureUrl = data.sky.textureUrl;
+        return;
+      } catch (error) {
+        console.warn(`Scene.setBackground: unable to load sky texture "${data.sky.textureUrl}"`, error);
+      }
+    }
+
     this.threeJSScene.add(createSkyDome(data.sky, background));
   }
 
@@ -355,7 +385,10 @@ class Scene {
   // Lifecycle hooks ---------------------------------------------------------
 
   afterLoaded(): void {}
-  beforeUnloaded(): void {}
+  beforeUnloaded(): void {
+    this.skyTexture?.dispose();
+    this.skyTexture = null;
+  }
   beforeRender(_ctx: { deltaTimeInSec: number }): void {}
 }
 

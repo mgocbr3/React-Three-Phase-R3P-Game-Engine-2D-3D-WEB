@@ -39,6 +39,7 @@ describe('EditorHeader layout selector', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.getByText('R3P')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Layout' }));
     expect(screen.getByRole('button', { name: 'Save Current Layout' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Viewport Focus' }));
@@ -83,20 +84,22 @@ describe('EditorHeader layout selector', () => {
     expect(screen.getByRole('button', { name: 'Sprite' })).toBeDisabled();
   });
 
-  it('hides the project toolbar while Play Mode is active', () => {
+  it('keeps the project toolbar visible while Play Mode is active', () => {
     useEditorStore.setState({ activeSceneKind: '2d', isEditMode: false });
     useRuntimeGameStore.setState({ previewSession, isPlaying: true });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <EditorHeader />
       </MemoryRouter>,
     );
 
+    expect(container.querySelector('.editor-header')).toHaveClass('h-[64px]');
     expect(screen.getByRole('button', { name: 'Stop' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
   });
 
   it('locks object mutation shortcuts while Play Mode is active', () => {

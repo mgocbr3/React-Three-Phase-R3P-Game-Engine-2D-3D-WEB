@@ -68,8 +68,6 @@ export const EditorStatusBar = () => {
       ? getRuntimeAdapterLabel(previewSession.runtime)
       : null;
 
-  if (previewSession) return null;
-  
   // Estimate triangle count (rough estimate based on primitive types)
   const estimatedTris = objects.reduce((total, obj) => {
     switch (obj.type) {

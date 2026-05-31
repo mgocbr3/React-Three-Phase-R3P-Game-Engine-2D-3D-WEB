@@ -13,6 +13,8 @@ import type {
   Vector3Data,
 } from '../types.js';
 
+export const DEFAULT_THREE_SKYBOX_TEXTURE_URL = '/skybox/clear_blue_sky.jpg';
+
 // Loose mirrors of the PixlPlayground schema. We can't import directly
 // from engine/apps/studio because that's a separate package; instead we
 // declare exactly the shape we read. Stay in sync with
@@ -480,6 +482,7 @@ export const pixlSceneToWesScene = (scene: PixlSceneDocument): SceneJSON => {
     background: scene.environment?.background,
     sky: scene.kind === '3d' ? {
       enabled: true,
+      textureUrl: DEFAULT_THREE_SKYBOX_TEXTURE_URL,
       horizonColor: scene.environment?.background ?? '#bfe0f4',
       zenithColor: '#6ea8dc',
       groundColor: '#6f855d',

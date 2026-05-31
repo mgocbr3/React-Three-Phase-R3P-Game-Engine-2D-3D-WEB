@@ -551,7 +551,7 @@ export const EditorHeader = () => {
 
   return (
     <>
-      <header className={cn('editor-header flex-shrink-0 text-foreground z-30', isRuntimePreviewActive ? 'h-[30px]' : 'h-[64px]')}>
+      <header className="editor-header z-30 h-[64px] flex-shrink-0 text-foreground">
         <div className="editor-menubar relative flex h-[30px] items-center px-2">
           <div className="flex min-w-0 items-center gap-2">
             <button
@@ -560,7 +560,7 @@ export const EditorHeader = () => {
               title="Voltar ao Hub"
             >
               <img src={logoSilver} alt="React 3 Phase" className="h-4 w-4 object-contain" />
-              <span>Pixl</span>
+              <span>R3P</span>
             </button>
           </div>
 
@@ -654,35 +654,33 @@ export const EditorHeader = () => {
           </div>
         </div>
 
-        {!isRuntimePreviewActive && (
-          <div className="editor-toolbar-row flex h-[34px] items-center gap-2 px-2">
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => navigate('/')}
-                className="editor-project-tab mr-1 flex h-[33px] max-w-[220px] items-center gap-1.5 px-3 text-xs font-semibold text-foreground"
-                title={projectName}
+        <div className="editor-toolbar-row flex h-[34px] items-center gap-2 px-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => navigate('/')}
+              className="editor-project-tab mr-1 flex h-[33px] max-w-[220px] items-center gap-1.5 px-3 text-xs font-semibold text-foreground"
+              title={projectName}
+            >
+              <span className="truncate">{projectName}</span>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+            {localWorkspace.directoryName && (
+              <div
+                className="editor-path-chip flex min-w-0 max-w-[300px] items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground"
+                title={`${localWorkspace.directoryName}/${localWorkspace.projectFilePath}`}
               >
-                <span className="truncate">{projectName}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-              {localWorkspace.directoryName && (
-                <div
-                  className="editor-path-chip flex min-w-0 max-w-[300px] items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground"
-                  title={`${localWorkspace.directoryName}/${localWorkspace.projectFilePath}`}
-                >
-                  <FolderOpen className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-                  <span className="truncate text-foreground">{localWorkspace.directoryName}</span>
-                  <span className="text-muted-foreground/50">/</span>
-                  <span className="truncate">{localWorkspace.projectFilePath}</span>
-                </div>
-              )}
-              <CommandButton icon={FolderOpen} label="Open" onClick={handleOpenProjectFolder} />
-              <CommandButton icon={Save} label="Save" onClick={handleSaveToDisk} />
-              <HeaderSeparator />
-              <EditorToolbar variant="inline" disabled={editorMutationsLocked} />
-            </div>
+                <FolderOpen className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                <span className="truncate text-foreground">{localWorkspace.directoryName}</span>
+                <span className="text-muted-foreground/50">/</span>
+                <span className="truncate">{localWorkspace.projectFilePath}</span>
+              </div>
+            )}
+            <CommandButton icon={FolderOpen} label="Open" onClick={handleOpenProjectFolder} />
+            <CommandButton icon={Save} label="Save" onClick={handleSaveToDisk} />
+            <HeaderSeparator />
+            <EditorToolbar variant="inline" disabled={editorMutationsLocked} />
           </div>
-        )}
+        </div>
       </header>
 
       <EngineSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
