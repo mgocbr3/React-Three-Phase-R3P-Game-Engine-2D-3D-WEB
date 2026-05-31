@@ -4,13 +4,13 @@ import * as THREE from 'three';
 import GLTFAsset from '../assets/GLTFAsset.js';
 import AnimationComponent from './AnimationComponent.js';
 
-const makeAsset = (clip: THREE.AnimationClip): GLTFAsset => {
+const makeAsset = (...clips: THREE.AnimationClip[]): GLTFAsset => {
   const asset = new GLTFAsset({} as never, '/model.glb', {} as never);
   asset.setData({
     scene: new THREE.Group(),
     scenes: [],
     cameras: [],
-    animations: [clip],
+    animations: clips,
     asset: { version: '2.0' },
     parser: {},
     userData: {},
@@ -45,5 +45,36 @@ describe('AnimationComponent', () => {
     expect(component.getCurrentClipName()).toBe('idle');
     expect(root.position.x).toBeGreaterThan(0.9);
     expect(root.position.x).toBeLessThan(1.1);
+  });
+
+  it('switches locomotion clips from controller state', async () => {
+    const root = new THREE.Group();
+    const idle = new THREE.AnimationClip('idle', 1, [
+      new THREE.NumberKeyframeTrack('.position[x]', [0, 1], [0, 0]),
+    ]);
+    const run = new THREE.AnimationClip('run', 1, [
+      new THREE.NumberKeyframeTrack('.position[x]', [0, 1], [0, 4]),
+    ]);
+    const component = new AnimationComponent({
+      threeJSGroup: root,
+      getScene: () => ({
+        game: {
+          loadAsset: async () => makeAsset(idle, run),
+        },
+      }),
+    } as never, {
+      type: 'animation',
+      assetPath: '/model.glb',
+      clip: 'idle',
+      movementClips: { idle: 'idle', run: 'run' },
+      crossFadeDuration: 0,
+      autoPlay: true,
+    });
+
+    await component.load();
+    root.userData.pixlLocomotionState = { moving: true, sprinting: true, grounded: true };
+    component.beforeRender({ deltaTimeInSec: 0.1 });
+
+    expect(component.getCurrentClipName()).toBe('run');
   });
 });

@@ -54,6 +54,8 @@ describe('starterTemplates', () => {
       expect.objectContaining({
         currentAnimation: 'idle',
         availableAnimations: ['idle', 'walk', 'run', 'agree', 'headShake', 'sad_pose', 'sneak_pose'],
+        movementClips: expect.objectContaining({ idle: 'idle', walk: 'walk', run: 'run', crouch: 'sneak_pose' }),
+        driveByController: true,
         autoPlay: true,
       }),
     );
@@ -62,6 +64,8 @@ describe('starterTemplates', () => {
         mode: templateId,
         followPlayer: true,
         targetId: 'main-player',
+        pitchMin: expect.any(Number),
+        pitchMax: expect.any(Number),
       }),
     );
     expect(ground?.type).toBe('box');

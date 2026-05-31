@@ -68,6 +68,8 @@ export interface CameraSettings {
   lockedZ: boolean; // For 2.5D games
   lockedY: boolean; // For top-down games
   smoothing: number;
+  pitchMin?: number;
+  pitchMax?: number;
 }
 
 // Game preset types for quick configuration
@@ -101,6 +103,10 @@ export interface PlayerSettings {
   // Sprint
   canSprint: boolean;
   sprintSpeed: number;
+  mouseSensitivity?: number;
+  gamepadLookSpeed?: number;
+  minPitch?: number;
+  maxPitch?: number;
   sprintStaminaCost: number; // Stamina per second while sprinting
   maxStamina: number;
   staminaRegenRate: number;
@@ -308,6 +314,8 @@ export interface AnimationSettings {
   sourceAssetName?: string; // Friendly source asset name shown by importers/tools
   currentAnimation?: string; // Name of currently playing animation
   availableAnimations: string[]; // List populated after model load
+  movementClips?: Partial<Record<'idle' | 'walk' | 'run' | 'jump' | 'fall' | 'crouch' | 'crouchWalk', string>>;
+  driveByController?: boolean;
   autoPlay: boolean;
   loop: boolean;
   speed: number; // Playback speed multiplier

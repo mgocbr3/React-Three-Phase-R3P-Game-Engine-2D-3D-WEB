@@ -9,6 +9,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import type Game from './Game.js';
 import GameObject from './GameObject.js';
 import JSONAsset from './assets/JSONAsset.js';
+import RigidBodyComponent from './components/RigidBodyComponent.js';
 import KinematicCharacterController from './util/KinematicCharacterController.js';
 import { createLight, createAudio } from './util/ThreeJSHelpers.js';
 import SoundAsset from './assets/SoundAsset.js';
@@ -101,6 +102,7 @@ class Scene {
   sceneJSONAsset: JSONAsset<SceneJSON> | null;
   initialGravity: { x: number; y: number; z: number };
   rapierWorld: RAPIER.World | null;
+  private physicsStepWarningShown: boolean;
 
   constructor(game: Game, jsonAssetPath?: string) {
     this.game = game;
@@ -112,6 +114,7 @@ class Scene {
     this.active = false;
     this.initialGravity = { x: 0, y: -9.8, z: 0 };
     this.rapierWorld = null;
+    this.physicsStepWarningShown = false;
   }
 
   async load(): Promise<void> {
@@ -184,14 +187,26 @@ class Scene {
     if (!target) return;
 
     const targetPosition = target.threeJSGroup.position;
-    const targetEye = targetPosition.clone().add(new THREE.Vector3(0, camera.height ?? 2.2, 0));
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(target.threeJSGroup.quaternion).normalize();
+    const lookYaw = target.threeJSGroup.userData.pixlLookYaw;
+    const lookPitch = target.threeJSGroup.userData.pixlLookPitch;
+    const yaw = typeof lookYaw === 'number' && Number.isFinite(lookYaw)
+      ? lookYaw
+      : target.threeJSGroup.rotation.y;
+    const pitch = typeof lookPitch === 'number' && Number.isFinite(lookPitch)
+      ? clamp(lookPitch, camera.pitchMin ?? -0.75, camera.pitchMax ?? 0.85)
+      : 0;
+    const lookRotation = new THREE.Euler(pitch, yaw, 0, 'YXZ');
+    const forward = new THREE.Vector3(0, 0, -1).applyEuler(lookRotation).normalize();
+    const flatForward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).normalize();
     const desiredPosition = camera.mode === 'first-person'
       ? targetPosition.clone().add(new THREE.Vector3(0, camera.height ?? 1.7, 0)).addScaledVector(forward, 0.12)
-      : targetEye.clone().addScaledVector(forward, -(camera.distance ?? 8));
+      : targetPosition.clone()
+        .add(new THREE.Vector3(0, camera.height ?? 2.2, 0))
+        .addScaledVector(flatForward, -(camera.distance ?? 8) * Math.cos(pitch))
+        .add(new THREE.Vector3(0, Math.sin(pitch) * (camera.distance ?? 8), 0));
     const lookAtTarget = camera.mode === 'first-person'
       ? desiredPosition.clone().add(forward)
-      : targetEye;
+      : targetPosition.clone().add(new THREE.Vector3(0, camera.height ?? 2.2, 0));
     const smoothing = clamp(camera.smoothing ?? 0, 0, 0.98);
     const alpha = smoothing > 0
       ? clamp(1 - Math.pow(1 - smoothing, Math.max(1, deltaTimeInSec * 60)), 0, 1)
@@ -271,8 +286,24 @@ class Scene {
 
   advancePhysics(): void {
     if (!this.rapierWorld) return;
-    this.rapierWorld.step();
+    if (!this.hasDynamicRigidBodies()) return;
+    try {
+      this.rapierWorld.step();
+    } catch (error) {
+      if (!this.physicsStepWarningShown) {
+        console.warn('Scene.advancePhysics: Rapier step failed; skipping this physics frame.', error);
+        this.physicsStepWarningShown = true;
+      }
+      return;
+    }
     this.forEachGameObject((g) => g.syncWithRigidBody());
+  }
+
+  hasDynamicRigidBodies(): boolean {
+    return this.getGameObject((gameObject) => {
+      const rigidBody = gameObject.getComponent(RigidBodyComponent);
+      return rigidBody?.jsonData.rigidBodyType === 'dynamic';
+    }) !== null;
   }
 
   forEachGameObject(fn: (gameObject: GameObject) => void): void {

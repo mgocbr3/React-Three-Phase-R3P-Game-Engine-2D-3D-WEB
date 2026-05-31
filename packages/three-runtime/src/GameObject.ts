@@ -254,10 +254,21 @@ class GameObject {
   syncWithRigidBody(): void {
     const body = this.getRapierRigidBody();
     if (!body) return;
-    const translation = body.translation();
-    const rotation = body.rotation();
+    let translation: RAPIER.Vector;
+    let rotation: RAPIER.Rotation;
+    try {
+      translation = body.translation();
+      rotation = body.rotation();
+    } catch {
+      return;
+    }
     this.threeJSGroup.position.set(translation.x, translation.y, translation.z);
-    this.threeJSGroup.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+    const lookYaw = this.threeJSGroup.userData.pixlLookYaw;
+    if (typeof lookYaw === 'number' && Number.isFinite(lookYaw)) {
+      this.threeJSGroup.quaternion.setFromEuler(new THREE.Euler(0, lookYaw, 0));
+    } else {
+      this.threeJSGroup.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+    }
   }
 
   playSound(name: string, delayInSec = 0, detune: number | null = null): void {

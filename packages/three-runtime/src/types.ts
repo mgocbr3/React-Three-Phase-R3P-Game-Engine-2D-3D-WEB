@@ -48,6 +48,8 @@ export interface SceneCameraJSON {
   distance?: number;
   height?: number;
   smoothing?: number;
+  pitchMin?: number;
+  pitchMax?: number;
 }
 
 export interface FogJSON {
@@ -138,6 +140,7 @@ export interface DracoLoaderOptions {
 export interface InputOptions {
   wsadMovement?: boolean;
   mouseOptions?: MouseOptions;
+  gamepadDeadzone?: number;
 }
 
 export interface MouseOptions {
@@ -171,8 +174,13 @@ export interface Vector3Data {
 export interface CharacterControllerOptions {
   walkingSpeed?: number;
   runningSpeed?: number;
+  crouchSpeed?: number;
   jumpCooldown?: number;
   jumpForce?: number;
+  mouseSensitivity?: number;
+  gamepadLookSpeed?: number;
+  minPitch?: number;
+  maxPitch?: number;
   capsule?: ColliderData;
 }
 

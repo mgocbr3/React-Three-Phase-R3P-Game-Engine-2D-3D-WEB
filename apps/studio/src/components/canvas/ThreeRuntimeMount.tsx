@@ -832,6 +832,7 @@ export function ThreeRuntimeMount({
   useEffect(() => {
     const game = gameRef.current;
     if (!game || load.status !== 'ready') return;
+    game.inputManager?.setPointerLockEnabled(runSimulation);
     if (runSimulation) {
       void game.play().catch((error) => console.error('[ThreeRuntimeMount] play failed:', error));
       return;
@@ -888,6 +889,10 @@ export function ThreeRuntimeMount({
 
     const initialRenderSettings = useEngineSettings.getState();
     const game = new Game(resolvedAssetBaseUrl, {
+      inputOptions: {
+        gamepadDeadzone: 0.18,
+        mouseOptions: { usePointerLock: true },
+      },
       rendererOptions: {
         canvas,
         width: canvas.clientWidth || 800,

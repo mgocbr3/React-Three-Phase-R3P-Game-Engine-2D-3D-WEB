@@ -225,6 +225,9 @@ describe('pixlSceneToWesScene', () => {
             data: {
               modelUrl: '/models/manequin/mixamo/xbot.glb',
               currentAnimation: 'idle',
+              movementClips: { idle: 'idle', walk: 'walk', run: 'run' },
+              driveByController: true,
+              crossFadeDuration: 0.25,
               autoPlay: true,
               loop: true,
               speed: 1,
@@ -242,6 +245,9 @@ describe('pixlSceneToWesScene', () => {
         type: 'animation',
         assetPath: '/models/manequin/mixamo/xbot.glb',
         clip: 'idle',
+        movementClips: { idle: 'idle', walk: 'walk', run: 'run' },
+        driveByController: true,
+        crossFadeDuration: 0.25,
         autoPlay: true,
       }),
     ]);
@@ -272,7 +278,16 @@ describe('pixlSceneToWesScene', () => {
             id: 'player',
             type: 'pixl.player',
             enabled: true,
-            data: { speed: 5, sprintSpeed: 8, jumpForce: 8 },
+            data: {
+              speed: 5,
+              sprintSpeed: 8,
+              crouchSpeed: 2.5,
+              jumpForce: 8,
+              mouseSensitivity: 0.004,
+              gamepadLookSpeed: 2.8,
+              minPitch: -1.1,
+              maxPitch: 0.9,
+            },
           },
         ],
       }),
@@ -287,7 +302,12 @@ describe('pixlSceneToWesScene', () => {
     expect(player.userData?.pixlControllerOptions).toMatchObject({
       walkingSpeed: 5,
       runningSpeed: 8,
+      crouchSpeed: 2.5,
       jumpForce: 8,
+      mouseSensitivity: 0.004,
+      gamepadLookSpeed: 2.8,
+      minPitch: -1.1,
+      maxPitch: 0.9,
       capsule: { halfHeight: 0.65, radius: 0.32, friction: 0.85 },
     });
     expect(player.userData?.pixlKinematicControllerOptions).toMatchObject({

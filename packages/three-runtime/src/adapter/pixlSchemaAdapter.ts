@@ -165,6 +165,9 @@ const mapComponent = (instance: PixlComponentInstance): ComponentJSON | null => 
         name: instance.id,
         assetPath: normalizeAssetPath(assetPath),
         clip: (data.currentAnimation ?? data.animationName ?? data.clip) as string | undefined,
+        movementClips: data.movementClips,
+        driveByController: data.driveByController,
+        crossFadeDuration: data.crossFadeDuration,
         autoPlay: data.autoPlay ?? true,
         loop: data.loop ?? true,
         speed: data.speed ?? 1,
@@ -219,7 +222,12 @@ const getPlayerControllerOptions = (object: PixlSceneObject): CharacterControlle
   return {
     walkingSpeed: numberOrUndefined(player.speed),
     runningSpeed: numberOrUndefined(player.sprintSpeed),
+    crouchSpeed: numberOrUndefined(player.crouchSpeed),
     jumpForce: numberOrUndefined(player.jumpForce),
+    mouseSensitivity: numberOrUndefined(player.mouseSensitivity),
+    gamepadLookSpeed: numberOrUndefined(player.gamepadLookSpeed),
+    minPitch: numberOrUndefined(player.minPitch),
+    maxPitch: numberOrUndefined(player.maxPitch),
     capsule: capsule ? {
       halfHeight: numberOrUndefined(capsule.halfHeight),
       radius: numberOrUndefined(capsule.radius),
@@ -418,6 +426,8 @@ const getRuntimeCamera = (
     distance: numberOrUndefined(cameraSettings.distance),
     height: numberOrUndefined(cameraSettings.height),
     smoothing: numberOrUndefined(cameraSettings.smoothing),
+    pitchMin: numberOrUndefined(cameraSettings.pitchMin),
+    pitchMax: numberOrUndefined(cameraSettings.pitchMax),
   };
 };
 

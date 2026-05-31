@@ -46,4 +46,25 @@ describe('Scene game object factory', () => {
     expect(gameObject).toBeInstanceOf(GameObject);
     expect(gameObject).not.toBeInstanceOf(KinematicCharacterController);
   });
+
+  it('detects whether a scene has dynamic rigid bodies', () => {
+    const scene = makeScene(() => null);
+    const create = (scene as unknown as {
+      _createGameObject: (parent: Scene, json: { type: string; name: string; components?: Array<Record<string, unknown>> }) => GameObject;
+    })._createGameObject.bind(scene, scene);
+
+    create({
+      type: 'box',
+      name: 'Static Floor',
+      components: [{ type: 'rigidBody', rigidBodyType: 'fixed' }],
+    });
+    expect(scene.hasDynamicRigidBodies()).toBe(false);
+
+    create({
+      type: 'box',
+      name: 'Crate',
+      components: [{ type: 'rigidBody', rigidBodyType: 'dynamic' }],
+    });
+    expect(scene.hasDynamicRigidBodies()).toBe(true);
+  });
 });

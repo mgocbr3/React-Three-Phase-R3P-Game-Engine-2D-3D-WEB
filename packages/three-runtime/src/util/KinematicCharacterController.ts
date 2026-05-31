@@ -111,19 +111,28 @@ class KinematicCharacterController extends CharacterController {
   }
 
   beforeRender(ctx: { deltaTimeInSec: number }): void {
-    super.beforeRender(ctx);
-    if (!this.isLoaded() || !this.rapierCharacterController) return;
+    if (!this.isLoaded() || !this.rapierCharacterController) {
+      super.beforeRender(ctx);
+      return;
+    }
 
     const inputManager = this.getScene().game.inputManager;
-    if (!inputManager) return;
-    const keyboard = inputManager.keyboardHandler;
+    if (!inputManager) {
+      super.beforeRender(ctx);
+      return;
+    }
     const time = performance.now();
+
+    this.updateViewAngles(ctx.deltaTimeInSec);
 
     const yawAngle = finiteOrZero(this.getDesiredYaw());
     const pitchAngle = finiteOrZero(this.getDesiredPitch());
 
     const rigidBody = this.getComponent(RigidBodyComponent)?.getRapierRigidBody();
-    if (!rigidBody) return;
+    if (!rigidBody) {
+      super.beforeRender(ctx);
+      return;
+    }
 
     let attachedCamera: THREE.Camera | null = null;
     this.threeJSGroup.traverse((obj) => {
@@ -133,10 +142,26 @@ class KinematicCharacterController extends CharacterController {
       (attachedCamera as THREE.Camera).rotation.set(pitchAngle, 0, 0);
     }
 
+    const inputMagnitude = Math.min(1, Math.hypot(inputManager.readHorizontalAxis(), inputManager.readVerticalAxis()));
+    const sprinting = inputManager.isSprintPressed() && inputMagnitude > 0.05;
+    const crouching = inputManager.isCrouchPressed();
+
     const desired = this.getDesiredTranslation(ctx.deltaTimeInSec);
     desired.applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle);
 
-    const isOnGround = this.isOnGround();
+    let isOnGround = this.isOnGround();
+    let jumpedThisFrame = false;
+    if (inputManager.isJumpPressed()) {
+      const timeSinceLastJump = time - this.lastJumpTime;
+      const cooldown = this.controllerOptions.jumpCooldown ?? 1000;
+      if (timeSinceLastJump > cooldown && isOnGround) {
+        this.verticalVelocity = this.controllerOptions.jumpForce ?? DEFAULT_JUMP_FORCE;
+        this.lastJumpTime = time;
+        isOnGround = false;
+        jumpedThisFrame = true;
+      }
+    }
+
     if (isOnGround && this.verticalVelocity < 0) {
       this.verticalVelocity = -1;
     } else {
@@ -145,24 +170,44 @@ class KinematicCharacterController extends CharacterController {
     }
     desired.y += this.verticalVelocity * ctx.deltaTimeInSec;
 
-    const collider = rigidBody.collider(0);
-    this.rapierCharacterController.computeColliderMovement(collider, desired);
-    const movement = this.rapierCharacterController.computedMovement();
-    const t = rigidBody.translation();
-    rigidBody.setNextKinematicTranslation({
-      x: t.x + movement.x,
-      y: t.y + movement.y,
-      z: t.z + movement.z,
-    });
-
-    if (keyboard.isKeyDown(' ')) {
-      const timeSinceLastJump = time - this.lastJumpTime;
-      const cooldown = this.controllerOptions.jumpCooldown ?? 1000;
-      if (timeSinceLastJump > cooldown && isOnGround) {
-        this.verticalVelocity = this.controllerOptions.jumpForce ?? DEFAULT_JUMP_FORCE;
-        this.lastJumpTime = time;
+    let movement: RAPIER.Vector;
+    try {
+      const collider = rigidBody.collider(0);
+      if (!collider) {
+        super.beforeRender(ctx);
+        return;
       }
+      this.rapierCharacterController.computeColliderMovement(collider, desired);
+      movement = this.rapierCharacterController.computedMovement();
+      const t = rigidBody.translation();
+      const nextTranslation = {
+        x: t.x + movement.x,
+        y: t.y + movement.y,
+        z: t.z + movement.z,
+      };
+      if (this.getScene().hasDynamicRigidBodies()) {
+        rigidBody.setNextKinematicTranslation(nextTranslation);
+      } else {
+        rigidBody.setTranslation(nextTranslation, true);
+      }
+      this.threeJSGroup.position.set(nextTranslation.x, nextTranslation.y, nextTranslation.z);
+    } catch {
+      super.beforeRender(ctx);
+      return;
     }
+
+    const horizontalSpeed = Math.hypot(movement.x, movement.z) / Math.max(ctx.deltaTimeInSec, 0.001);
+    this.threeJSGroup.userData.pixlLocomotionState = {
+      inputMagnitude,
+      speed: horizontalSpeed,
+      moving: inputMagnitude > 0.05 || horizontalSpeed > 0.05,
+      sprinting,
+      crouching,
+      grounded: isOnGround,
+      jumping: jumpedThisFrame || !isOnGround || this.verticalVelocity > 0.1,
+      verticalVelocity: this.verticalVelocity,
+    };
+    super.beforeRender(ctx);
   }
 }
 
