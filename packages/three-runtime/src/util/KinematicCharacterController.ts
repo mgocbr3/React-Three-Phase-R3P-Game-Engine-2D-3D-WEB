@@ -24,10 +24,28 @@ export interface KinematicCharacterControllerOptions {
   applyImpulsesToDynamicBodies?: boolean;
 }
 
+const DEFAULT_JUMP_FORCE = 5;
+
 const DEFAULT_KCC: Required<Pick<KinematicCharacterControllerOptions, 'offset' | 'applyImpulsesToDynamicBodies'>> = {
   offset: 0.05,
   applyImpulsesToDynamicBodies: false,
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  value !== null && typeof value === 'object'
+);
+
+const readControllerOptions = (options: GameObjectOptions): CharacterControllerOptions => {
+  const raw = options.userData?.pixlControllerOptions;
+  return isRecord(raw) ? raw as CharacterControllerOptions : {};
+};
+
+const readKinematicControllerOptions = (options: GameObjectOptions): KinematicCharacterControllerOptions => {
+  const raw = options.userData?.pixlKinematicControllerOptions;
+  return isRecord(raw) ? raw as KinematicCharacterControllerOptions : {};
+};
+
+const finiteOrZero = (value: number): number => (Number.isFinite(value) ? value : 0);
 
 class KinematicCharacterController extends CharacterController {
   rapierCharacterController: RAPIER.KinematicCharacterController | null = null;
@@ -40,6 +58,8 @@ class KinematicCharacterController extends CharacterController {
     controllerOptions: CharacterControllerOptions = {},
     kccOptions: KinematicCharacterControllerOptions = {},
   ) {
+    const pixlControllerOptions = readControllerOptions(options);
+    const mergedControllerOptions = { ...pixlControllerOptions, ...controllerOptions };
     super(
       parent,
       {
@@ -49,16 +69,16 @@ class KinematicCharacterController extends CharacterController {
             type: 'rigidBody',
             rigidBodyType: 'kinematicPositionBased',
             colliders: [
-              { type: 'capsule', ...DEFAULT_CAPSULE, ...(controllerOptions.capsule ?? {}) },
+              { type: 'capsule', ...DEFAULT_CAPSULE, ...(mergedControllerOptions.capsule ?? {}) },
             ],
             enabledRotations: { x: false, y: true, z: false },
           },
           ...(options.components ?? []),
         ],
       },
-      controllerOptions,
+      mergedControllerOptions,
     );
-    this.kccOptions = { ...DEFAULT_KCC, ...kccOptions };
+    this.kccOptions = { ...DEFAULT_KCC, ...readKinematicControllerOptions(options), ...kccOptions };
     this.verticalVelocity = 0;
   }
 
@@ -99,14 +119,11 @@ class KinematicCharacterController extends CharacterController {
     const keyboard = inputManager.keyboardHandler;
     const time = performance.now();
 
-    const yawAngle = this.getDesiredYaw();
-    const pitchAngle = this.getDesiredPitch();
+    const yawAngle = finiteOrZero(this.getDesiredYaw());
+    const pitchAngle = finiteOrZero(this.getDesiredPitch());
 
     const rigidBody = this.getComponent(RigidBodyComponent)?.getRapierRigidBody();
     if (!rigidBody) return;
-
-    const yawQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yawAngle, 0));
-    rigidBody.setRotation({ x: yawQuat.x, y: yawQuat.y, z: yawQuat.z, w: yawQuat.w }, true);
 
     let attachedCamera: THREE.Camera | null = null;
     this.threeJSGroup.traverse((obj) => {
@@ -142,7 +159,7 @@ class KinematicCharacterController extends CharacterController {
       const timeSinceLastJump = time - this.lastJumpTime;
       const cooldown = this.controllerOptions.jumpCooldown ?? 1000;
       if (timeSinceLastJump > cooldown && isOnGround) {
-        this.verticalVelocity = 5;
+        this.verticalVelocity = this.controllerOptions.jumpForce ?? DEFAULT_JUMP_FORCE;
         this.lastJumpTime = time;
       }
     }

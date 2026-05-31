@@ -246,6 +246,97 @@ describe('pixlSceneToWesScene', () => {
       }),
     ]);
   });
+
+  it('routes player physics and movement settings into the native KCC instead of a duplicate rigid body', () => {
+    const scene = makeScene([
+      makeObject({
+        type: 'player',
+        tags: ['player'],
+        components: [
+          {
+            id: 'mesh',
+            type: 'pixl.mesh',
+            enabled: true,
+            data: { modelUrl: '/models/manequin/mixamo/xbot.glb' },
+          },
+          {
+            id: 'physics',
+            type: 'pixl.physics',
+            enabled: true,
+            data: {
+              bodyType: 'dynamic',
+              colliders: [{ type: 'capsule', halfHeight: 0.65, radius: 0.32, friction: 0.85 }],
+            },
+          },
+          {
+            id: 'player',
+            type: 'pixl.player',
+            enabled: true,
+            data: { speed: 5, sprintSpeed: 8, jumpForce: 8 },
+          },
+        ],
+      }),
+    ]);
+
+    const out = pixlSceneToWesScene(scene);
+    const player = out.gameObjects![0];
+
+    expect(player.components).toEqual([
+      expect.objectContaining({ type: 'model', assetPath: '/models/manequin/mixamo/xbot.glb' }),
+    ]);
+    expect(player.userData?.pixlControllerOptions).toMatchObject({
+      walkingSpeed: 5,
+      runningSpeed: 8,
+      jumpForce: 8,
+      capsule: { halfHeight: 0.65, radius: 0.32, friction: 0.85 },
+    });
+    expect(player.userData?.pixlKinematicControllerOptions).toMatchObject({
+      snapToGroundDistance: 0.25,
+    });
+  });
+
+  it('promotes Pixl camera follow settings into the runtime scene camera', () => {
+    const scene = makeScene([
+      makeObject({
+        id: 'main-camera',
+        type: 'camera',
+        tags: ['camera'],
+        transform: {
+          position: [0, 4, 8],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+        },
+        components: [{
+          id: 'camera',
+          type: 'pixl.camera3d',
+          enabled: true,
+          data: {
+            mode: 'third-person',
+            followPlayer: true,
+            targetId: 'main-player',
+            distance: 8,
+            height: 4,
+            fov: 55,
+            smoothing: 0.1,
+          },
+        }],
+      }),
+      makeObject({ id: 'main-player', type: 'player', tags: ['player'] }),
+    ]);
+
+    const out = pixlSceneToWesScene(scene);
+
+    expect(out.camera).toMatchObject({
+      position: { x: 0, y: 4, z: 8 },
+      mode: 'third-person',
+      followPlayer: true,
+      targetId: 'main-player',
+      distance: 8,
+      height: 4,
+      fov: 55,
+      smoothing: 0.1,
+    });
+  });
 });
 
 describe('pixlProjectToWesGame', () => {

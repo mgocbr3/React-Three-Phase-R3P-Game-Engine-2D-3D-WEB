@@ -9,6 +9,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import type Game from './Game.js';
 import GameObject from './GameObject.js';
 import JSONAsset from './assets/JSONAsset.js';
+import KinematicCharacterController from './util/KinematicCharacterController.js';
 import { createLight, createAudio } from './util/ThreeJSHelpers.js';
 import SoundAsset from './assets/SoundAsset.js';
 import type {
@@ -49,6 +50,11 @@ const SKY_FRAGMENT_SHADER = `
   }
 `;
 
+type SceneGameObjectClass = new (
+  parent: Scene | GameObject,
+  options: Omit<GameObjectJSON, 'children'>,
+) => GameObject;
+
 const safeColor = (value: string | undefined | null, fallback: string): THREE.Color => {
   try {
     return new THREE.Color(value ?? fallback);
@@ -56,6 +62,8 @@ const safeColor = (value: string | undefined | null, fallback: string): THREE.Co
     return new THREE.Color(fallback);
   }
 };
+
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 export const createSkyDome = (sky: SceneSkyJSON | null | undefined, background?: string | null): THREE.Mesh => {
   const radius = Math.max(100, Math.min(5000, sky?.radius ?? 950));
@@ -161,6 +169,38 @@ class Scene {
     cam.updateProjectionMatrix();
   }
 
+  updateRuntimeCamera(deltaTimeInSec: number): void {
+    const camera = this.sceneJSONAsset?.data?.camera;
+    if (!camera?.followPlayer) return;
+    const cam = this.game.renderer?.threeJSCamera;
+    if (!cam) return;
+
+    const target = this.getGameObject((gameObject) => (
+      gameObject.threeJSGroup.userData?.pixlObjectId === camera.targetId
+      || gameObject.id === camera.targetId
+      || gameObject.hasTag('player')
+      || gameObject.type === 'player'
+    ));
+    if (!target) return;
+
+    const targetPosition = target.threeJSGroup.position;
+    const targetEye = targetPosition.clone().add(new THREE.Vector3(0, camera.height ?? 2.2, 0));
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(target.threeJSGroup.quaternion).normalize();
+    const desiredPosition = camera.mode === 'first-person'
+      ? targetPosition.clone().add(new THREE.Vector3(0, camera.height ?? 1.7, 0)).addScaledVector(forward, 0.12)
+      : targetEye.clone().addScaledVector(forward, -(camera.distance ?? 8));
+    const lookAtTarget = camera.mode === 'first-person'
+      ? desiredPosition.clone().add(forward)
+      : targetEye;
+    const smoothing = clamp(camera.smoothing ?? 0, 0, 0.98);
+    const alpha = smoothing > 0
+      ? clamp(1 - Math.pow(1 - smoothing, Math.max(1, deltaTimeInSec * 60)), 0, 1)
+      : 1;
+
+    cam.position.lerp(desiredPosition, alpha);
+    cam.lookAt(lookAtTarget);
+  }
+
   setBackground(data: SceneJSON): void {
     const background = data.background ?? '#9fd5df';
     this.threeJSScene.background = safeColor(background, '#9fd5df');
@@ -199,7 +239,11 @@ class Scene {
 
   _createGameObject(parent: Scene | GameObject, json: GameObjectJSON): GameObject {
     const { children, ...options } = json;
-    const gameObject = new GameObject(parent, options);
+    const RegisteredClass = options.type ? this.game.getGameObjectClass(options.type) : null;
+    const GameObjectClass = (RegisteredClass ?? (options.type === 'player'
+      ? KinematicCharacterController
+      : GameObject)) as SceneGameObjectClass;
+    const gameObject = new GameObjectClass(parent, options);
     (children ?? []).forEach((childJson) => this._createGameObject(gameObject, childJson));
     return gameObject;
   }

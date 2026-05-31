@@ -12,7 +12,13 @@
 
 import React, { useEffect, useMemo, useRef } from 'react';
 
+import { useAssetStore } from '@/stores/assetStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { useViewportStore } from '@/stores/viewportStore';
+import {
+  createRuntimeProjectDocumentFromEditor,
+  getCurrentProjectAssetBaseUrl,
+} from '@/services/localProjectFiles';
 
 import { PhaserRuntimeMount } from './PhaserRuntimeMount';
 import { ThreeRuntimeMount } from './ThreeRuntimeMount';
@@ -58,6 +64,15 @@ export function Viewport({
   // but a no-op functionally.
   const viewportMode = useViewportStore((s) => s.viewportMode);
   const setViewportMode = useViewportStore((s) => s.setViewportMode);
+  const objects = useEditorStore((s) => s.objects);
+  const activeSceneKind = useEditorStore((s) => s.activeSceneKind);
+  const gameScript = useEditorStore((s) => s.gameScript);
+  const transformSpace = useEditorStore((s) => s.transformSpace);
+  const snapEnabled = useEditorStore((s) => s.snapEnabled);
+  const snapTranslate = useEditorStore((s) => s.snapTranslate);
+  const snapRotate = useEditorStore((s) => s.snapRotate);
+  const snapScale = useEditorStore((s) => s.snapScale);
+  const projectAssets = useAssetStore((s) => s.projectAssets);
 
   // Seed viewportStore from `?kind=` ONCE on first mount. The toggle takes
   // over after that. Idempotent — re-running with same kind is a no-op.
@@ -78,15 +93,30 @@ export function Viewport({
     [sceneKindProp, viewportMode],
   );
 
-  // Honor explicit props first; otherwise infer from the URL so the
-  // ?engine=native flow can target any sample, not just harvest-rush.
+  const runtimeProjectDocument = useMemo(
+    () => createRuntimeProjectDocumentFromEditor(),
+    [
+      activeSceneKind,
+      gameScript,
+      objects,
+      projectAssets,
+      snapEnabled,
+      snapRotate,
+      snapScale,
+      snapTranslate,
+      transformSpace,
+    ],
+  );
+
+  // Honor explicit props first; otherwise use the active project base, then
+  // infer from the URL so the ?engine=native flow can target any sample.
   const resolvedBase3D = useMemo(
-    () => assetBaseUrl3D ?? readSampleBaseUrlFromUrl(),
-    [assetBaseUrl3D],
+    () => assetBaseUrl3D ?? getCurrentProjectAssetBaseUrl() ?? readSampleBaseUrlFromUrl(),
+    [assetBaseUrl3D, runtimeProjectDocument],
   );
   const resolvedBase2D = useMemo(
-    () => assetBaseUrl2D ?? readSampleBaseUrlFromUrl(),
-    [assetBaseUrl2D],
+    () => assetBaseUrl2D ?? getCurrentProjectAssetBaseUrl() ?? readSampleBaseUrlFromUrl(),
+    [assetBaseUrl2D, runtimeProjectDocument],
   );
 
   return (
@@ -94,6 +124,7 @@ export function Viewport({
       <ThreeRuntimeMount
         visible={sceneKind === '3d'}
         assetBaseUrl={resolvedBase3D}
+        projectDocument={runtimeProjectDocument}
         initialScene={initialScene}
       />
       <div
@@ -103,7 +134,11 @@ export function Viewport({
           display: sceneKind === '2d' ? 'block' : 'none',
         }}
       >
-        <PhaserRuntimeMount visible={sceneKind === '2d'} assetBaseUrl={resolvedBase2D} />
+        <PhaserRuntimeMount
+          visible={sceneKind === '2d'}
+          assetBaseUrl={resolvedBase2D}
+          projectDocument={runtimeProjectDocument}
+        />
       </div>
     </div>
   );

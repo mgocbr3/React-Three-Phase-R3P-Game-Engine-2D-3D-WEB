@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { pixlSceneToPhaserScene, type GameObjectJSON, type SceneJSON } from '@pixlland/phaser-runtime';
 import { useEditorStore } from '@/stores/editorStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
+import type { PixlProjectDocument } from '@/engine/project/schema';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 import {
@@ -28,6 +29,8 @@ export interface PhaserRuntimeMountProps {
   visible: boolean;
   /** Absolute URL or relative path to the project root served by the studio. */
   assetBaseUrl?: string;
+  /** Active editor project document. When provided, no default sample is fetched. */
+  projectDocument?: PixlProjectDocument | null;
 }
 
 interface LoadState {
@@ -38,6 +41,11 @@ interface LoadState {
 const DEFAULT_BASE_URL = '/sample-projects/sample-2d';
 const FALLBACK_VIEWPORT_SIZE = { width: 800, height: 600 };
 const EDITOR_VOID_COLOR = 0x101822;
+
+export const resolvePhaserRuntimeAssetBaseUrl = (
+  assetBaseUrl: string | undefined,
+  projectDocument: unknown,
+): string => assetBaseUrl ?? (projectDocument ? '/' : DEFAULT_BASE_URL);
 
 export const readPhaserViewportSize = (
   host: Pick<HTMLElement, 'clientWidth' | 'clientHeight' | 'getBoundingClientRect'>,
@@ -461,8 +469,10 @@ const drawObject = (
 
 export function PhaserRuntimeMount({
   visible,
-  assetBaseUrl = DEFAULT_BASE_URL,
+  assetBaseUrl,
+  projectDocument = null,
 }: PhaserRuntimeMountProps): React.JSX.Element {
+  const resolvedAssetBaseUrl = resolvePhaserRuntimeAssetBaseUrl(assetBaseUrl, projectDocument);
   const containerRef = useRef<HTMLDivElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gameRef = useRef<any>(null);
@@ -520,7 +530,7 @@ export function PhaserRuntimeMount({
       try {
         const Phaser = (await import('phaser')) as unknown as typeof import('phaser');
         if (disposed) return;
-        const fresh = await fetchPixlProject(assetBaseUrl);
+        const fresh = projectDocument ?? await fetchPixlProject(resolvedAssetBaseUrl);
         if (disposed) return;
         // Merge autosaved edits ONTO the fresh sample (vs replacing wholesale).
         // The snapshot only preserves transform/visible/locked/name — render
@@ -532,7 +542,7 @@ export function PhaserRuntimeMount({
         const freshId = typeof freshAny?.id === 'string' ? freshAny.id : null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const freshSavedAt = typeof freshAny?.savedAt === 'number' ? freshAny.savedAt : 0;
-        const snapshot = freshId ? loadProjectDocSnapshot(freshId) : null;
+        const snapshot = !projectDocument && freshId ? loadProjectDocSnapshot(freshId) : null;
         const useSnapshot = !!(snapshot
           && typeof snapshot.savedAt === 'number'
           && snapshot.savedAt > freshSavedAt);
@@ -581,7 +591,7 @@ export function PhaserRuntimeMount({
               // Queue every sprite/image referenced by the scene tree before
               // create() runs — Phaser's loader resolves between scenes so
               // create() can call scene.add.sprite() synchronously.
-              queueSpriteLoads(this, phaserScene.rootObjects, assetBaseUrl);
+              queueSpriteLoads(this, phaserScene.rootObjects, resolvedAssetBaseUrl);
             },
             create(this: import('phaser').Scene) {
               // FIRST THING in create(): pin the keyboard plugin to the
@@ -1250,7 +1260,7 @@ export function PhaserRuntimeMount({
                   if (key) gameObjects.set(key, go);
                 }
                 const sceneRef = this;
-                const fullUrl = `${assetBaseUrl.replace(/\/$/, '')}/${scriptPath}?t=${Date.now()}`;
+                const fullUrl = `${resolvedAssetBaseUrl.replace(/\/$/, '')}/${scriptPath}?t=${Date.now()}`;
                 // eslint-disable-next-line no-console
                 console.log(`[PhaserRuntimeMount] loading runtime script: ${fullUrl}`);
                 // Vite refuses dynamic import() of files served from /public
@@ -1454,7 +1464,7 @@ export function PhaserRuntimeMount({
         gameRef.current = null;
       }
     };
-  }, [visible, assetBaseUrl]);
+  }, [visible, projectDocument, resolvedAssetBaseUrl]);
 
   // Redraw the selection outline + toggle draggable on the selected
   // gameobject whenever the editor store's selection changes. Runs

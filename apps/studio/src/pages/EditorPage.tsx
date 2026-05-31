@@ -248,7 +248,11 @@ const EditorPage = () => {
 
     hasLoadedLocalProjectRef.current = true;
 
-    openStoredProjectWorkspace(localProjectId)
+    const kind = searchParams.get('kind');
+    openStoredProjectWorkspace(localProjectId, {
+      templateId: templateId ?? null,
+      kind: kind === '2d' || kind === '3d' ? kind : undefined,
+    })
       .then(({ document }) => {
         toast.success(`Projeto local reaberto: ${document.name}`);
       })
@@ -259,7 +263,7 @@ const EditorPage = () => {
       .finally(() => {
         setIsOpeningDiskProject(false);
       });
-  }, [localProjectId]);
+  }, [localProjectId, searchParams, templateId]);
 
   // Try to load saved project on first mount (automatic restore)
   useEffect(() => {

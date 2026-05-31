@@ -250,9 +250,11 @@ class Renderer {
     const scene = this.game.scene;
     if (!scene) return;
 
-    scene.advancePhysics();
+    this.game.inputManager?.beforeRender();
     scene.beforeRender({ deltaTimeInSec: ctx.deltaTimeInSec });
     scene.forEachGameObject((g) => g.beforeRender({ deltaTimeInSec: ctx.deltaTimeInSec }));
+    scene.advancePhysics();
+    scene.updateRuntimeCamera(ctx.deltaTimeInSec);
 
     this.options.beforeRender?.({ deltaTimeInSec: ctx.deltaTimeInSec, time: ctx.time });
     updateThreeMeshUIIfLoaded();

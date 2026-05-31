@@ -38,6 +38,18 @@ export default defineConfig(() => ({
   resolve: {
     alias: [
       { find: "@", replacement: path.resolve(__dirname, "./src") },
+      {
+        find: "@pixlland/engine-core",
+        replacement: path.resolve(__dirname, "../../packages/core/src/index.ts"),
+      },
+      {
+        find: "@pixlland/phaser-runtime",
+        replacement: path.resolve(__dirname, "../../packages/phaser-runtime/src/index.ts"),
+      },
+      {
+        find: "@pixlland/three-runtime",
+        replacement: path.resolve(__dirname, "../../packages/three-runtime/src/index.ts"),
+      },
       // realism-effects: o pacote upstream 1.1.2 importa
       // `WebGLMultipleRenderTargets` que foi removida do Three.js em
       // ~0.162 — nossa versao 0.184 quebra o build. Substituimos o
@@ -77,7 +89,12 @@ export default defineConfig(() => ({
     // `realism-effects/dist/index.js` (which imports the removed
     // `WebGLMultipleRenderTargets`). Excluding it forces Vite's full
     // resolver, which honors the alias to the patched vendor src.
-    exclude: ['realism-effects'],
+    exclude: [
+      'realism-effects',
+      '@pixlland/engine-core',
+      '@pixlland/phaser-runtime',
+      '@pixlland/three-runtime',
+    ],
     force: true,
   },
 }));

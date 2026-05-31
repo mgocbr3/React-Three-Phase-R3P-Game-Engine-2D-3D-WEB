@@ -25,14 +25,27 @@ describe('starterTemplates', () => {
     const objects = createStarterTemplateObjects(templateId);
     const player = scene.rootObjects.find((object) => object.id === 'main-player');
     const camera = scene.rootObjects.find((object) => object.id === 'main-camera');
+    const ground = scene.rootObjects.find((object) => object.id === 'ground-1');
+    const arenaIds = scene.rootObjects.map((object) => object.id);
 
     expect(doc.game.templateId).toBe(templateId);
     expect(doc.runtime).toEqual({ primary: 'three-3d', renderers: ['three'], physics: ['rapier'] });
     expect(scene.kind).toBe('3d');
     expect(scene.physics).toEqual({ engine: 'rapier', gravity: [0, -9.81, 0] });
-    expect(scene.environment.background).toBe('#87ceeb');
-    expect(scene.rootObjects.map((object) => object.name)).toEqual(['Sun Light', 'Main Camera', 'Player', 'Ground']);
-    expect(objects.map((object) => object.id)).toEqual(['sunlight-main', 'main-camera', 'main-player', 'ground-1']);
+    expect(scene.environment.background).toBe('#7bc7ee');
+    expect(arenaIds).toEqual(expect.arrayContaining([
+      'sunlight-main',
+      'main-camera',
+      'main-player',
+      'ground-1',
+      'arena-main-platform',
+      'arena-back-wall',
+      'arena-front-ramp',
+      'arena-stair-7',
+      'arena-orange-roof-cube',
+    ]));
+    expect(new Set(arenaIds).size).toBe(scene.rootObjects.length);
+    expect(objects.map((object) => object.id)).toEqual(arenaIds);
     expect(player?.components.some((component) => component.type === 'pixl.mesh')).toBe(true);
     expect(player?.components.find((component) => component.type === 'pixl.physics')?.data.colliders).toEqual([
       expect.objectContaining({ type: 'capsule' }),
@@ -44,7 +57,19 @@ describe('starterTemplates', () => {
         autoPlay: true,
       }),
     );
-    expect(camera?.components.find((component) => component.type === 'pixl.camera3d')?.data.mode).toBe(templateId);
-    expect(doc.assets.entries.map((asset) => asset.path)).toEqual(['/models/manequin/mixamo/xbot.glb']);
+    expect(camera?.components.find((component) => component.type === 'pixl.camera3d')?.data).toEqual(
+      expect.objectContaining({
+        mode: templateId,
+        followPlayer: true,
+        targetId: 'main-player',
+      }),
+    );
+    expect(ground?.type).toBe('box');
+    expect(ground?.transform.scale).toEqual([72, 0.2, 72]);
+    expect(ground?.data?.editor).toEqual(expect.objectContaining({ isStatic: true }));
+    expect(ground?.components.find((component) => component.type === 'pixl.physics')?.data.colliders).toEqual([
+      expect.objectContaining({ type: 'cuboid', hx: 36, hy: 0.1, hz: 36 }),
+    ]);
+    expect(doc.assets.entries.map((asset) => asset.path)).toEqual(expect.arrayContaining(['/models/manequin/mixamo/xbot.glb']));
   });
 });

@@ -5,8 +5,10 @@
 
 import type { ComponentJSON } from '../Component.js';
 import type {
+  CharacterControllerOptions,
   GameJSON,
   GameObjectJSON,
+  SceneCameraJSON,
   SceneJSON,
   Vector3Data,
 } from '../types.js';
@@ -195,6 +197,39 @@ const getVisualData = (object: PixlSceneObject): Record<string, unknown> => {
   return visual?.data ?? {};
 };
 
+const getComponentData = (object: PixlSceneObject, type: string): Record<string, unknown> => (
+  object.components?.find((component) => component.type === type && component.enabled !== false)?.data ?? {}
+);
+
+const numberOrUndefined = (value: unknown): number | undefined => (
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined
+);
+
+const getPlayerControllerOptions = (object: PixlSceneObject): CharacterControllerOptions | null => {
+  if (object.type !== 'player') return null;
+  const player = getComponentData(object, 'pixl.player');
+  const physics = getComponentData(object, 'pixl.physics');
+  const colliders = Array.isArray(physics.colliders) ? physics.colliders : [];
+  const capsule = colliders.find((collider): collider is Record<string, unknown> => (
+    collider !== null
+    && typeof collider === 'object'
+    && (collider as { type?: unknown }).type === 'capsule'
+  ));
+
+  return {
+    walkingSpeed: numberOrUndefined(player.speed),
+    runningSpeed: numberOrUndefined(player.sprintSpeed),
+    jumpForce: numberOrUndefined(player.jumpForce),
+    capsule: capsule ? {
+      halfHeight: numberOrUndefined(capsule.halfHeight),
+      radius: numberOrUndefined(capsule.radius),
+      density: numberOrUndefined(capsule.density),
+      friction: numberOrUndefined(capsule.friction),
+      restitution: numberOrUndefined(capsule.restitution),
+    } : undefined,
+  };
+};
+
 const synthesizePrimitiveComponent = (
   object: PixlSceneObject,
   renderComponents: ComponentJSON[],
@@ -293,11 +328,15 @@ const buildGameObjectJSON = (
     .map(mapComponent)
     .filter((c): c is ComponentJSON => c !== null);
   const synthesized = synthesizeGltfNodeComponents(object);
-  const mapped = synthesized.length
+  const mappedWithAnimationFilter = synthesized.length
     ? rawMapped.filter((component) => component.type !== 'animation')
     : rawMapped;
+  const mapped = object.type === 'player'
+    ? mappedWithAnimationFilter.filter((component) => component.type !== 'rigidBody')
+    : mappedWithAnimationFilter;
   const primitive = synthesizePrimitiveComponent(object, [...synthesized, ...mapped]);
   const components = [...synthesized, ...primitive, ...mapped];
+  const controllerOptions = getPlayerControllerOptions(object);
 
   return {
     type: object.type,
@@ -310,6 +349,13 @@ const buildGameObjectJSON = (
       pixlObjectId: object.id,
       pixlLocked: object.locked ?? false,
       pixlVisible: object.visible !== false,
+      ...(controllerOptions ? {
+        pixlControllerOptions: controllerOptions,
+        pixlKinematicControllerOptions: {
+          autoStep: { maxHeight: 0.35, minWidth: 0.2, includeDynamicBodies: false },
+          snapToGroundDistance: 0.25,
+        },
+      } : {}),
     },
     components,
     children: children.map((child) => buildGameObjectJSON(
@@ -350,6 +396,30 @@ const getChildren = (parentId: string, list: PixlSceneObject[]): PixlSceneObject
 const getRoots = (list: PixlSceneObject[]): PixlSceneObject[] => (
   list.filter((o) => !o.parentId)
 );
+
+const getRuntimeCamera = (
+  scene: PixlSceneDocument,
+  objects: PixlSceneObject[],
+): SceneCameraJSON | undefined => {
+  const cameraObject = objects.find((object) => object.type === 'camera' || object.tags?.includes('camera'));
+  const cameraSettings = cameraObject ? getComponentData(cameraObject, 'pixl.camera3d') : {};
+  const fallback = scene.camera;
+  if (!cameraObject && !fallback) return undefined;
+
+  return {
+    position: triplet(cameraObject?.transform.position ?? fallback?.position),
+    target: triplet(fallback?.target),
+    fov: numberOrUndefined(cameraSettings.fov) ?? fallback?.fov,
+    near: fallback?.near,
+    far: fallback?.far,
+    mode: typeof cameraSettings.mode === 'string' ? cameraSettings.mode : undefined,
+    followPlayer: typeof cameraSettings.followPlayer === 'boolean' ? cameraSettings.followPlayer : undefined,
+    targetId: typeof cameraSettings.targetId === 'string' ? cameraSettings.targetId : undefined,
+    distance: numberOrUndefined(cameraSettings.distance),
+    height: numberOrUndefined(cameraSettings.height),
+    smoothing: numberOrUndefined(cameraSettings.smoothing),
+  };
+};
 
 // Pixl's scene.environment packs ambient + sun + ambient intensity into one
 // flat block. Wes' Scene expects SceneLightJSON[] with `type` + props. Map them.
@@ -407,13 +477,7 @@ export const pixlSceneToWesScene = (scene: PixlSceneDocument): SceneJSON => {
     gravity: triplet(scene.physics?.gravity),
     gameObjects,
     lights: synthesizeEnvironmentLights(scene.environment),
-    camera: scene.camera ? {
-      position: triplet(scene.camera.position),
-      target: triplet(scene.camera.target),
-      fov: scene.camera.fov,
-      near: scene.camera.near,
-      far: scene.camera.far,
-    } : undefined,
+    camera: getRuntimeCamera(scene, sceneObjects),
   };
 };
 

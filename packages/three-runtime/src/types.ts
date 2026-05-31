@@ -42,6 +42,12 @@ export interface SceneCameraJSON {
   fov?: number;
   near?: number;
   far?: number;
+  mode?: 'third-person' | 'first-person' | string;
+  followPlayer?: boolean;
+  targetId?: string;
+  distance?: number;
+  height?: number;
+  smoothing?: number;
 }
 
 export interface FogJSON {
@@ -166,6 +172,7 @@ export interface CharacterControllerOptions {
   walkingSpeed?: number;
   runningSpeed?: number;
   jumpCooldown?: number;
+  jumpForce?: number;
   capsule?: ColliderData;
 }
 

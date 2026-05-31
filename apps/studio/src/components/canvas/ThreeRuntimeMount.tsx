@@ -9,6 +9,7 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 import { useEditorStore } from '@/stores/editorStore';
 import { useEngineSettings, type EngineSettings } from '@/stores/engineSettingsStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
+import type { PixlProjectDocument } from '@/engine/project/schema';
 import { loadProjectDocSnapshot } from '@/services/projectDocStorage';
 import { mergeSnapshotOntoFresh } from '@/services/snapshotMerge';
 import { useOrbitControls } from './useOrbitControls';
@@ -27,6 +28,8 @@ export interface ThreeRuntimeMountProps {
   visible: boolean;
   /** URL or relative path to the project root. Used by the runtime's AssetSource. */
   assetBaseUrl?: string;
+  /** Active editor project document. When provided, no default sample is fetched. */
+  projectDocument?: PixlProjectDocument | null;
   /** Initial scene name to load. */
   initialScene?: string;
   /** Transform gizmo mode. */
@@ -103,14 +106,18 @@ export const getThreeTransformShortcutMode = (
   return null;
 };
 
-const styleHelperMaterials = (object: THREE.Object3D, opacity: number): void => {
+const styleHelperMaterials = (
+  object: THREE.Object3D,
+  opacity: number,
+  options: { depthTest?: boolean; depthWrite?: boolean } = {},
+): void => {
   const material = (object as THREE.LineSegments).material as THREE.Material | THREE.Material[] | undefined;
   const materials = Array.isArray(material) ? material : material ? [material] : [];
   materials.forEach((item) => {
     item.transparent = true;
     item.opacity = opacity;
-    item.depthTest = false;
-    item.depthWrite = false;
+    item.depthTest = options.depthTest ?? true;
+    item.depthWrite = options.depthWrite ?? false;
   });
 };
 
@@ -118,6 +125,11 @@ const num = (value: number | undefined, fallback: number): number => (
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
 );
 const clampNumber = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+export const resolveThreeRuntimeAssetBaseUrl = (
+  assetBaseUrl: string | undefined,
+  projectDocument: unknown,
+): string => assetBaseUrl ?? (projectDocument ? '/' : DEFAULT_BASE_URL);
 
 export const getThreeNativePixelRatio = (
   settings: Pick<EngineSettings, 'dpr' | 'maxDpr'>,
@@ -368,8 +380,27 @@ export const isPreferredEditorSelectionObject = (
 };
 
 export const getThreeEditorGridConfig = (gridSize: number) => {
-  const size = Math.max(16, Math.min(500, Number.isFinite(gridSize) ? gridSize : 100));
-  return { size, divisions: Math.max(16, Math.min(200, Math.round(size))) };
+  const requestedSize = Math.max(16, Number.isFinite(gridSize) ? Math.abs(gridSize) : 100);
+  const size = Math.max(2048, Math.min(8192, requestedSize * 32));
+  const cellSize = Math.max(1, Math.min(4, Math.round(requestedSize / 160) || 1));
+  return { size, divisions: Math.max(512, Math.min(2048, Math.round(size / cellSize))), cellSize };
+};
+
+export const syncThreeEditorInfiniteGrid = (
+  grid: THREE.Object3D | null | undefined,
+  camera: THREE.Camera | null | undefined,
+  cellSize = 1,
+): boolean => {
+  if (!grid || !camera) return false;
+  const step = Math.max(1, Number.isFinite(cellSize) ? Math.abs(cellSize) : 1);
+  const nextX = Math.round(camera.position.x / step) * step;
+  const nextZ = Math.round(camera.position.z / step) * step;
+  if (Math.abs(grid.position.x - nextX) < 0.0001 && Math.abs(grid.position.z - nextZ) < 0.0001) {
+    return false;
+  }
+  grid.position.x = nextX;
+  grid.position.z = nextZ;
+  return true;
 };
 
 export const getThreeSceneAxisView = (
@@ -446,13 +477,14 @@ export const createThreeEditorSceneHelpers = ({
   root.userData = { ...HELPER_USER_DATA };
 
   if (showGrid) {
-    const { size, divisions } = getThreeEditorGridConfig(gridSize);
+    const { size, divisions, cellSize } = getThreeEditorGridConfig(gridSize);
     const grid = new THREE.GridHelper(size, divisions, '#8b949e', '#3f4750');
     grid.name = 'Editor Grid';
     grid.position.y = 0.01;
     grid.renderOrder = -1;
-    grid.userData = { ...HELPER_USER_DATA };
-    styleHelperMaterials(grid, 0.22);
+    grid.frustumCulled = false;
+    grid.userData = { ...HELPER_USER_DATA, pixlInfiniteGridCellSize: cellSize };
+    styleHelperMaterials(grid, 0.12, { depthTest: true, depthWrite: false });
     root.add(grid);
   }
 
@@ -462,7 +494,7 @@ export const createThreeEditorSceneHelpers = ({
     axes.position.y = 0.06;
     axes.renderOrder = 1000;
     axes.userData = { ...HELPER_USER_DATA };
-    styleHelperMaterials(axes, 0.85);
+    styleHelperMaterials(axes, 0.85, { depthTest: false, depthWrite: false });
     root.add(axes);
   }
 
@@ -500,10 +532,12 @@ const getFrameForObject = (
 
 export function ThreeRuntimeMount({
   visible,
-  assetBaseUrl = DEFAULT_BASE_URL,
+  assetBaseUrl,
+  projectDocument = null,
   initialScene = DEFAULT_SCENE,
   gizmoMode = 'translate',
 }: ThreeRuntimeMountProps): React.JSX.Element {
+  const resolvedAssetBaseUrl = resolveThreeRuntimeAssetBaseUrl(assetBaseUrl, projectDocument);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Mirrored as state so React re-renders (and the orbit-controls hook re-
   // runs) when the canvas mounts. A pure ref doesn't trigger renders.
@@ -517,6 +551,8 @@ export function ThreeRuntimeMount({
   const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
   const [orbitTarget, setOrbitTarget] = useState<{ x: number; y: number; z: number } | undefined>(undefined);
   const [orbitControlsInstance, setOrbitControlsInstance] = useState<OrbitControls | null>(null);
+  const editorGridRef = useRef<THREE.Object3D | null>(null);
+  const editorGridCellSizeRef = useRef<number>(1);
   const isRuntimePreview = useRuntimeGameStore((state) => state.isPlaying || Boolean(state.previewSession));
   const editorToolsEnabled = shouldEnableThreeEditorTools({ visible, isRuntimePreview });
   const requestEditorRender = useCallback(() => {
@@ -524,9 +560,10 @@ export function ThreeRuntimeMount({
     if (editorRenderFrameRef.current) return;
     editorRenderFrameRef.current = requestAnimationFrame(() => {
       editorRenderFrameRef.current = 0;
+      syncThreeEditorInfiniteGrid(editorGridRef.current, camera, editorGridCellSizeRef.current);
       gameRef.current?.renderStillFrame();
     });
-  }, [editorToolsEnabled, load.status, visible]);
+  }, [camera, editorToolsEnabled, load.status, visible]);
 
   useOrbitControls({
     canvas: canvasEl,
@@ -822,10 +859,15 @@ export function ThreeRuntimeMount({
   useEffect(() => {
     if (!threeScene || !editorToolsEnabled || (!showGrid && !showAxes)) return;
     const helpers = createThreeEditorSceneHelpers({ showGrid, showAxes, gridSize });
+    const grid = helpers.getObjectByName('Editor Grid') ?? null;
+    editorGridRef.current = grid;
+    editorGridCellSizeRef.current = getThreeEditorGridConfig(gridSize).cellSize;
+    syncThreeEditorInfiniteGrid(grid, camera, editorGridCellSizeRef.current);
     threeScene.add(helpers);
     requestEditorRender();
     return () => {
       threeScene.remove(helpers);
+      if (editorGridRef.current === grid) editorGridRef.current = null;
       helpers.traverse((object) => {
         const mesh = object as THREE.Mesh;
         mesh.geometry?.dispose?.();
@@ -835,7 +877,7 @@ export function ThreeRuntimeMount({
       });
       requestEditorRender();
     };
-  }, [editorToolsEnabled, gridSize, requestEditorRender, showAxes, showGrid, threeScene]);
+  }, [camera, editorToolsEnabled, gridSize, requestEditorRender, showAxes, showGrid, threeScene]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -845,7 +887,7 @@ export function ThreeRuntimeMount({
     setLoad({ status: 'loading' });
 
     const initialRenderSettings = useEngineSettings.getState();
-    const game = new Game(assetBaseUrl, {
+    const game = new Game(resolvedAssetBaseUrl, {
       rendererOptions: {
         canvas,
         width: canvas.clientWidth || 800,
@@ -867,7 +909,7 @@ export function ThreeRuntimeMount({
 
     (async () => {
       try {
-        const fresh = await fetchPixlProject(assetBaseUrl);
+        const fresh = projectDocument ?? await fetchPixlProject(resolvedAssetBaseUrl);
         // Merge autosaved edits ONTO the fresh sample (snapshot only ports
         // transform/visible/locked/name). See PhaserRuntimeMount / snapshotMerge.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -875,7 +917,7 @@ export function ThreeRuntimeMount({
         const freshId = typeof freshAny?.id === 'string' ? freshAny.id : null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const freshSavedAt = typeof freshAny?.savedAt === 'number' ? freshAny.savedAt : 0;
-        const snapshot = freshId ? loadProjectDocSnapshot(freshId) : null;
+        const snapshot = !projectDocument && freshId ? loadProjectDocSnapshot(freshId) : null;
         const useSnapshot = !!(snapshot
           && typeof snapshot.savedAt === 'number'
           && snapshot.savedAt > freshSavedAt);
@@ -905,7 +947,7 @@ export function ThreeRuntimeMount({
               game,
               project,
               activeScene: activeScene as Record<string, unknown>,
-              assetBaseUrl,
+              assetBaseUrl: resolvedAssetBaseUrl,
               canvas,
               setTick: (tick, disposeFn) => {
                 runtimeScriptTickRef.current = tick;
@@ -951,7 +993,7 @@ export function ThreeRuntimeMount({
         // ignore
       }
     };
-  }, [assetBaseUrl, initialScene]);
+  }, [initialScene, projectDocument, resolvedAssetBaseUrl]);
 
   return (
     <div

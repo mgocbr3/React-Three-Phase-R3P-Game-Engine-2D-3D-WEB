@@ -8,6 +8,7 @@ import {
   getRuntimeCameraView,
   getRuntimePlaySurfaceLayout,
   pickEditorHitObjectId,
+  resolvePhaserRuntimeAssetBaseUrl,
   getSpriteOrigin2D,
   getSnapped2DTransformValue,
   readEditorViewportPointer,
@@ -29,6 +30,14 @@ describe('PhaserRuntimeMount', () => {
       width: 1836,
       height: 1083,
     });
+  });
+
+  it('does not fall back to sample-2d when an editor project document is supplied', () => {
+    expect(resolvePhaserRuntimeAssetBaseUrl(undefined, { id: 'local-2d' })).toBe('/');
+    expect(resolvePhaserRuntimeAssetBaseUrl('/sample-projects/pokemon-vertical-slice-2d', { id: 'sample' })).toBe(
+      '/sample-projects/pokemon-vertical-slice-2d',
+    );
+    expect(resolvePhaserRuntimeAssetBaseUrl(undefined, null)).toBe('/sample-projects/sample-2d');
   });
 
   it('reads editor pointer coordinates from the inset 2D canvas area', () => {

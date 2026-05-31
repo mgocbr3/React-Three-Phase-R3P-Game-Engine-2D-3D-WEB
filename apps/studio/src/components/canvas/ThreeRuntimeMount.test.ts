@@ -14,9 +14,11 @@ import {
   getThreeTransformShortcutMode,
   getThreeEditorGridConfig,
   hasEditorObjectId,
+  resolveThreeRuntimeAssetBaseUrl,
   shouldEnableThreeEditorTools,
   shouldRunThreeEditorRenderLoop,
   shouldRunThreeRuntimeSimulation,
+  syncThreeEditorInfiniteGrid,
 } from './ThreeRuntimeMount';
 
 describe('ThreeRuntimeMount', () => {
@@ -62,6 +64,14 @@ describe('ThreeRuntimeMount', () => {
       saturation: 0,
     });
     expect(getThreeNativePostProcessingEffects(options)).toBe('off');
+  });
+
+  it('does not fall back to Harvest Rush when an editor project document is supplied', () => {
+    expect(resolveThreeRuntimeAssetBaseUrl(undefined, { id: 'local-template' })).toBe('/');
+    expect(resolveThreeRuntimeAssetBaseUrl('/sample-projects/subway-vertical-slice-3d', { id: 'sample' })).toBe(
+      '/sample-projects/subway-vertical-slice-3d',
+    );
+    expect(resolveThreeRuntimeAssetBaseUrl(undefined, null)).toBe('/sample-projects/harvest-rush-3d');
   });
 
   it('keeps native Three play mode direct even when settings request effects', () => {
@@ -146,13 +156,31 @@ describe('ThreeRuntimeMount', () => {
   });
 
   it('creates non-selectable native scene helpers from editor settings', () => {
-    expect(getThreeEditorGridConfig(1000)).toEqual({ size: 500, divisions: 200 });
+    expect(getThreeEditorGridConfig(1000)).toEqual({ size: 8192, divisions: 2048, cellSize: 4 });
 
     const helpers = createThreeEditorSceneHelpers({ showGrid: true, showAxes: true, gridSize: 80 });
+    const grid = helpers.children.find((child) => child.name === 'Editor Grid') as THREE.GridHelper | undefined;
+    const axes = helpers.children.find((child) => child.name === 'Editor Axes') as THREE.AxesHelper | undefined;
 
     expect(helpers.userData.pixlEditorHelper).toBe(true);
     expect(helpers.children.map((child) => child.name)).toEqual(['Editor Grid', 'Editor Axes']);
     expect(helpers.children.every((child) => child.userData.pixlEditorHelper)).toBe(true);
+    expect((grid?.material as THREE.Material).depthTest).toBe(true);
+    expect((grid?.material as THREE.Material).opacity).toBe(0.12);
+    expect(grid?.frustumCulled).toBe(false);
+    expect(grid?.userData.pixlInfiniteGridCellSize).toBe(1);
+    expect((axes?.material as THREE.Material).depthTest).toBe(false);
+  });
+
+  it('recenters the native editor grid around the camera to behave as infinite', () => {
+    const grid = new THREE.Object3D();
+    grid.position.set(0, 0.01, 0);
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(42.4, 12, -17.7);
+
+    expect(syncThreeEditorInfiniteGrid(grid, camera, 4)).toBe(true);
+    expect(grid.position.toArray()).toEqual([44, 0.01, -16]);
+    expect(syncThreeEditorInfiniteGrid(grid, camera, 4)).toBe(false);
   });
 
   it('snaps the native scene camera to Unity-like axis views', () => {

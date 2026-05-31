@@ -509,6 +509,8 @@ export const getCurrentProjectWorkspace = (): LocalProjectWorkspace => ({
   writable: Boolean(currentProjectDirectory),
 });
 
+export const getCurrentProjectAssetBaseUrl = (): string | null => currentProjectAssetBaseUrl;
+
 export const hasActiveProjectWorkspace = () => Boolean(currentProjectDirectory);
 
 export interface ImportedProjectAssetFile {
@@ -860,6 +862,12 @@ export const createActiveProjectDocumentSnapshot = (name = 'Untitled Project'): 
   };
 };
 
+export const createRuntimeProjectDocumentFromEditor = (name?: string): PixlProjectDocument => (
+  prepareProjectDocumentForRuntimePreview(
+    createActiveProjectDocumentSnapshot(name ?? currentProjectDocument?.name ?? 'Untitled Project').document,
+  )
+);
+
 export const prepareProjectDocumentForRuntimePreview = (document: PixlProjectDocument): PixlProjectDocument => {
   if (!currentProjectAssetBaseUrl) return document;
 
@@ -1126,7 +1134,15 @@ export const openProjectDocumentFromDirectory = async () => {
   };
 };
 
-export const openStoredProjectWorkspace = async (projectId: string) => {
+export interface OpenStoredProjectWorkspaceOptions {
+  templateId?: string | null;
+  kind?: PixlSceneKind;
+}
+
+export const openStoredProjectWorkspace = async (
+  projectId: string,
+  options: OpenStoredProjectWorkspaceOptions = {},
+) => {
   const stored = await getStoredProjectWorkspace(projectId);
   if (!stored?.directory) {
     // Fallback 1: per-project snapshot in localStorage (set by applyProjectDocumentToEditor).
@@ -1140,7 +1156,26 @@ export const openStoredProjectWorkspace = async (projectId: string) => {
         workspace: getCurrentProjectWorkspace(),
       };
     }
-    // Fallback 2: maybe this projectId is actually a sample slug we shipped.
+    // Fallback 2: a newly-created dashboard project may have metadata but no
+    // persisted document yet (or the browser snapshot was cleared). Rebuild it
+    // from the URL/store template instead of leaving the previous project open.
+    const storedProject = useProjectStore.getState().getProject(projectId);
+    const seedTemplateId = options.templateId ?? storedProject?.templateId ?? null;
+    if (storedProject || seedTemplateId) {
+      const seeded = createEmptyProjectDocument({
+        id: projectId,
+        name: storedProject?.name ?? 'Novo Projeto',
+        kind: options.kind ?? '3d',
+        templateId: seedTemplateId,
+      });
+      applyProjectDocumentToEditor(seeded);
+      return {
+        directory: null,
+        document: seeded,
+        workspace: getCurrentProjectWorkspace(),
+      };
+    }
+    // Fallback 3: maybe this projectId is actually a sample slug we shipped.
     const { hasSampleProject, loadSampleProjectDocument } = await loadSampleHelpers();
     if (hasSampleProject(projectId)) {
       const sampleDoc = await loadSampleProjectDocument(projectId);
