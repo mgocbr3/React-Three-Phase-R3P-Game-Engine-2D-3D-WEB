@@ -56,6 +56,18 @@ type ThreeEditorPlacementApi = {
     quaternion: [number, number, number, number];
   } | null;
 };
+type ThreeRuntimeDebugApi = {
+  focusCanvas: () => void;
+  getSnapshot: () => {
+    isPlaying: boolean;
+    verticalAxis: number;
+    horizontalAxis: number;
+    playerPosition: [number, number, number] | null;
+    playerLookYaw: number | null;
+    locomotion: unknown;
+    controllerDebug: unknown;
+  } | null;
+};
 type ThreeCameraTarget = { x: number; y: number; z: number };
 type ThreeNativeRenderSettings = Pick<
   EngineSettings,
@@ -605,6 +617,10 @@ export function ThreeRuntimeMount({
   const runtimeScriptTickRef = useRef<ThreeRuntimeScriptTick | null>(null);
   const runtimeScriptDisposeRef = useRef<(() => void) | null>(null);
 
+  const focusRuntimeCanvas = useCallback(() => {
+    try { canvasRef.current?.focus({ preventScroll: true }); } catch { /* noop */ }
+  }, []);
+
   // Subscribe directly to the editor store so the toolbar's
   // Move(W)/Rotate(E)/Scale(R) buttons reach the native runtime gizmo. Prior
   // behavior: `gizmoMode` prop was never wired by any parent, so the prop
@@ -834,12 +850,50 @@ export function ThreeRuntimeMount({
     if (!game || load.status !== 'ready') return;
     game.inputManager?.setPointerLockEnabled(runSimulation);
     if (runSimulation) {
+      focusRuntimeCanvas();
       void game.play().catch((error) => console.error('[ThreeRuntimeMount] play failed:', error));
       return;
     }
     game.pause();
     requestEditorRender();
-  }, [load.status, requestEditorRender, runSimulation]);
+  }, [focusRuntimeCanvas, load.status, requestEditorRender, runSimulation]);
+
+  useEffect(() => {
+    if (runSimulation && load.status === 'ready') focusRuntimeCanvas();
+  }, [focusRuntimeCanvas, load.status, runSimulation]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const runtime = window as Window & { __pixlThreeRuntimeDebug?: ThreeRuntimeDebugApi };
+    const debugApi: ThreeRuntimeDebugApi = {
+      focusCanvas: focusRuntimeCanvas,
+      getSnapshot: () => {
+        const game = gameRef.current;
+        if (!game?.scene) return null;
+        const input = game.inputManager;
+        const player = game.scene.getGameObject((gameObject) => (
+          gameObject.threeJSGroup.userData?.pixlObjectId === 'main-player'
+          || gameObject.hasTag('player')
+          || gameObject.type === 'player'
+        ));
+        const position = player?.threeJSGroup.position;
+        const lookYaw = player?.threeJSGroup.userData.pixlLookYaw;
+        return {
+          isPlaying: game.isPlaying(),
+          verticalAxis: input?.readVerticalAxis() ?? 0,
+          horizontalAxis: input?.readHorizontalAxis() ?? 0,
+          playerPosition: position ? [position.x, position.y, position.z] : null,
+          playerLookYaw: typeof lookYaw === 'number' && Number.isFinite(lookYaw) ? lookYaw : null,
+          locomotion: player?.threeJSGroup.userData.pixlLocomotionState ?? null,
+          controllerDebug: player?.threeJSGroup.userData.pixlControllerDebug ?? null,
+        };
+      },
+    };
+    runtime.__pixlThreeRuntimeDebug = debugApi;
+    return () => {
+      if (runtime.__pixlThreeRuntimeDebug === debugApi) delete runtime.__pixlThreeRuntimeDebug;
+    };
+  }, [focusRuntimeCanvas]);
 
   useEffect(() => {
     const game = gameRef.current;
@@ -1024,6 +1078,8 @@ export function ThreeRuntimeMount({
           canvasRef.current = node;
           setCanvasEl(node);
         }}
+        tabIndex={0}
+        onPointerDown={focusRuntimeCanvas}
         style={{ width: '100%', height: '100%', display: 'block', outline: 'none' }}
       />
       {load.status !== 'ready' && (

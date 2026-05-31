@@ -5,11 +5,13 @@ class InputManager {
   private mouse = { x: 0, y: 0, buttons: 0 };
   private initialized = false;
 
+  private keyListenerOptions: AddEventListenerOptions = { capture: true };
+
   init(): void {
     if (this.initialized) return;
     
-    window.addEventListener('keydown', this.handleKeyDown);
-    window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('keydown', this.handleKeyDown, this.keyListenerOptions);
+    window.addEventListener('keyup', this.handleKeyUp, this.keyListenerOptions);
     window.addEventListener('mousemove', this.handleMouseMove);
     window.addEventListener('mousedown', this.handleMouseDown);
     window.addEventListener('mouseup', this.handleMouseUp);
@@ -19,8 +21,8 @@ class InputManager {
   }
 
   destroy(): void {
-    window.removeEventListener('keydown', this.handleKeyDown);
-    window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('keydown', this.handleKeyDown, this.keyListenerOptions);
+    window.removeEventListener('keyup', this.handleKeyUp, this.keyListenerOptions);
     window.removeEventListener('mousemove', this.handleMouseMove);
     window.removeEventListener('mousedown', this.handleMouseDown);
     window.removeEventListener('mouseup', this.handleMouseUp);
@@ -33,12 +35,23 @@ class InputManager {
   }
 
   private handleKeyDown = (e: KeyboardEvent): void => {
-    this.keysDown.add(e.code);
+    this.getEventKeyAliases(e).forEach((key) => this.keysDown.add(key));
   };
 
   private handleKeyUp = (e: KeyboardEvent): void => {
-    this.keysDown.delete(e.code);
+    this.getEventKeyAliases(e).forEach((key) => this.keysDown.delete(key));
   };
+
+  private normalizeKey(key: string): string {
+    return key.trim().toLowerCase();
+  }
+
+  private getEventKeyAliases(e: KeyboardEvent): string[] {
+    return Array.from(new Set([
+      this.normalizeKey(e.code),
+      this.normalizeKey(e.key),
+    ].filter(Boolean)));
+  }
 
   private handleMouseMove = (e: MouseEvent): void => {
     this.mouse.x = e.clientX;
@@ -73,11 +86,11 @@ class InputManager {
   }
 
   isKeyDown(key: string): boolean {
-    return this.keysDown.has(key);
+    return this.keysDown.has(this.normalizeKey(key));
   }
 
   isKeyPressed(key: string): boolean {
-    return this.keysPressed.has(key);
+    return this.keysPressed.has(this.normalizeKey(key));
   }
 
   getKeys(): Set<string> {

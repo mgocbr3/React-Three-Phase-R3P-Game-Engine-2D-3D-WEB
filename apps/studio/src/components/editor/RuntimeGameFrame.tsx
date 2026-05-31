@@ -136,9 +136,18 @@ export const RuntimeGameFrame = ({ session }: RuntimeGameFrameProps) => {
       latestCameraPoseRef.current = data.pose ?? null;
     };
 
-    const focusFrame = () => frame.contentWindow?.focus();
+    const focusFrame = () => {
+      try {
+        frame.focus({ preventScroll: true });
+        frame.contentWindow?.focus();
+        frame.contentDocument?.body?.focus?.({ preventScroll: true });
+      } catch {
+        // Cross-origin or sandboxed previews can refuse focus.
+      }
+    };
     window.addEventListener('message', handleRuntimeMessage);
     frame.addEventListener('load', focusFrame);
+    requestAnimationFrame(focusFrame);
     return () => {
       window.removeEventListener('message', handleRuntimeMessage);
       frame.removeEventListener('load', focusFrame);
@@ -151,12 +160,13 @@ export const RuntimeGameFrame = ({ session }: RuntimeGameFrameProps) => {
   if (session.launchTarget.kind !== 'web-runtime') return null;
 
   return (
-    <div className="absolute inset-0 z-40 bg-[#050807]">
+    <div className="absolute inset-0 z-40 bg-[#050807]" onPointerDown={() => iframeRef.current?.contentWindow?.focus()}>
       <iframe
         key={session.id}
         ref={iframeRef}
         title={`${session.projectName} Runtime Preview`}
         data-runtime-preview-frame="true"
+        tabIndex={0}
         srcDoc={runtimeHtml}
         className="h-full w-full border-0 bg-[#050807]"
         allow="autoplay; fullscreen; gamepad; pointer-lock"

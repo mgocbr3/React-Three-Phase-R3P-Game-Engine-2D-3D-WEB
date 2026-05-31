@@ -47,10 +47,22 @@ const readKinematicControllerOptions = (options: GameObjectOptions): KinematicCh
 
 const finiteOrZero = (value: number): number => (Number.isFinite(value) ? value : 0);
 
+type LocomotionDebugState = {
+  inputMagnitude: number;
+  movement: RAPIER.Vector | THREE.Vector3;
+  sprinting: boolean;
+  crouching: boolean;
+  grounded: boolean;
+  jumpedThisFrame: boolean;
+  deltaTimeInSec: number;
+  fallbackReason?: string;
+};
+
 class KinematicCharacterController extends CharacterController {
   rapierCharacterController: RAPIER.KinematicCharacterController | null = null;
   verticalVelocity: number;
   kccOptions: KinematicCharacterControllerOptions;
+  private fallbackGroundY: number;
 
   constructor(
     parent: GameObject['parent'],
@@ -80,6 +92,22 @@ class KinematicCharacterController extends CharacterController {
     );
     this.kccOptions = { ...DEFAULT_KCC, ...readKinematicControllerOptions(options), ...kccOptions };
     this.verticalVelocity = 0;
+    this.fallbackGroundY = this.threeJSGroup.position.y;
+  }
+
+  private publishLocomotionState(state: LocomotionDebugState): void {
+    const horizontalSpeed = Math.hypot(state.movement.x, state.movement.z) / Math.max(state.deltaTimeInSec, 0.001);
+    this.threeJSGroup.userData.pixlLocomotionState = {
+      inputMagnitude: state.inputMagnitude,
+      speed: horizontalSpeed,
+      moving: state.inputMagnitude > 0.05 || horizontalSpeed > 0.05,
+      sprinting: state.sprinting,
+      crouching: state.crouching,
+      grounded: state.grounded,
+      jumping: state.jumpedThisFrame || !state.grounded || this.verticalVelocity > 0.1,
+      verticalVelocity: this.verticalVelocity,
+      fallbackReason: state.fallbackReason,
+    };
   }
 
   afterLoaded(): void {
@@ -112,12 +140,14 @@ class KinematicCharacterController extends CharacterController {
 
   beforeRender(ctx: { deltaTimeInSec: number }): void {
     if (!this.isLoaded() || !this.rapierCharacterController) {
+      this.threeJSGroup.userData.pixlControllerDebug = !this.isLoaded() ? 'not-loaded' : 'missing-kcc';
       super.beforeRender(ctx);
       return;
     }
 
     const inputManager = this.getScene().game.inputManager;
     if (!inputManager) {
+      this.threeJSGroup.userData.pixlControllerDebug = 'missing-input-manager';
       super.beforeRender(ctx);
       return;
     }
@@ -130,6 +160,7 @@ class KinematicCharacterController extends CharacterController {
 
     const rigidBody = this.getComponent(RigidBodyComponent)?.getRapierRigidBody();
     if (!rigidBody) {
+      this.threeJSGroup.userData.pixlControllerDebug = 'missing-rigid-body';
       super.beforeRender(ctx);
       return;
     }
@@ -150,6 +181,9 @@ class KinematicCharacterController extends CharacterController {
     desired.applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle);
 
     let isOnGround = this.isOnGround();
+    if (!isOnGround && this.threeJSGroup.position.y <= this.fallbackGroundY + 0.05) {
+      isOnGround = true;
+    }
     let jumpedThisFrame = false;
     if (inputManager.isJumpPressed()) {
       const timeSinceLastJump = time - this.lastJumpTime;
@@ -174,6 +208,7 @@ class KinematicCharacterController extends CharacterController {
     try {
       const collider = rigidBody.collider(0);
       if (!collider) {
+        this.threeJSGroup.userData.pixlControllerDebug = 'missing-collider';
         super.beforeRender(ctx);
         return;
       }
@@ -191,22 +226,38 @@ class KinematicCharacterController extends CharacterController {
         rigidBody.setTranslation(nextTranslation, true);
       }
       this.threeJSGroup.position.set(nextTranslation.x, nextTranslation.y, nextTranslation.z);
-    } catch {
-      super.beforeRender(ctx);
-      return;
+      this.threeJSGroup.userData.pixlControllerDebug = 'kcc';
+    } catch (error) {
+      const current = this.threeJSGroup.position;
+      const fallbackMovement = desired.clone();
+      let nextY = current.y + fallbackMovement.y;
+      if (nextY <= this.fallbackGroundY && this.verticalVelocity <= 0) {
+        nextY = this.fallbackGroundY;
+        fallbackMovement.y = nextY - current.y;
+        this.verticalVelocity = 0;
+        isOnGround = true;
+      }
+      const nextTranslation = {
+        x: current.x + fallbackMovement.x,
+        y: nextY,
+        z: current.z + fallbackMovement.z,
+      };
+      try { rigidBody.setTranslation(nextTranslation, true); } catch { /* stale Rapier handles are handled visually below */ }
+      this.threeJSGroup.position.set(nextTranslation.x, nextTranslation.y, nextTranslation.z);
+      movement = fallbackMovement;
+      this.threeJSGroup.userData.pixlControllerDebug = error instanceof Error ? error.message : 'kcc-fallback';
     }
 
-    const horizontalSpeed = Math.hypot(movement.x, movement.z) / Math.max(ctx.deltaTimeInSec, 0.001);
-    this.threeJSGroup.userData.pixlLocomotionState = {
+    this.publishLocomotionState({
       inputMagnitude,
-      speed: horizontalSpeed,
-      moving: inputMagnitude > 0.05 || horizontalSpeed > 0.05,
+      movement,
       sprinting,
       crouching,
       grounded: isOnGround,
-      jumping: jumpedThisFrame || !isOnGround || this.verticalVelocity > 0.1,
-      verticalVelocity: this.verticalVelocity,
-    };
+      jumpedThisFrame,
+      deltaTimeInSec: ctx.deltaTimeInSec,
+      fallbackReason: this.threeJSGroup.userData.pixlControllerDebug === 'kcc' ? undefined : String(this.threeJSGroup.userData.pixlControllerDebug),
+    });
     super.beforeRender(ctx);
   }
 }
