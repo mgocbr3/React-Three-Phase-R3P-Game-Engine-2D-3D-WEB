@@ -2,7 +2,8 @@
   "name": "pixlland-engine-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "Standalone bootstrap for the PixlPlayground engine workspace (apps/studio + packages/*). Replaces the root wiring normally provided by the parent Pixlland monorepo.",
+  "description": "React 3 Phase Engine by Pixlland Entertainment - alpha game engine workspace for Studio, 2D/3D runtimes, CLI, MCP, and exporters.",
+  "license": "CC-BY-NC-3.0",
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=18"

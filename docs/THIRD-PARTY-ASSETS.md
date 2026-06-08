@@ -1,59 +1,81 @@
-# Third-party assets — atribuição
+# Third-party Assets and Attribution
 
-Arquivos de terceiros embutidos no studio (`apps/studio/public/`) com suas licenças e atribuições obrigatórias.
+This document tracks third-party assets and vendored references that are bundled with the React 3 Phase alpha repository. The repository license does not replace third-party licenses. Always check the source license before redistributing assets outside this repository or using them in a game release.
 
 ## MANEQUIN
 
-- **Caminho no repo**: `apps/studio/public/models/manequin/`
-- **Uso**: modelo default do player object em projetos 3D novos (`createPlayerObject` em `apps/studio/src/stores/editorStore.ts`). Renderizado por `<PlayerGltfModel>` em `EditableObject.tsx`.
-- **Fonte**: https://sketchfab.com/3d-models/manequin-3087ff2a167241ae997291667dc9f079
-- **Autor**: rato biônico games (https://sketchfab.com/felip32pppp)
-- **Licença**: CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
-- **Requisito**: crédito obrigatório ao autor; uso comercial permitido.
+- **Repo path:** `apps/studio/public/models/manequin/`
+- **Use:** Default visual mannequin/player model reference in 3D projects.
+- **Source:** https://sketchfab.com/3d-models/manequin-3087ff2a167241ae997291667dc9f079
+- **Author:** rato biônico games (https://sketchfab.com/felip32pppp)
+- **License:** CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/)
+- **Requirement:** Attribution is required.
 
-### Atribuição (copiar tal-qual onde o jogo for distribuído)
+Attribution text:
 
-> This work is based on "MANEQUIN" (https://sketchfab.com/3d-models/manequin-3087ff2a167241ae997291667dc9f079) by rato biônico games (https://sketchfab.com/felip32pppp) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+> This work is based on "MANEQUIN" (https://sketchfab.com/3d-models/manequin-3087ff2a167241ae997291667dc9f079) by rato biônico games (https://sketchfab.com/felip32pppp) licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 
-A licença original também vive em `apps/studio/public/models/manequin/license.txt` e é embarcada nos builds — quem servir o studio ou um export do projeto também serve essa atribuição automaticamente.
+The original license file is also kept at `apps/studio/public/models/manequin/license.txt`.
 
-## three.js Soldier / Mixamo sample
+## three.js Soldier / Mixamo Sample
 
-- **Caminho no repo**: `apps/studio/public/models/manequin/mixamo/soldier.glb`
-- **Uso**: fallback rigado de referência, com clipes `Idle`, `Walk`, `Run` e `TPose`.
-- **Fonte**: https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Soldier.glb
-- **Autor/licença do repositório**: three.js authors, MIT (https://github.com/mrdoob/three.js/blob/dev/LICENSE)
-- **Observação**: asset de exemplo com esqueleto `mixamorig`, usado para deixar o template jogável com animação imediatamente enquanto o manequin estático baixado não tiver rig/retarget.
+- **Repo path:** `apps/studio/public/models/manequin/mixamo/soldier.glb`
+- **Use:** Rigged fallback/reference model with `Idle`, `Walk`, `Run`, and `TPose` clips.
+- **Source:** https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Soldier.glb
+- **Repository license:** MIT, three.js authors (https://github.com/mrdoob/three.js/blob/dev/LICENSE)
 
-## three.js X Bot / Mixamo sample
+## three.js X Bot / Mixamo Sample
 
-- **Caminho no repo**: `apps/studio/public/models/manequin/mixamo/xbot.glb`
-- **Uso**: mannequin principal dos templates 3D de primeira e terceira pessoa, com clipes `idle`, `walk`, `run`, `agree`, `headShake`, `sad_pose` e `sneak_pose`.
-- **Fonte**: https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Xbot.glb
-- **Autor/licença do repositório**: three.js authors, MIT (https://github.com/mrdoob/three.js/blob/dev/LICENSE)
-- **Observação**: X Bot é o rig Mixamo usado como base web pronta; `apps/studio/public/models/manequin/mixamo/manifest.json` registra a fila de animações oficiais extras para baixar pela sessão Adobe do usuário.
+- **Repo path:** `apps/studio/public/models/manequin/mixamo/xbot.glb`
+- **Use:** Main rigged mannequin for first-person and third-person 3D templates.
+- **Source:** https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Xbot.glb
+- **Repository license:** MIT, three.js authors (https://github.com/mrdoob/three.js/blob/dev/LICENSE)
 
-## Kloofendal 43d Clear (Pure Sky) — HDRI Haven / Polyhaven
+## Kloppenheim 05 Pure Sky
 
-- **Caminho no repo**: `apps/studio/public/models/skybox/clear-sky.hdr`
-- **Uso**: skybox padrão dos projetos 3D, renderizado por `<Skybox>` (em `apps/studio/src/components/canvas/primitives/Skybox.tsx`) — montado pelo `AtmosphericLighting` quando o projeto está em 3D mode (durante o dia / nascer do sol / pôr do sol; à noite o componente é desmontado e as `Stars` da drei assumem o céu).
-- **Fonte**: https://polyhaven.com/a/kloofendal_43d_clear_puresky
-- **Autor**: Greg Zaal (Poly Haven / HDRI Haven)
-- **Licença**: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
-- **Requisito**: nenhum — domínio público equivalente. Atribuição é opcional mas educada (mantida aqui pra dar suporte ao Polyhaven).
+- **Repo path:** `apps/studio/public/skybox/kloppenheim_05_puresky_4k.jpg`
+- **Use:** Default equirectangular skybox texture for 3D editor/runtime scenes.
+- **Source:** https://polyhaven.com/a/kloppenheim_05_puresky
+- **Downloaded asset:** Tonemapped JPG, resized to 4096x2048 for browser runtime use.
+- **License:** CC0
+- **Authors listed by Poly Haven:** Greg Zaal (Original), Jarod Guest (Sky Edits)
+- **Requirement:** Attribution is not required by CC0, but it is retained here as courtesy.
 
-### Sobre CC0
+The local source note is kept at `apps/studio/public/skybox/kloppenheim_05_puresky_LICENSE.txt`.
 
-CC0 dispensa qualquer atribuição obrigatória; o crédito acima existe apenas como cortesia ao Polyhaven, que mantém o repositório de HDRIs livres usado por studios pelo mundo todo. Se você quiser dar uma contribuição, https://www.patreon.com/polyhaven.
+## Kloofendal 43d Clear Pure Sky
 
-### Por que HDR e não GLB?
+- **Repo path:** `apps/studio/public/models/skybox/clear-sky.hdr`
+- **Use:** Legacy/reference HDR skybox asset retained for rendering experiments.
+- **Source:** https://polyhaven.com/a/kloofendal_43d_clear_puresky
+- **Author:** Greg Zaal / Poly Haven
+- **License:** CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+- **Requirement:** Attribution is not required by CC0, but it is retained here as courtesy.
 
-A versão anterior (Unreal Engine 4 Sky em GLB, CC-BY-4.0) tinha textura 1:1 (1024×1024) ao invés do equirect 2:1 canônico que o Three.js espera, e o GLTF perdia metadados de orientação no caminho do PMREM — o resultado eram nuvens projetadas no chão. Standard HDR/EXR equirect 2:1 do Polyhaven evita o problema por completo.
+## Kenney Mobile Icons
 
-## realism-effects (0beqz) — **NÃO integrado** (incompatibilidade técnica)
+- **Repo path:** `apps/studio/public/sample-projects/harvest-rush-3d/assets/vendor/kenney/all-in-one/mobile-icons/`
+- **Use:** UI icons inside the Harvest Rush 3D sample project.
+- **Source:** Kenney game assets collection.
+- **License:** Kenney assets are commonly distributed under CC0; keep attribution when possible and verify source package details before shipping a public game using these files.
 
-- **Repo**: https://github.com/0beqz/realism-effects
-- **Autor**: 0beqz (Felix Mariotto), MIT
-- **Sponsor**: https://buymeacoffee.com/0beqz
+## Harvest Rush 3D Farm Pack
 
-Tentamos adotar nesta engine (SSGI/HBAO/SSR/TRAA/MotionBlur). A versão npm `1.1.2` declara peer dep `three >= 0.148` mas internamente importa `WebGLMultipleRenderTargets`, removida do Three.js em ~0.162. Nosso `three@0.184` rejeita o import e o build quebra. A entrada está aqui como **referência de crédito** caso futuramente seja forkado/portado — quem fizer o port deve preservar o crédito ao autor original. Veja `docs/REALISM-SHADERS-EVAL.md` para a história completa e o caminho de port.
+- **Repo path:** `apps/studio/public/sample-projects/harvest-rush-3d/assets/vendor/farm-pack/`
+- **Use:** Alpha sample project validation assets.
+- **Status:** Included for engine alpha testing. Verify original asset source and license before redistributing the sample as a standalone public game or commercial build.
+
+## Magic Battleground 2D Sample Assets
+
+- **Repo path:** `apps/studio/public/sample-projects/magic-battleground-2d/assets/`
+- **Use:** Alpha Phaser runtime validation sample.
+- **Status:** Derived from Pixlland/PixlPlayground sample work according to project metadata. Treat as sample validation content and verify ownership before reuse outside this repository.
+
+## realism-effects
+
+- **Repo path:** `tools/vendor/realism-effects/`
+- **Use:** Vendored reference/patched experiment for future realism effects research.
+- **Repository:** https://github.com/0beqz/realism-effects
+- **Author:** 0beqz / Felix Mariotto
+- **License:** MIT
+- **Notes:** The npm release is not directly compatible with this repository's Three.js version because of removed Three.js APIs. The vendored copy is kept as a patched reference; preserve upstream credit if it is ported further.
