@@ -36,6 +36,10 @@ This repository is currently in alpha. It is public so developers can study it, 
 
 ![React Three Phase (R3P) 3D editor](docs/assets/screenshots/studio-editor-3d.png)
 
+### 2D Editor
+
+![React Three Phase (R3P) 2D editor](docs/assets/screenshots/studio-editor-2d.png)
+
 ### Project Hub
 
 ![React Three Phase (R3P) project hub](docs/assets/screenshots/studio-hub.png)
