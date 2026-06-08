@@ -13,12 +13,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/brand/react-3-phase-logo.png" alt="React 3 Phase logo" width="260" />
+  <img src="docs/assets/brand/react-3-phase-logo.png" alt="React Three Phase (R3P) logo" width="260" />
 </p>
 
 ## What This Is
 
-React 3 Phase is Pixlland Entertainment's non-commercial open-source alpha engine workspace. It combines a desktop-style visual editor, runtime packages, project document tooling, exporters, and agent-facing automation surfaces into one repository.
+React Three Phase (R3P) is Pixlland Entertainment's non-commercial open-source alpha engine workspace. It combines a desktop-style visual editor, runtime packages, project document tooling, exporters, and agent-facing automation surfaces into one repository.
 
 The goal is to make a lightweight game engine where creators can:
 
@@ -34,15 +34,15 @@ This repository is currently in alpha. It is public so developers can study it, 
 
 ### 3D Editor
 
-![React 3 Phase 3D editor](docs/assets/screenshots/studio-editor-3d.png)
+![React Three Phase (R3P) 3D editor](docs/assets/screenshots/studio-editor-3d.png)
 
 ### Project Hub
 
-![React 3 Phase project hub](docs/assets/screenshots/studio-hub.png)
+![React Three Phase (R3P) project hub](docs/assets/screenshots/studio-hub.png)
 
 ## Alpha Status
 
-React 3 Phase is usable for development experiments and internal Pixlland engine work, but the public API, project schema, editor UX, and export behavior are still changing.
+React Three Phase (R3P) is usable for development experiments and internal Pixlland engine work, but the public API, project schema, editor UX, and export behavior are still changing.
 
 Current alpha capabilities:
 
@@ -156,7 +156,7 @@ pnpm --filter pixlplaygroundstudio tauri:dev
 
 ## Engine Architecture
 
-React 3 Phase uses one project document as the coordination layer:
+React Three Phase (R3P) uses one project document as the coordination layer:
 
 ```text
 Studio editor
@@ -213,6 +213,6 @@ Before contributing, read [CONTRIBUTING.md](./CONTRIBUTING.md). Keep changes sco
 
 ## Project Identity
 
-React 3 Phase is created by Pixlland Entertainment as part of the Pixlland game creation ecosystem. The public alpha repository exists so collaborators can help harden the engine, study the architecture, and build non-commercial experiments while the core design is still evolving.
+React Three Phase (R3P) is created by Pixlland Entertainment as part of the Pixlland game creation ecosystem. The public alpha repository exists so collaborators can help harden the engine, study the architecture, and build non-commercial experiments while the core design is still evolving.
 
 For commercial licensing, partnership, or permission to sell or host the engine commercially, contact Pixlland for a separate written agreement.

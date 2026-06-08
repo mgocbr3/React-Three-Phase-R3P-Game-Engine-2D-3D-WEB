@@ -1,6 +1,6 @@
-# Contributing to React 3 Phase
+# Contributing to React Three Phase (R3P)
 
-React 3 Phase is an alpha engine created by Pixlland Entertainment. Contributions are welcome, especially when they make the engine easier to understand, test, run, or extend.
+React Three Phase (R3P) is an alpha engine created by Pixlland Entertainment. Contributions are welcome, especially when they make the engine easier to understand, test, run, or extend.
 
 ## Ground Rules
 

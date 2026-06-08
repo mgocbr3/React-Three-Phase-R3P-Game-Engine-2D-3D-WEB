@@ -1,6 +1,6 @@
 # Third-party Assets and Attribution
 
-This document tracks third-party assets and vendored references that are bundled with the React 3 Phase alpha repository. The repository license does not replace third-party licenses. Always check the source license before redistributing assets outside this repository or using them in a game release.
+This document tracks third-party assets and vendored references that are bundled with the React Three Phase (R3P) alpha repository. The repository license does not replace third-party licenses. Always check the source license before redistributing assets outside this repository or using them in a game release.
 
 ## MANEQUIN
 

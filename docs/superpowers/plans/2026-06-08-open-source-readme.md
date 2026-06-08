@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the React 3 Phase repository into a professional English-language public alpha engine repository with branding, screenshots, licensing, collaboration guidance, and clean public docs.
+**Goal:** Turn the React Three Phase (R3P) repository into a professional English-language public alpha engine repository with branding, screenshots, licensing, collaboration guidance, and clean public docs.
 
 **Architecture:** Keep the change documentation-first and isolated to root repo metadata plus `docs/assets`. Do not refactor engine code or move sample projects unless a public-license issue requires removing unused files.
 
@@ -37,7 +37,7 @@ Run:
 rg --files | rg -i '\.(png|jpe?g|webp|gif|svg)$'
 ```
 
-Expected: find Pixlland and React 3 Phase logos under `apps/studio/public/branding`.
+Expected: find Pixlland and React Three Phase (R3P) logos under `apps/studio/public/branding`.
 
 - [x] **Step 3: Check GitHub visibility**
 
