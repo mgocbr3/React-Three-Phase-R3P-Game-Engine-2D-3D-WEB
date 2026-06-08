@@ -1,6 +1,6 @@
 # License
 
-React 3 Phase Engine is made available by Pixlland Entertainment under the Creative Commons Attribution-NonCommercial 3.0 Unported license (`CC BY-NC 3.0`), unless a file or third-party asset states a different license.
+React Three Phase (R3P) - Game Engine 2D/3D WEB is made available by Pixlland Entertainment under the Creative Commons Attribution-NonCommercial 3.0 Unported license (`CC BY-NC 3.0`), unless a file or third-party asset states a different license.
 
 Canonical license pages:
 
@@ -36,7 +36,7 @@ When sharing the engine or adapted versions, preserve attribution to Pixlland En
 Suggested attribution:
 
 ```text
-React 3 Phase Engine by Pixlland Entertainment, licensed under CC BY-NC 3.0.
+React Three Phase (R3P) - Game Engine 2D/3D WEB by Pixlland Entertainment, licensed under CC BY-NC 3.0.
 ```
 
 ## Third-party Material

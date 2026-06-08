@@ -2,10 +2,10 @@
   <img src="docs/assets/brand/pixlland-logo.png" alt="Pixlland logo" width="112" />
 </p>
 
-<h1 align="center">React 3 Phase Engine</h1>
+<h1 align="center">React Three Phase (R3P) - Game Engine 2D/3D WEB</h1>
 
 <p align="center">
-  A Pixlland-created, alpha-stage game engine and editor for building 2D Phaser and 3D Three.js games from one visual workspace.
+  A Pixlland-created, alpha-stage 2D/3D web game engine and editor for building Phaser and Three.js games from one visual workspace.
 </p>
 
 <p align="center">

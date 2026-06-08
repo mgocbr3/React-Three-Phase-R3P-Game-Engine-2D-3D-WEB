@@ -2,7 +2,7 @@
   "name": "pixlland-engine-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "React 3 Phase Engine by Pixlland Entertainment - alpha game engine workspace for Studio, 2D/3D runtimes, CLI, MCP, and exporters.",
+  "description": "React Three Phase (R3P) - Game Engine 2D/3D WEB by Pixlland Entertainment.",
   "license": "CC-BY-NC-3.0",
   "packageManager": "pnpm@10.33.0",
   "engines": {
