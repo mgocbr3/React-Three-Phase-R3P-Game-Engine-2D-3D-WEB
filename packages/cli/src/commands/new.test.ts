@@ -34,6 +34,24 @@ describe('buildProjectDocument', () => {
     expect(doc.engine?.runtimeManifest?.dependencies.three).toBe('0.184.0');
   });
 
+  it('cria projeto 3D com objetos essenciais de cena', () => {
+    const doc = buildProjectDocument(
+      { name: 'My Game', targetDir: '/tmp/my-game', kind: '3d' },
+      manifest,
+      fixedNow,
+      fixedId,
+    );
+    const objects = doc.scenes[0].rootObjects;
+
+    expect(objects.map((object) => object.name)).toEqual(['Sun Light', 'Main Camera', 'Player', 'Ground']);
+    expect(objects.find((object) => object.id === 'main-camera')?.components).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'pixl.camera3d' })]),
+    );
+    expect(objects.find((object) => object.id === 'main-player')?.components).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'pixl.player' })]),
+    );
+  });
+
   it('cria projeto 2D com runtime phaser-2d e cena 2D', () => {
     const doc = buildProjectDocument(
       { name: 'Average Routine Clone', targetDir: '/tmp/avg', kind: '2d' },

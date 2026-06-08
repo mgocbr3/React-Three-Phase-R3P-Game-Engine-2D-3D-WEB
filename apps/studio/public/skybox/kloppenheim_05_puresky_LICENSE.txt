@@ -1,0 +1,6 @@
+Kloppenheim 05 (Pure Sky) HDRI
+
+Source: https://polyhaven.com/a/kloppenheim_05_puresky
+Downloaded asset: Tonemapped JPG, resized to 4096x2048 for browser runtime use.
+License: CC0
+Authors listed by Poly Haven: Greg Zaal (Original), Jarod Guest (Sky Edits)

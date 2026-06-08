@@ -321,6 +321,28 @@ export const getPortableAssetPath = (value: string): string | null => {
   return withoutPrefix;
 };
 
+const getAssetEntryPortablePath = (entry: PixlAssetEntry): string | null => (
+  getPortableAssetPath(entry.path || '') ?? getPortableAssetPath(entry.url || '')
+);
+
+const normalizeAssetEntryForManifest = (entry: PixlAssetEntry): PixlAssetEntry => {
+  const portablePath = getAssetEntryPortablePath(entry);
+  if (!portablePath) return { ...entry };
+
+  return {
+    ...entry,
+    path: portablePath,
+    url: portablePath,
+  };
+};
+
+const getAssetEntryMergeKey = (entry: PixlAssetEntry): string => {
+  const portablePath = getAssetEntryPortablePath(entry);
+  if (portablePath) return portablePath;
+
+  return stripLeadingProjectSlashes(entry.path || entry.url || entry.id);
+};
+
 const joinUrl = (baseUrl: string, projectPath: string) => (
   `${baseUrl.replace(/\/+$/, '')}/${projectPath.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/')}`
     .replace(/%2F/g, '/')
@@ -776,7 +798,8 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     const projectAssetEntries = projectAssets.map(projectAssetToManifestEntry);
     const entriesByKey = new Map<string, PixlAssetEntry>();
     [...stateDocument.assets.entries, ...projectAssetEntries].forEach((entry) => {
-      entriesByKey.set(entry.path || entry.url || entry.id, { ...entry });
+      const normalized = normalizeAssetEntryForManifest(entry);
+      entriesByKey.set(getAssetEntryMergeKey(normalized), normalized);
     });
     return {
       ...stateDocument,
@@ -813,8 +836,8 @@ export const createProjectDocumentFromEditor = (name = 'Untitled Project'): Pixl
     ...(stateDocument.assets.entries ?? []),
     ...projectAssetEntries,
   ].forEach((entry) => {
-    const key = entry.path || entry.url || entry.id;
-    entriesByKey.set(key, { ...entry });
+    const normalized = normalizeAssetEntryForManifest(entry);
+    entriesByKey.set(getAssetEntryMergeKey(normalized), normalized);
   });
   const folders = new Set([
     ...(currentProjectDocument.assets?.folders?.length
@@ -974,6 +997,7 @@ export const applyProjectDocumentToEditor = (
 
   useAssetStore.setState({
     projectAssets: snapshot.projectAssets,
+    selectedAssetId: null,
   });
 
   useProjectStore.getState().upsertProject({

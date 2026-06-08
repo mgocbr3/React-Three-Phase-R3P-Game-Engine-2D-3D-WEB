@@ -6,6 +6,7 @@ import { storageManager } from '@/services/storageManager';
 import type { PixlComponentInstance } from '@/engine/project/schema';
 import { isComponentAllowedForScene } from '@/services/componentCatalog';
 import { createStarterTemplateObjects, isStarterTemplateId } from '@/lib/starterTemplates';
+import { useAssetStore } from './assetStore';
 
 export type ObjectType =
   | 'box'
@@ -46,6 +47,11 @@ const readSceneKindFromUrl = (): SceneKind => {
 const hasExplicitThreeSceneKindInUrl = (): boolean => {
   if (typeof window === 'undefined') return false;
   return new URLSearchParams(window.location.search).get('kind') === '3d';
+};
+
+const clearSelectedProjectAsset = () => {
+  const assetStore = useAssetStore.getState();
+  if (assetStore.selectedAssetId) assetStore.selectAsset(null);
 };
 
 // Light types for realistic lighting
@@ -982,7 +988,7 @@ const getDefaultLightSettings = (type: ObjectType): LightSettings => {
     
     // Sun/Directional specific
     sunElevation: 45,
-    sunAzimuth: 180,
+    sunAzimuth: 270,
     
     // Shadow settings
     castShadow: true,
@@ -1274,12 +1280,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       && get().selectedObjectId
       && (get().activeSceneKind === '3d' || hasExplicitThreeSceneKindInUrl())
     ) return;
+    if (id) clearSelectedProjectAsset();
     set({ selectedObjectId: id });
   },
   
   focusOnObject: (id) => {
     const obj = get().objects.find((o) => o.id === id);
     if (obj) {
+      clearSelectedProjectAsset();
       set({ 
         selectedObjectId: id,
         focusTarget: { 
@@ -1292,6 +1300,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   addObject: (type, position = [0, 2, 0]) => {
     const newObject = getDefaultObject(type, position);
+    clearSelectedProjectAsset();
     set((state) => ({
       objects: [...state.objects, newObject],
       selectedObjectId: newObject.id,
@@ -1335,6 +1344,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       },
     };
     
+    clearSelectedProjectAsset();
     set((state) => ({
       objects: [...state.objects, newObject],
       selectedObjectId: id,
@@ -1379,6 +1389,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       },
     };
 
+    clearSelectedProjectAsset();
     set((state) => ({
       objects: [...state.objects, newObject],
       selectedObjectId: id,

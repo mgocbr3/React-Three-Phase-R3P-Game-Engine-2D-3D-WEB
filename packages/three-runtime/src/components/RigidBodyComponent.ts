@@ -70,40 +70,61 @@ const REQUIRED_PROPS: Record<ColliderData['type'], string[]> = {
   heightfield: ['nrows', 'ncols', 'heights', 'scale'],
 };
 
+const getErrorMessage = (error: unknown): string => (
+  error instanceof Error && error.message ? error.message : String(error || 'unknown')
+);
+
 class RigidBodyComponent extends Component {
   rapierRigidBody: RAPIER.RigidBody | null = null;
+
+  private recordPhysicsLoadFailure(phase: string, error: unknown): void {
+    const message = `${phase}: ${getErrorMessage(error)}`;
+    this.gameObject.threeJSGroup.userData.pixlPhysicsDebug = message;
+    console.warn(`RigidBodyComponent.load: ${message}; physics disabled for ${this.gameObject.name || this.gameObject.id}.`, error);
+  }
 
   load(): void {
     const json = this.jsonData as RigidBodyComponentJSON;
     const scene = this.gameObject.getScene();
     if (!scene.rapierWorld) {
       if (scene.game.gameOptions.disablePhysics) return;
-      throw new Error('RigidBodyComponent.load: scene has no Rapier world (physics disabled?)');
+      this.recordPhysicsLoadFailure('missing-world', 'scene has no Rapier world');
+      return;
     }
 
-    const rigidBodyDesc = RigidBodyComponent._createRigidBodyDesc(json.rigidBodyType);
-    this.rapierRigidBody = scene.rapierWorld.createRigidBody(rigidBodyDesc);
+    try {
+      const rigidBodyDesc = RigidBodyComponent._createRigidBodyDesc(json.rigidBodyType);
+      this.rapierRigidBody = scene.rapierWorld.createRigidBody(rigidBodyDesc);
 
-    const { x, y, z } = this.gameObject.threeJSGroup.position;
-    this.rapierRigidBody.setTranslation(new RAPIER.Vector3(x, y, z), true);
-    const q = this.gameObject.threeJSGroup.quaternion;
-    this.rapierRigidBody.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
+      const { x, y, z } = this.gameObject.threeJSGroup.position;
+      this.rapierRigidBody.setTranslation(new RAPIER.Vector3(x, y, z), true);
+      const q = this.gameObject.threeJSGroup.quaternion;
+      this.rapierRigidBody.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
 
-    if (json.enabledTranslations) {
-      const t = json.enabledTranslations;
-      this.rapierRigidBody.setEnabledTranslations(t.x ?? true, t.y ?? true, t.z ?? true, true);
-    }
-    if (json.enabledRotations) {
-      const r = json.enabledRotations;
-      this.rapierRigidBody.setEnabledRotations(r.x ?? true, r.y ?? true, r.z ?? true, true);
+      if (json.enabledTranslations) {
+        const t = json.enabledTranslations;
+        this.rapierRigidBody.setEnabledTranslations(t.x ?? true, t.y ?? true, t.z ?? true, true);
+      }
+      if (json.enabledRotations) {
+        const r = json.enabledRotations;
+        this.rapierRigidBody.setEnabledRotations(r.x ?? true, r.y ?? true, r.z ?? true, true);
+      }
+    } catch (error) {
+      this.rapierRigidBody = null;
+      this.recordPhysicsLoadFailure('rigid-body', error);
+      return;
     }
 
     (json.colliders ?? []).forEach((data) => {
-      const desc = RigidBodyComponent._createColliderDesc(data);
-      const collider = scene.rapierWorld!.createCollider(desc, this.rapierRigidBody ?? undefined);
-      if (typeof data.density === 'number') collider.setDensity(data.density);
-      if (typeof data.friction === 'number') collider.setFriction(data.friction);
-      if (typeof data.sensor === 'boolean') collider.setSensor(data.sensor);
+      try {
+        const desc = RigidBodyComponent._createColliderDesc(data);
+        const collider = scene.rapierWorld!.createCollider(desc, this.rapierRigidBody ?? undefined);
+        if (typeof data.density === 'number') collider.setDensity(data.density);
+        if (typeof data.friction === 'number') collider.setFriction(data.friction);
+        if (typeof data.sensor === 'boolean') collider.setSensor(data.sensor);
+      } catch (error) {
+        this.recordPhysicsLoadFailure(`collider-${data.type}`, error);
+      }
     });
   }
 

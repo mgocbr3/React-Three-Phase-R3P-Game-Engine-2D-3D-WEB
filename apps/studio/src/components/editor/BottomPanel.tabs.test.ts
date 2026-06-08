@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useBottomPanelTabsStore } from '@/stores/bottomPanelTabsStore';
+import { useAssetStore } from '@/stores/assetStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { BottomPanel, getAvailableBottomTabs, normalizeBottomTabOrder, shouldRenderStorePane } from './BottomPanel';
 import { DockFrame } from './DockFrame';
@@ -27,6 +28,11 @@ describe('BottomPanel tab availability', () => {
   beforeEach(() => {
     useBottomPanelTabsStore.getState().resetTabs();
     useEditorStore.setState({ activeSceneKind: '3d' });
+    useAssetStore.setState({
+      projectAssets: [],
+      loadingAssets: [],
+      selectedAssetId: null,
+    });
   });
 
   it('keeps only local engine tabs in local mode', () => {
@@ -153,5 +159,56 @@ describe('BottomPanel tab availability', () => {
     expect(screen.getByText('Sprites')).toBeVisible();
     expect(screen.getByText('Tilemaps')).toBeVisible();
     expect(screen.queryByText('3D_Models')).not.toBeInTheDocument();
+  });
+
+  it('selects a Project asset for the Inspector when clicked', () => {
+    useAssetStore.setState({
+      projectAssets: [{
+        id: 'asset-xbot',
+        name: 'xbot.glb',
+        type: 'model',
+        url: '/models/xbot.glb',
+        path: 'Assets/3D_Models/xbot.glb',
+        folder: 'Assets/3D_Models',
+        createdAt: 1000,
+        metadata: { format: 'glb', sourceObjectName: 'Player' },
+      }],
+      selectedAssetId: null,
+    });
+
+    render(createElement(BottomPanel));
+
+    expect(screen.getByText('Player')).toBeVisible();
+
+    const assetTile = document.querySelector('[data-asset-id="asset-xbot"]');
+    expect(assetTile).not.toBeNull();
+
+    fireEvent.click(assetTile!);
+
+    expect(useAssetStore.getState().selectedAssetId).toBe('asset-xbot');
+  });
+
+  it('does not duplicate the file name in Project list rows', () => {
+    useAssetStore.setState({
+      projectAssets: [{
+        id: 'asset-xbot',
+        name: 'xbot.glb',
+        type: 'model',
+        url: '/models/xbot.glb',
+        path: 'Assets/3D_Models/xbot.glb',
+        folder: 'Assets/3D_Models',
+        createdAt: 1000,
+        metadata: { format: 'glb', sourceObjectName: 'Player' },
+      }],
+      selectedAssetId: null,
+    });
+
+    render(createElement(BottomPanel));
+    fireEvent.click(screen.getByLabelText('Column list view'));
+
+    const row = document.querySelector('[data-asset-id="asset-xbot"]');
+    expect(row).not.toBeNull();
+    expect(row!.textContent?.match(/xbot\.glb/g)).toHaveLength(1);
+    expect(row).toHaveTextContent('Player');
   });
 });

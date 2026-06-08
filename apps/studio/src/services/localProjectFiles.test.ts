@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { PixlProjectDocument } from '@/engine/project/schema';
+import { buildStarterProjectDocument } from '@/lib/starterTemplates';
 import { useAssetStore } from '@/stores/assetStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useViewportStore } from '@/stores/viewportStore';
@@ -371,6 +372,30 @@ describe('local project files', () => {
     expect(object.name).toBe('Renamed Farm Scene');
     expect(object.transform.position).toEqual([4, 1, -2]);
     expect(object.data?.editorObject).toBeUndefined();
+  });
+
+  it('does not duplicate bundled model assets when saving starter projects', () => {
+    const project = buildStarterProjectDocument({
+      id: 'starter-first-person',
+      name: 'Starter First Person',
+      templateId: 'first-person',
+      createdAt: 1,
+    });
+    applyProjectDocumentToEditor(project);
+
+    const saved = createProjectDocumentFromEditor('Starter First Person');
+    const modelAssets = saved.assets.entries.filter((asset) => asset.path === 'models/manequin/mixamo/xbot.glb');
+
+    expect(modelAssets).toHaveLength(1);
+    expect(modelAssets[0]).toMatchObject({
+      name: 'xbot.glb',
+      kind: 'model',
+      path: 'models/manequin/mixamo/xbot.glb',
+      url: 'models/manequin/mixamo/xbot.glb',
+      metadata: {
+        sourceObjectName: 'Player',
+      },
+    });
   });
 
   it('creates stable active document snapshots while detecting real content changes', () => {

@@ -5,8 +5,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Game, type RendererPostProcessingOptions } from '@pixlland/three-runtime';
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { toast } from 'sonner';
 
 import { useEditorStore } from '@/stores/editorStore';
+import { useAssetDragStore } from '@/stores/assetDragStore';
 import { useEngineSettings, type EngineSettings } from '@/stores/engineSettingsStore';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
 import type { PixlProjectDocument } from '@/engine/project/schema';
@@ -44,6 +46,7 @@ interface LoadState {
 const DEFAULT_BASE_URL = '/sample-projects/harvest-rush-3d';
 const DEFAULT_SCENE: string | undefined = undefined; // let project.activeSceneId pick
 const HELPER_USER_DATA = { pixlEditorHelper: true };
+const THREE_VIEWPORT_MODEL_ASSET_TYPES = new Set(['model', 'gltf', 'glb', 'fbx', 'obj']);
 type SceneAxisView = 'x' | 'y' | 'z' | 'free';
 type ThreeTransformShortcutMode = 'translate' | 'rotate' | 'scale';
 type SceneAxisPose = { position: [number, number, number]; up: [number, number, number] };
@@ -68,9 +71,19 @@ type ThreeRuntimeDebugApi = {
     controllerDebug: unknown;
     skyboxTextureUrl: string | null;
     sceneSkyTextureUrl: string | null;
+    skySunVisible: boolean;
   } | null;
 };
 type ThreeCameraTarget = { x: number; y: number; z: number };
+export interface ThreeViewportAssetDrop {
+  name: string;
+  url: string;
+  assetType: string;
+  thumbnailUrl?: string;
+  assetId?: string;
+  assetPath?: string;
+}
+type ThreeViewportDropRect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
 type ThreeNativeRenderSettings = Pick<
   EngineSettings,
   | 'toneMapping'
@@ -335,6 +348,10 @@ export const shouldRunThreeEditorRenderLoop = ({
   loadStatus: LoadState['status'];
 }) => visible && editorToolsEnabled && loadStatus === 'ready';
 
+export const shouldDeferThreeRuntimeDispose = (
+  game: Pick<Game, 'loadingScene'> | null | undefined,
+): boolean => Boolean(game?.loadingScene);
+
 export const findThreeObjectForEditorSelection = (
   threeScene: THREE.Scene | null,
   selectedObjectId: string | null,
@@ -456,6 +473,73 @@ export const getThreeAddObjectPosition = (
   return [position.x, position.y, position.z];
 };
 
+const getOptionalString = (value: unknown): string | undefined => (
+  typeof value === 'string' && value.trim() ? value : undefined
+);
+
+export const parseThreeViewportAssetDrop = (raw: string): ThreeViewportAssetDrop | null => {
+  if (!raw) return null;
+
+  try {
+    const payload = JSON.parse(raw) as Record<string, unknown>;
+    if (payload.type !== 'pixlland-asset') return null;
+
+    const name = getOptionalString(payload.name);
+    const url = getOptionalString(payload.url);
+    if (!name || !url) return null;
+
+    return {
+      name,
+      url,
+      assetType: getOptionalString(payload.assetType) ?? 'model',
+      thumbnailUrl: getOptionalString(payload.thumbnailUrl),
+      assetId: getOptionalString(payload.assetId),
+      assetPath: getOptionalString(payload.assetPath),
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const isThreeViewportModelAsset = (asset: ThreeViewportAssetDrop): boolean => (
+  THREE_VIEWPORT_MODEL_ASSET_TYPES.has(asset.assetType.toLowerCase())
+);
+
+export const getThreeViewportDropPosition = ({
+  clientX,
+  clientY,
+  rect,
+  camera,
+  fallbackPivot,
+}: {
+  clientX: number;
+  clientY: number;
+  rect: ThreeViewportDropRect;
+  camera: THREE.Camera | null | undefined;
+  fallbackPivot?: THREE.Vector3 | null;
+}): [number, number, number] | undefined => {
+  if (!camera || rect.width <= 0 || rect.height <= 0) {
+    return getThreeAddObjectPosition(fallbackPivot ?? null, camera);
+  }
+
+  const pointer = new THREE.Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -(((clientY - rect.top) / rect.height) * 2 - 1),
+  );
+  const raycaster = new THREE.Raycaster();
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const hit = new THREE.Vector3();
+
+  camera.updateMatrixWorld();
+  raycaster.setFromCamera(pointer, camera);
+
+  if (raycaster.ray.intersectPlane(groundPlane, hit)) {
+    return [hit.x, hit.y, hit.z];
+  }
+
+  return getThreeAddObjectPosition(fallbackPivot ?? null, camera);
+};
+
 export const getThreeCameraTarget = (value: unknown): ThreeCameraTarget => {
   const source = Array.isArray(value)
     ? { x: value[0], y: value[1], z: value[2] }
@@ -552,6 +636,7 @@ export function ThreeRuntimeMount({
   gizmoMode = 'translate',
 }: ThreeRuntimeMountProps): React.JSX.Element {
   const resolvedAssetBaseUrl = resolveThreeRuntimeAssetBaseUrl(assetBaseUrl, projectDocument);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Mirrored as state so React re-renders (and the orbit-controls hook re-
   // runs) when the canvas mounts. A pure ref doesn't trigger renders.
@@ -559,6 +644,7 @@ export function ThreeRuntimeMount({
   const gameRef = useRef<Game | null>(null);
   const editorRenderFrameRef = useRef<number>(0);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
+  const [isAssetDragOver, setIsAssetDragOver] = useState(false);
   const [sceneAxisView, setSceneAxisView] = useState<SceneAxisView>('free');
   // Captured once the runtime's renderer is constructed. The orbit
   // controls hook activates when both fields are set.
@@ -607,6 +693,7 @@ export function ThreeRuntimeMount({
   const showAxes = useEngineSettings((state) => state.showGizmo);
   const gridSize = useEngineSettings((state) => state.gridSize);
   const renderSettings = useEngineSettings();
+  const endAssetDrag = useAssetDragStore((state) => state.endDrag);
   const runSimulation = shouldRunThreeRuntimeSimulation({ visible, isRuntimePreview, loadStatus: load.status });
   const nativePostProcessing = useMemo(
     () => createThreeNativePostProcessingOptions(renderSettings, runSimulation),
@@ -622,6 +709,62 @@ export function ThreeRuntimeMount({
   const focusRuntimeCanvas = useCallback(() => {
     try { canvasRef.current?.focus({ preventScroll: true }); } catch { /* noop */ }
   }, []);
+
+  const handleAssetDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!editorToolsEnabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsAssetDragOver(true);
+  }, [editorToolsEnabled]);
+
+  const handleAssetDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!editorToolsEnabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setIsAssetDragOver(false);
+  }, [editorToolsEnabled]);
+
+  const handleAssetDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!editorToolsEnabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setIsAssetDragOver(false);
+    endAssetDrag();
+
+    const asset = parseThreeViewportAssetDrop(event.dataTransfer.getData('application/json'));
+    if (!asset) return;
+
+    if (!isThreeViewportModelAsset(asset)) {
+      toast.error('Use modelos 3D no viewport 3D.');
+      return;
+    }
+
+    const fallbackPivot = orbitControlsInstance?.target instanceof THREE.Vector3
+      ? orbitControlsInstance.target
+      : orbitTarget
+        ? new THREE.Vector3(orbitTarget.x, orbitTarget.y, orbitTarget.z)
+        : null;
+    const rect = rootRef.current?.getBoundingClientRect();
+    const position = rect
+      ? getThreeViewportDropPosition({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        rect,
+        camera,
+        fallbackPivot,
+      })
+      : getThreeAddObjectPosition(fallbackPivot, camera);
+
+    useEditorStore.getState().addModelFromAsset({
+      name: asset.name,
+      url: asset.url,
+      type: asset.assetType,
+      thumbnailUrl: asset.thumbnailUrl,
+    }, position ?? [0, 0, 0]);
+    focusRuntimeCanvas();
+    toast.success(`${asset.name} adicionado ao viewport 3D.`);
+  }, [camera, editorToolsEnabled, endAssetDrag, focusRuntimeCanvas, orbitControlsInstance, orbitTarget]);
 
   // Subscribe directly to the editor store so the toolbar's
   // Move(W)/Rotate(E)/Scale(R) buttons reach the native runtime gizmo. Prior
@@ -882,6 +1025,7 @@ export function ThreeRuntimeMount({
         const lookYaw = player?.threeJSGroup.userData.pixlLookYaw;
         const sceneSkyTextureUrl = game.scene.sceneJSONAsset?.data?.sky?.textureUrl;
         const skyboxTextureUrl = game.scene.threeJSScene.userData.pixlSkyboxTextureUrl;
+        const skySunVisible = game.scene.threeJSScene.children.some((child) => child.userData.pixlSkySun === true);
         return {
           isPlaying: game.isPlaying(),
           verticalAxis: input?.readVerticalAxis() ?? 0,
@@ -892,6 +1036,7 @@ export function ThreeRuntimeMount({
           controllerDebug: player?.threeJSGroup.userData.pixlControllerDebug ?? null,
           skyboxTextureUrl: typeof skyboxTextureUrl === 'string' ? skyboxTextureUrl : null,
           sceneSkyTextureUrl: typeof sceneSkyTextureUrl === 'string' ? sceneSkyTextureUrl : null,
+          skySunVisible,
         };
       },
     };
@@ -945,6 +1090,8 @@ export function ThreeRuntimeMount({
     if (!canvas) return;
 
     let disposed = false;
+    let disposeAfterLoadSettles = false;
+    let gameDisposed = false;
     setLoad({ status: 'loading' });
 
     const initialRenderSettings = useEngineSettings.getState();
@@ -971,6 +1118,23 @@ export function ThreeRuntimeMount({
       },
     });
     gameRef.current = game;
+
+    const disposeGame = () => {
+      if (gameDisposed) return;
+      gameDisposed = true;
+      try {
+        const ownsActiveGame = gameRef.current === game;
+        if (ownsActiveGame) {
+          gameRef.current = null;
+          runtimeScriptDisposeRef.current?.();
+          runtimeScriptDisposeRef.current = null;
+          runtimeScriptTickRef.current = null;
+        }
+        game.dispose();
+      } catch {
+        // ignore
+      }
+    };
 
     (async () => {
       try {
@@ -1042,26 +1206,28 @@ export function ThreeRuntimeMount({
       } catch (error: unknown) {
         if (disposed) return;
         const message = error instanceof Error ? error.message : String(error);
+        console.error('[ThreeRuntimeMount] load failed:', error);
         setLoad({ status: 'error', message });
+      } finally {
+        if (disposeAfterLoadSettles) disposeGame();
       }
     })();
 
     return () => {
       disposed = true;
-      try {
-        runtimeScriptDisposeRef.current?.();
-        runtimeScriptDisposeRef.current = null;
-        runtimeScriptTickRef.current = null;
-        gameRef.current?.dispose();
-        gameRef.current = null;
-      } catch {
-        // ignore
+      game.pause();
+      if (shouldDeferThreeRuntimeDispose(game)) {
+        if (gameRef.current === game) gameRef.current = null;
+        disposeAfterLoadSettles = true;
+        return;
       }
+      disposeGame();
     };
   }, [initialScene, projectDocument, resolvedAssetBaseUrl]);
 
   return (
     <div
+      ref={rootRef}
       data-runtime="three"
       data-three-mode={isRuntimePreview ? 'play' : 'edit'}
       data-three-simulation={runSimulation ? 'running' : 'paused'}
@@ -1069,6 +1235,9 @@ export function ThreeRuntimeMount({
       data-three-postprocessing={nativePostProcessing.enabled ? 'filmic-realism' : 'off'}
       data-three-postprocessing-effects={nativePostProcessingEffects}
       data-three-sky={hasNativeSky ? 'procedural' : 'off'}
+      onDragOver={handleAssetDragOver}
+      onDragLeave={handleAssetDragLeave}
+      onDrop={handleAssetDrop}
       style={{
         display: visible ? 'block' : 'none',
         width: '100%',
@@ -1108,6 +1277,14 @@ export function ThreeRuntimeMount({
               three-runtime: {load.message ?? 'falha ao carregar'}
             </span>
           )}
+        </div>
+      )}
+      {isAssetDragOver && editorToolsEnabled && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center border-2 border-dashed border-[var(--editor-command-highlight)] bg-black/35">
+          <div className="border border-[var(--editor-command-border)] bg-[var(--editor-panel)] px-5 py-3 text-center">
+            <p className="text-sm font-semibold text-foreground">Solte para criar GameObject 3D</p>
+            <p className="text-xs text-muted-foreground">O modelo entra no ponto do cursor sobre o chão.</p>
+          </div>
         </div>
       )}
     </div>

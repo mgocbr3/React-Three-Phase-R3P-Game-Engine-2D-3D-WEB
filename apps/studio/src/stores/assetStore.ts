@@ -171,6 +171,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   removeProjectAsset: (id) => {
     set((state) => ({
       projectAssets: state.projectAssets.filter(a => a.id !== id),
+      selectedAssetId: state.selectedAssetId === id ? null : state.selectedAssetId,
     }));
   },
   

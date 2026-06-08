@@ -140,6 +140,55 @@ describe('createBuildTargetSummary', () => {
     ]));
   });
 
+  it('accepts sample-resolved asset URLs when the manifest stores portable paths', () => {
+    const project = buildProject('2d');
+    project.scenes[0]!.rootObjects = [
+      {
+        id: 'arena-bg',
+        name: 'Arena BG',
+        type: 'image',
+        transform: {
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+        },
+        visible: true,
+        locked: false,
+        tags: [],
+        components: [
+          {
+            id: 'sprite',
+            type: 'pixl.sprite',
+            enabled: true,
+            data: {
+              imageUrl: '/sample-projects/magic-battleground-2d/assets/environment/arena-bg.png',
+            },
+          },
+        ],
+        data: {
+          imageUrl: '/sample-projects/magic-battleground-2d/assets/environment/arena-bg.png',
+        },
+      },
+    ];
+    project.assets.entries = [
+      {
+        id: 'arena-bg',
+        name: 'Arena BG',
+        kind: 'image',
+        path: 'assets/environment/arena-bg.png',
+        tags: [],
+      },
+    ];
+
+    const readiness = analyzeBuildReadiness(project);
+
+    expect(readiness.status).toBe('ready');
+    expect(readiness.warnings).toBe(0);
+    expect(readiness.issues.map((issue) => issue.message)).not.toContain(
+      'Asset reference is not declared: /sample-projects/magic-battleground-2d/assets/environment/arena-bg.png',
+    );
+  });
+
   it('accepts primitive mesh components in 3D scenes', () => {
     const project = buildProject('3d');
     project.scenes[0]!.rootObjects = [

@@ -87,6 +87,18 @@ const normalizeAssetRef = (value: string): string => (
   value.replace(/^public\//, '').replace(/^[./]+/, '')
 );
 
+const hasDeclaredAssetRef = (declaredAssetRefs: Set<string>, ref: string): boolean => {
+  const normalized = normalizeAssetRef(ref);
+  if (declaredAssetRefs.has(normalized)) return true;
+
+  for (const declared of declaredAssetRefs) {
+    if (!declared.includes('/')) continue;
+    if (normalized.endsWith(`/${declared}`)) return true;
+  }
+
+  return false;
+};
+
 const isExternalAssetRef = (value: string): boolean => /^(?:https?:|data:|blob:)/i.test(value);
 
 const pushIssue = (
@@ -201,14 +213,14 @@ export const analyzeBuildReadiness = (project: PixlProjectDocument): BuildReadin
         }
 
         walkAssetRefs(component.data, (ref, refPath) => {
-          if (!declaredAssetRefs.has(normalizeAssetRef(ref))) {
+          if (!hasDeclaredAssetRef(declaredAssetRefs, ref)) {
             pushIssue(issues, 'warning', `Asset reference is not declared: ${ref}`, refPath);
           }
         }, `${componentPath}.data`);
       }
 
       walkAssetRefs(object.data, (ref, refPath) => {
-        if (!declaredAssetRefs.has(normalizeAssetRef(ref))) {
+        if (!hasDeclaredAssetRef(declaredAssetRefs, ref)) {
           pushIssue(issues, 'warning', `Asset reference is not declared: ${ref}`, refPath);
         }
       }, `${objectPath}.data`);

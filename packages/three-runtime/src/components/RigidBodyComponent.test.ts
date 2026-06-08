@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import RAPIER from '@dimforge/rapier3d-compat';
 
 import GameObject from '../GameObject.js';
 import RigidBodyComponent from './RigidBodyComponent.js';
@@ -53,5 +54,40 @@ describe('RigidBodyComponent', () => {
 
     expect(removeRigidBody).toHaveBeenCalledWith(body);
     expect(component.getRapierRigidBody()).toBeNull();
+  });
+
+  it('keeps scene loading when Rapier collider creation throws', async () => {
+    await RAPIER.init();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const body = {
+      setTranslation: vi.fn(),
+      setRotation: vi.fn(),
+    };
+    const scene = {
+      rapierWorld: {
+        createRigidBody: vi.fn(() => body),
+        createCollider: vi.fn(() => {
+          throw new Error('unreachable');
+        }),
+        removeRigidBody: vi.fn(),
+      },
+      game: { gameOptions: {} },
+      addGameObject: () => {},
+      isActive: () => false,
+    };
+    const object = new GameObject(scene as never, { name: 'Bad Collider' });
+    const component = new RigidBodyComponent(object, {
+      type: 'rigidBody',
+      rigidBodyType: 'fixed',
+      colliders: [{ type: 'cuboid', hx: 1, hy: 1, hz: 1 }],
+    });
+
+    try {
+      expect(() => component.load()).not.toThrow();
+      expect(component.getRapierRigidBody()).toBe(body);
+      expect(object.threeJSGroup.userData.pixlPhysicsDebug).toBe('collider-cuboid: unreachable');
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

@@ -3,6 +3,7 @@ import { Sky, Cloud, Stars, Environment } from '@react-three/drei';
 import { useEditorStore } from '@/stores/editorStore';
 import { useEngineSettings } from '@/stores/engineSettingsStore';
 import { Skybox } from './primitives/Skybox';
+import { SunDisk } from './primitives/SunDisk';
 
 /**
  * AtmosphericLighting - Environment (IBL) + balanced fill lights
@@ -46,12 +47,13 @@ export const AtmosphericLighting = () => {
         {/* Fallback solid background color while the downloaded skybox loads. */}
       <color attach="background" args={[skyColor]} />
 
-        {/* Default cloud skybox. Hidden at night so Stars take over. */}
+        {/* Default pure-sky skybox. Hidden at night so Stars take over. */}
       {!isNight && (
         <Suspense fallback={null}>
           <Skybox />
         </Suspense>
       )}
+      {!isNight && <SunDisk />}
 
       {/* Environment (IBL) - skybox lighting only */}
       <Environment

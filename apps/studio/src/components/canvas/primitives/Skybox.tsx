@@ -1,6 +1,6 @@
 // Skybox renderer.
 //
-// Loads the downloaded cloud equirectangular skybox used as the base R3P sky.
+// Loads the downloaded pure-sky equirectangular skybox used as the base R3P sky.
 // IBL remains owned by `<Environment>` in `AtmosphericLighting.tsx`; this only
 // controls the visible scene background.
 
@@ -14,7 +14,7 @@ interface SkyboxProps {
 }
 
 export const Skybox = ({
-  url = '/skybox/clear_blue_sky.jpg',
+  url = '/skybox/kloppenheim_05_puresky_4k.jpg',
 }: SkyboxProps) => {
   const texture = useTexture(url);
   const { scene } = useThree();

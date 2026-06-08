@@ -378,6 +378,18 @@ const ASSET_KIND_TO_PROJECT_TYPE: Partial<Record<PixlAssetKind, EditorProjectSna
   script: 'script',
 };
 
+const getAssetEntryFileName = (asset: PixlAssetEntry): string => {
+  const source = asset.path || asset.url || asset.name;
+  const cleanSource = source.split(/[?#]/)[0];
+  return cleanSource.split(/[\\/]/).pop() || asset.name;
+};
+
+const getAssetEntryDisplayName = (asset: PixlAssetEntry): string => (
+  typeof asset.metadata?.sourceObjectId === 'string'
+    ? getAssetEntryFileName(asset)
+    : asset.name
+);
+
 const withUniqueProjectAssetIds = (
   assets: EditorProjectSnapshot['projectAssets'],
 ): EditorProjectSnapshot['projectAssets'] => {
@@ -395,19 +407,24 @@ const withUniqueProjectAssetIds = (
 
 const collectAssetEntries = (objects: SceneObject[]): PixlAssetEntry[] => {
   const entries = new Map<string, PixlAssetEntry>();
+  const assetNameFromPath = (assetPath: string, fallback: string): string => {
+    const cleanPath = assetPath.split(/[?#]/)[0];
+    return cleanPath.split(/[\\/]/).pop() || fallback;
+  };
 
   objects.forEach((object) => {
     const modelUrl = object.animationSettings?.modelUrl;
     if (modelUrl && !entries.has(modelUrl)) {
       entries.set(modelUrl, {
         id: `asset-${entries.size + 1}`,
-        name: object.name,
+        name: assetNameFromPath(modelUrl, object.name),
         kind: 'model',
         path: modelUrl,
         url: modelUrl,
         tags: ['scene'],
         metadata: {
           sourceObjectId: object.id,
+          sourceObjectName: object.name,
         },
       });
     }
@@ -424,13 +441,14 @@ const collectAssetEntries = (objects: SceneObject[]): PixlAssetEntry[] => {
       );
       entries.set(imageUrl, {
         id: `asset-${entries.size + 1}`,
-        name: object.name,
+        name: assetNameFromPath(imageUrl, object.name),
         kind: isSpritesheet ? 'spritesheet' : 'image',
         path: imageUrl,
         url: imageUrl,
         tags: [...(object.logicSettings?.tags ?? [])],
         metadata: {
           sourceObjectId: object.id,
+          sourceObjectName: object.name,
         },
       });
     }
@@ -567,6 +585,86 @@ const normalizeSceneObject = (object: Partial<PixlSceneObject>): PixlSceneObject
   children: object.children?.map(normalizeSceneObject),
 });
 
+const STARTER_TEMPLATE_IDS = new Set(['first-person', 'third-person']);
+
+const isLegacyStarterVec3 = (
+  value: [number, number, number],
+  expected: [number, number, number],
+) => value.every((axis, index) => Math.abs(axis - expected[index]) < 0.0001);
+
+const isPixllandStarterTemplate = (templateId: string | null | undefined) => (
+  Boolean(templateId && STARTER_TEMPLATE_IDS.has(templateId))
+);
+
+const hasPixllandStarterModel = (object: PixlSceneObject): boolean => (
+  object.components?.some((component) => {
+    if (component.type !== 'pixl.mesh' && component.type !== 'pixl.animation') return false;
+    const modelUrl = component.data?.modelUrl ?? component.data?.assetPath;
+    return typeof modelUrl === 'string' && modelUrl.includes('/models/manequin/mixamo/');
+  }) ?? false
+);
+
+const upgradeStarterSceneObject = (
+  object: PixlSceneObject,
+  templateId: string | null | undefined,
+): PixlSceneObject => {
+  const children = object.children?.map((child) => upgradeStarterSceneObject(child, templateId));
+  const starterTemplate = isPixllandStarterTemplate(templateId);
+  const legacyStarterGround = object.id === 'ground-1' && isLegacyStarterVec3(object.transform.scale, [72, 0.2, 72]);
+  const legacyStarterPlayer = object.id === 'main-player' && hasPixllandStarterModel(object);
+  if (!starterTemplate && !legacyStarterGround && !legacyStarterPlayer) {
+    return children ? { ...object, children } : object;
+  }
+
+  if (legacyStarterGround) {
+    return {
+      ...object,
+      transform: {
+        ...object.transform,
+        scale: [160, 0.2, 160],
+      },
+      components: object.components?.map((component) => {
+        if (component.type !== 'pixl.physics') return component;
+        const data = cloneJson(component.data ?? {});
+        if (Array.isArray(data.colliders)) {
+          data.colliders = data.colliders.map((collider) => {
+            if (
+              collider
+              && typeof collider === 'object'
+              && (collider as { type?: unknown }).type === 'cuboid'
+              && (collider as { hx?: unknown }).hx === 36
+              && (collider as { hz?: unknown }).hz === 36
+            ) {
+              return { ...collider, hx: 80, hz: 80 };
+            }
+            return collider;
+          });
+        }
+        return { ...component, data };
+      }),
+      children,
+    };
+  }
+
+  if (legacyStarterPlayer) {
+    return {
+      ...object,
+      components: object.components?.map((component) => {
+        if (component.type !== 'pixl.entity') return component;
+        const data = cloneJson(component.data ?? {});
+        const rotation = data.modelRotationOffset;
+        if (Array.isArray(rotation) && isLegacyStarterVec3(rotation as [number, number, number], [0, 0, 0])) {
+          data.modelRotationOffset = [0, Math.PI, 0];
+        }
+        return { ...component, data };
+      }),
+      children,
+    };
+  }
+
+  return children ? { ...object, children } : object;
+};
+
 const normalizeModernProjectDocument = (document: PixlProjectDocument): PixlProjectDocument => {
   const firstSceneKind = document.scenes[0]?.kind === '2d' ? '2d' : '3d';
   const runtime = runtimeForSceneKind(firstSceneKind);
@@ -585,7 +683,9 @@ const normalizeModernProjectDocument = (document: PixlProjectDocument): PixlProj
       name: scene.name || 'Main',
       kind,
       units: scene.units ?? sceneRuntime.units,
-      rootObjects: (scene.rootObjects ?? []).map(normalizeSceneObject),
+      rootObjects: (scene.rootObjects ?? [])
+        .map(normalizeSceneObject)
+        .map((object) => upgradeStarterSceneObject(object, document.game?.templateId)),
       camera: {
         ...scene.camera,
         id: scene.camera?.id ?? 'editor-camera',
@@ -690,23 +790,36 @@ export const createEditorSnapshotFromProjectDocument = (
     throw new Error('Projeto PixlPlayground sem cena ativa.');
   }
 
+  const objects = flattenSceneObjectsForEditor(scene.rootObjects);
+  const objectNameById = new Map(objects.map((object) => [object.id, object.name]));
   const projectAssets = project.assets.entries
     .filter((asset) => Boolean(ASSET_KIND_TO_PROJECT_TYPE[asset.kind]))
-    .map((asset) => ({
-      id: asset.id,
-      name: asset.name,
-      type: ASSET_KIND_TO_PROJECT_TYPE[asset.kind]!,
-      url: asset.url || asset.path,
-      path: asset.path,
-      thumbnail: typeof asset.metadata?.thumbnail === 'string'
-        ? asset.metadata.thumbnail
-        : typeof asset.metadata?.thumbnailUrl === 'string'
-          ? asset.metadata.thumbnailUrl
-          : undefined,
-      folder: asset.path.includes('/') ? asset.path.split('/').slice(0, -1).join('/') : project.assets.root,
-      createdAt: project.createdAt,
-      metadata: asset.metadata,
-    }));
+    .map((asset) => {
+      const sourceObjectId = typeof asset.metadata?.sourceObjectId === 'string'
+        ? asset.metadata.sourceObjectId
+        : null;
+      const sourceObjectName = sourceObjectId ? objectNameById.get(sourceObjectId) : undefined;
+      return {
+        id: asset.id,
+        name: getAssetEntryDisplayName(asset),
+        type: ASSET_KIND_TO_PROJECT_TYPE[asset.kind]!,
+        url: asset.url || asset.path,
+        path: asset.path,
+        thumbnail: typeof asset.metadata?.thumbnail === 'string'
+          ? asset.metadata.thumbnail
+          : typeof asset.metadata?.thumbnailUrl === 'string'
+            ? asset.metadata.thumbnailUrl
+            : undefined,
+        folder: asset.path.includes('/') ? asset.path.split('/').slice(0, -1).join('/') : project.assets.root,
+        createdAt: project.createdAt,
+        metadata: {
+          ...(asset.metadata ?? {}),
+          ...(sourceObjectName && typeof asset.metadata?.sourceObjectName !== 'string'
+            ? { sourceObjectName }
+            : {}),
+        },
+      };
+    });
 
   return {
     gameScript: project.game.script || '// Game Script\n',
@@ -716,7 +829,7 @@ export const createEditorSnapshotFromProjectDocument = (
     snapRotate: project.editor.snapRotate ?? 15,
     snapScale: project.editor.snapScale ?? 0.25,
     activeSceneKind: scene.kind,
-    objects: flattenSceneObjectsForEditor(scene.rootObjects),
+    objects,
     projectAssets: withUniqueProjectAssetIds(projectAssets),
   };
 };

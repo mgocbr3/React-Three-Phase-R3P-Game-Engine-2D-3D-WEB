@@ -12,7 +12,9 @@
  */
 import type { PixlProjectDocument, PixlSceneKind, PixlRuntimeKind } from '@/engine/project/schema';
 import { DEFAULT_PROJECT_FOLDERS } from '@/engine/project/schema';
+import { createProjectDocumentFromEditorState } from '@/engine/project/editorProjectAdapter';
 import { buildStarterProjectDocument, isStarterTemplateId } from '@/lib/starterTemplates';
+import { getBlankTemplateObjects } from '@/lib/blankTemplate';
 
 export const SINGLE_PROJECT_DOC_KEY = 'pixl-project-document';
 const PER_ID_PREFIX = 'pixl-project-doc:';
@@ -108,6 +110,37 @@ export const createEmptyProjectDocument = (params: {
 
   const runtimePrimary: PixlRuntimeKind = kind === '2d' ? 'phaser-2d' : 'three-3d';
   const renderers = kind === '2d' ? ['phaser'] as const : ['three'] as const;
+
+  if (kind === '3d') {
+    const doc = createProjectDocumentFromEditorState({
+      objects: getBlankTemplateObjects(),
+      gameScript: '// Game Script\n',
+      transformSpace: 'world',
+      snapEnabled: false,
+      snapTranslate: 1,
+      snapRotate: 15,
+      snapScale: 0.25,
+      activeSceneKind: '3d',
+    }, {
+      id: params.id,
+      name: params.name,
+      slug,
+      createdAt: now,
+      savedAt: now,
+    });
+
+    return {
+      ...doc,
+      engine: {
+        ...doc.engine,
+        version: '0.2.0',
+      },
+      game: {
+        ...doc.game,
+        templateId: params.templateId ?? null,
+      },
+    };
+  }
 
   const scene = kind === '2d'
     ? {

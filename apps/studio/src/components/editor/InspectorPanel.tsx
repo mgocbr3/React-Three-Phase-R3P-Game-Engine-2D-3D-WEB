@@ -3,7 +3,7 @@ import {
   Settings, Palette, Box, Camera, Video, Eye, Lock, Copy, Trash2, User, Move, 
   Zap, Brain, Atom, Tag, Gamepad2, ChevronDown, ChevronRight, Sun, Lightbulb, 
   Search, Code, Target, Sparkles, Send, Volume2, Layers, Mountain, Image as ImageIcon, Type as TypeIcon,
-  Plus, X
+  Plus, X, FileBox
 } from 'lucide-react';
 import { 
   useEditorStore, 
@@ -49,6 +49,7 @@ import {
 } from '@/services/componentCatalog';
 import { getEditorObjectIcon } from './editorObjectIcon';
 import { useRuntimeGameStore } from '@/stores/runtimeGameStore';
+import { useAssetStore, type ProjectAsset } from '@/stores/assetStore';
 
 // Tabs as icon-based navigation
 const mainTabs = [
@@ -80,12 +81,26 @@ export const InspectorPanel = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const previewSession = useRuntimeGameStore((s) => s.previewSession);
   const isRuntimePreviewActive = Boolean(previewSession) || !isEditMode;
+  const {
+    projectAssets,
+    selectedAssetId,
+    updateProjectAsset,
+    selectAsset,
+  } = useAssetStore();
   
   const selectedObject = objects.find(obj => obj.id === selectedObjectId);
+  const selectedAsset = selectedAssetId
+    ? projectAssets.find((asset) => asset.id === selectedAssetId) ?? null
+    : null;
+  const toolTabsLocked = isRuntimePreviewActive || Boolean(selectedAsset);
 
   useEffect(() => {
-    if (isRuntimePreviewActive && mainTab !== 'inspector') setMainTab('inspector');
-  }, [isRuntimePreviewActive, mainTab]);
+    if (toolTabsLocked && mainTab !== 'inspector') setMainTab('inspector');
+  }, [toolTabsLocked, mainTab]);
+
+  useEffect(() => {
+    if (selectedAssetId && !selectedAsset) selectAsset(null);
+  }, [selectedAsset, selectedAssetId, selectAsset]);
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-[var(--editor-panel)]">
@@ -104,12 +119,12 @@ export const InspectorPanel = () => {
                 key={tab.id}
                 aria-label={tab.label}
                 aria-pressed={isActive}
-                disabled={isRuntimePreviewActive && tab.id !== 'inspector'}
+                disabled={toolTabsLocked && tab.id !== 'inspector'}
                 onClick={() => setMainTab(tab.id)}
                 title={tab.label}
                 className={cn(
                   'editor-panel-tab flex h-6 flex-1 min-w-0 items-center justify-center gap-1 px-1.5 text-[11px] transition-colors',
-                  isRuntimePreviewActive && tab.id !== 'inspector'
+                  toolTabsLocked && tab.id !== 'inspector'
                     ? 'cursor-not-allowed opacity-35'
                     : isActive
                     ? 'active'
@@ -127,10 +142,17 @@ export const InspectorPanel = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {mainTab === 'scripts' ? (
+        {mainTab === 'scripts' && !selectedAsset ? (
           <ScriptEditorPanel selectedObject={selectedObject || null} />
-        ) : mainTab === 'vibe' ? (
+        ) : mainTab === 'vibe' && !selectedAsset ? (
           <VibeCodePanel />
+        ) : selectedAsset ? (
+          <AssetPropertiesPanel
+            asset={selectedAsset}
+            updateAsset={updateProjectAsset}
+            clearAssetSelection={() => selectAsset(null)}
+            readOnly={isRuntimePreviewActive}
+          />
         ) : selectedObject ? (
           <PropertiesPanel 
             object={selectedObject}
@@ -164,6 +186,196 @@ export const InspectorPanel = () => {
     </div>
   );
 };
+
+const getProjectAssetInspectorIcon = (type: ProjectAsset['type']) => {
+  switch (type) {
+    case 'texture':
+    case 'image':
+    case 'sprite':
+    case 'spritesheet':
+      return ImageIcon;
+    case 'audio':
+      return Volume2;
+    case 'script':
+      return Code;
+    case 'tilemap':
+      return Layers;
+    default:
+      return FileBox;
+  }
+};
+
+const getProjectAssetFileName = (asset: ProjectAsset): string => {
+  const source = asset.path || asset.url || asset.name;
+  return source.split(/[\\/]/).pop() || asset.name;
+};
+
+const getProjectAssetFormat = (asset: ProjectAsset): string => {
+  const metadataFormat = typeof asset.metadata?.format === 'string' ? asset.metadata.format : '';
+  const extension = getProjectAssetFileName(asset).split('.').pop() ?? '';
+  return (metadataFormat || extension || asset.type).toUpperCase();
+};
+
+const formatProjectAssetDate = (timestamp: number): string => {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return '—';
+  return new Date(timestamp).toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+};
+
+const formatProjectAssetMetadataValue = (value: unknown): string | null => {
+  if (Array.isArray(value)) {
+    const formatted = value
+      .map((item) => (typeof item === 'string' || typeof item === 'number' ? String(item) : null))
+      .filter((item): item is string => Boolean(item));
+    return formatted.length ? formatted.join(', ') : null;
+  }
+
+  if (value && typeof value === 'object') {
+    const maybeDimensions = value as { width?: unknown; height?: unknown };
+    if (typeof maybeDimensions.width === 'number' && typeof maybeDimensions.height === 'number') {
+      return `${maybeDimensions.width} x ${maybeDimensions.height}`;
+    }
+    return null;
+  }
+
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return null;
+};
+
+const getProjectAssetMetadataRows = (asset: ProjectAsset): Array<{ label: string; value: string }> => {
+  const metadata = asset.metadata ?? {};
+  const rows: Array<{ label: string; value: string }> = [];
+
+  if (typeof metadata.polyCount === 'number') {
+    rows.push({ label: 'Polígonos', value: metadata.polyCount.toLocaleString('pt-BR') });
+  }
+  if (metadata.dimensions) {
+    const dimensions = formatProjectAssetMetadataValue(metadata.dimensions);
+    if (dimensions) rows.push({ label: 'Dimensões', value: dimensions });
+  }
+  if (Array.isArray(metadata.animations) && metadata.animations.length) {
+    rows.push({ label: 'Animações', value: metadata.animations.join(', ') });
+  }
+
+  const usedKeys = new Set(['format', 'polyCount', 'dimensions', 'animations']);
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (usedKeys.has(key)) return;
+    const formatted = formatProjectAssetMetadataValue(value);
+    if (!formatted) return;
+    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase());
+    rows.push({ label, value: formatted });
+  });
+
+  return rows;
+};
+
+interface AssetPropertiesPanelProps {
+  asset: ProjectAsset;
+  updateAsset: (id: string, updates: Partial<ProjectAsset>) => void;
+  clearAssetSelection: () => void;
+  readOnly?: boolean;
+}
+
+const AssetPropertiesPanel = ({
+  asset,
+  updateAsset,
+  clearAssetSelection,
+  readOnly = false,
+}: AssetPropertiesPanelProps) => {
+  const AssetIcon = getProjectAssetInspectorIcon(asset.type);
+  const metadataRows = getProjectAssetMetadataRows(asset);
+  const hasImagePreview = ['texture', 'image', 'sprite', 'spritesheet'].includes(asset.type) && Boolean(asset.url);
+
+  return (
+    <fieldset
+      disabled={readOnly}
+      className={cn('flex h-full flex-col', readOnly && 'opacity-70')}
+      title={readOnly ? 'Inspector locked during Play Mode' : undefined}
+    >
+      <div className="glass-object-header">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center border border-border bg-[var(--editor-panel-sunken)]">
+            <AssetIcon className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <input
+              type="text"
+              value={asset.name}
+              onChange={(event) => updateAsset(asset.id, { name: event.target.value })}
+              className="w-full bg-transparent text-[13px] font-semibold text-foreground focus:outline-none"
+            />
+            <p className="text-[10px] font-medium uppercase text-muted-foreground">{asset.type}</p>
+          </div>
+          <ActionButton
+            icon={X}
+            onClick={clearAssetSelection}
+            tooltip="Limpar seleção"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <CollapsibleSection title="Asset" icon={AssetIcon} defaultOpen>
+          <div className="space-y-3">
+            <div className="flex min-h-20 items-center justify-center border border-border bg-[var(--editor-panel-sunken)]">
+              {hasImagePreview ? (
+                <img
+                  src={asset.thumbnail || asset.url}
+                  alt={asset.name}
+                  className="max-h-24 max-w-full object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                  <AssetIcon className="h-7 w-7" />
+                  <span className="text-[10px] font-semibold uppercase">{getProjectAssetFormat(asset)}</span>
+                </div>
+              )}
+            </div>
+
+            <AssetDetailRow label="Arquivo" value={getProjectAssetFileName(asset)} />
+            <AssetDetailRow label="Tipo" value={asset.type} />
+            <AssetDetailRow label="Formato" value={getProjectAssetFormat(asset)} />
+            <AssetDetailRow label="Pasta" value={asset.folder} />
+            <AssetDetailRow label="Path" value={asset.path || '—'} />
+            <AssetDetailRow label="URL" value={asset.url || '—'} />
+            <AssetDetailRow label="Criado" value={formatProjectAssetDate(asset.createdAt)} />
+          </div>
+        </CollapsibleSection>
+
+        {metadataRows.length > 0 && (
+          <CollapsibleSection title="Metadata" icon={Tag} defaultOpen>
+            <div className="space-y-2">
+              {metadataRows.map((row) => (
+                <AssetDetailRow key={row.label} label={row.label} value={row.value} />
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+      </div>
+    </fieldset>
+  );
+};
+
+interface AssetDetailRowProps {
+  label: string;
+  value: string;
+}
+
+const AssetDetailRow = ({ label, value }: AssetDetailRowProps) => (
+  <div className="space-y-1">
+    <span className="inspector-label">{label}</span>
+    <div
+      title={value}
+      className="min-h-6 break-all border border-border bg-[var(--editor-panel-sunken)] px-2 py-1 text-[11px] text-foreground"
+    >
+      {value}
+    </div>
+  </div>
+);
 
 // ============================================
 // PROPERTIES PANEL - Consolidated view
@@ -512,13 +724,6 @@ interface ComponentStackSectionProps {
   removeComponentFromObject: (objectId: string, componentId: string) => void;
 }
 
-const summarizeComponentData = (component: PixlComponentInstance): string => {
-  const keys = Object.keys(component.data ?? {});
-  if (!keys.length) return 'Sem dados';
-  const preview = keys.slice(0, 4).join(', ');
-  return keys.length > 4 ? `${preview}, ...` : preview;
-};
-
 const formatComponentDataValue = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.length}]`;
   if (value && typeof value === 'object') return '{...}';
@@ -584,12 +789,6 @@ const ComponentStackSection = ({
                     <span className="rounded-sm border border-border px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
                       {component.type}
                     </span>
-                  </div>
-                  <div className="mt-1 truncate text-[10px] text-muted-foreground">
-                    {definition?.description ?? summarizeComponentData(component)}
-                  </div>
-                  <div className="mt-1 truncate font-mono text-[10px] text-muted-foreground/80">
-                    {summarizeComponentData(component)}
                   </div>
                   <ComponentDataFields
                     component={component}
@@ -1068,7 +1267,7 @@ const LightSection = ({ object, updateObject }: LightSectionProps) => {
             <>
               <button
                 onClick={() => {
-                  updateLight({ sunElevation: 25, intensity: 1.2, temperature: 3000 });
+                  updateLight({ sunElevation: 18, sunAzimuth: 255, intensity: 1.2, temperature: 3000 });
                   updateObject(object.id, { color: '#ffaa55' });
                 }}
                 className="rounded-sm border border-border bg-secondary px-2 py-1.5 text-[10px] text-foreground hover:bg-muted"
@@ -1077,7 +1276,7 @@ const LightSection = ({ object, updateObject }: LightSectionProps) => {
               </button>
               <button
                 onClick={() => {
-                  updateLight({ sunElevation: 70, intensity: 1.5, temperature: 5600 });
+                  updateLight({ sunElevation: 70, sunAzimuth: 270, intensity: 1.5, temperature: 5600 });
                   updateObject(object.id, { color: '#fffaf0' });
                 }}
                 className="rounded-sm border border-border bg-secondary px-2 py-1.5 text-[10px] text-foreground hover:bg-muted"
@@ -1086,7 +1285,7 @@ const LightSection = ({ object, updateObject }: LightSectionProps) => {
               </button>
               <button
                 onClick={() => {
-                  updateLight({ sunElevation: 15, intensity: 0.8, temperature: 7500 });
+                  updateLight({ sunElevation: 12, sunAzimuth: 285, intensity: 0.8, temperature: 7500 });
                   updateObject(object.id, { color: '#b4c8ff' });
                 }}
                 className="rounded-sm border border-border bg-secondary px-2 py-1.5 text-[10px] text-foreground hover:bg-muted"
@@ -1095,7 +1294,7 @@ const LightSection = ({ object, updateObject }: LightSectionProps) => {
               </button>
               <button
                 onClick={() => {
-                  updateLight({ sunElevation: 45, intensity: 0.6, temperature: 6500 });
+                  updateLight({ sunElevation: 45, sunAzimuth: 270, intensity: 0.6, temperature: 6500 });
                   updateObject(object.id, { color: '#dde8ff' });
                 }}
                 className="rounded-sm border border-border bg-secondary px-2 py-1.5 text-[10px] text-foreground hover:bg-muted"
@@ -2991,7 +3190,6 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
         <div className="mb-1.5 flex items-center gap-1.5">
           <Gamepad2 className="h-3.5 w-3.5 text-muted-foreground" />
           <div className="text-[11px] font-medium text-muted-foreground">Preset de jogo</div>
-          <div className="ml-auto max-w-[180px] truncate text-[10px] text-muted-foreground/80">{currentPreset.description}</div>
         </div>
         <select
           value={playerSettings.gamePreset || 'custom'}
@@ -3014,9 +3212,6 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
             <span className="text-[11px] font-semibold flex items-center gap-1.5 text-foreground">
               {CAMERA_MODE_OPTIONS.find(m => m.value === cameraObject.cameraSettings?.mode)?.label || 'Terceira Pessoa'}
             </span>
-          </div>
-          <div className="mt-1 text-[9px] text-muted-foreground/70">
-            Selecione Main Camera na hierarquia para ajuste fino
           </div>
         </div>
       )}
@@ -3355,10 +3550,6 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
                     onChange={(v) => updateSetting('stompRequiresDownward', v)} />
                 </div>
                 
-                <div className="rounded-sm bg-secondary/30 p-2 text-[10px] text-muted-foreground">
-                  <strong>Como funciona:</strong> Pule em cima dos inimigos.
-                  Quando você pousar na cabeça de um inimigo, causa dano e rebate para cima.
-                </div>
               </div>
             )}
           </>
@@ -3392,29 +3583,6 @@ const PlayerSettingsSection = ({ playerSettings, onUpdate, objects, updateObject
         )}
       </SettingsGroup>
 
-      {/* Controls Reference */}
-      <div className="space-y-1 border-t border-border/70 bg-[var(--editor-panel-header)] px-2 py-2 text-[10px] text-muted-foreground">
-        <div className="font-semibold text-foreground">Controles</div>
-        {isRacing ? (
-          <>
-            <div>• W/↑: Acelerar</div>
-            <div>• S/↓: Frear / Ré</div>
-            <div>• A/D ou ←/→: Virar</div>
-            <div>• Espaço: Freio de Mão (Drift)</div>
-            <div>• Shift: Nitro Boost</div>
-            <div>• C: Olhar para Trás</div>
-          </>
-        ) : (
-          <>
-            <div>• WASD/Setas: Movimento</div>
-            <div>• Espaço: Pular</div>
-            <div>• Shift: Correr</div>
-            <div>• C/Ctrl: Agachar</div>
-            <div>• Q/Alt: Esquivar</div>
-            <div>• E/Click: Atacar</div>
-          </>
-        )}
-      </div>
     </div>
   );
 };

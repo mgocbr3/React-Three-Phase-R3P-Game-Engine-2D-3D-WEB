@@ -25,6 +25,7 @@ describe('starterTemplates', () => {
     const objects = createStarterTemplateObjects(templateId);
     const player = scene.rootObjects.find((object) => object.id === 'main-player');
     const camera = scene.rootObjects.find((object) => object.id === 'main-camera');
+    const sun = scene.rootObjects.find((object) => object.id === 'sunlight-main');
     const ground = scene.rootObjects.find((object) => object.id === 'ground-1');
     const arenaIds = scene.rootObjects.map((object) => object.id);
 
@@ -50,6 +51,7 @@ describe('starterTemplates', () => {
     expect(player?.components.find((component) => component.type === 'pixl.physics')?.data.colliders).toEqual([
       expect.objectContaining({ type: 'capsule' }),
     ]);
+    expect(player?.components.find((component) => component.type === 'pixl.entity')?.data.modelRotationOffset).toEqual([0, Math.PI, 0]);
     expect(player?.components.find((component) => component.type === 'pixl.animation')?.data).toEqual(
       expect.objectContaining({
         currentAnimation: 'idle',
@@ -68,11 +70,17 @@ describe('starterTemplates', () => {
         pitchMax: expect.any(Number),
       }),
     );
+    expect(sun?.components.find((component) => component.type === 'pixl.light3d')?.data).toEqual(
+      expect.objectContaining({
+        sunElevation: 45,
+        sunAzimuth: 270,
+      }),
+    );
     expect(ground?.type).toBe('box');
-    expect(ground?.transform.scale).toEqual([72, 0.2, 72]);
+    expect(ground?.transform.scale).toEqual([160, 0.2, 160]);
     expect(ground?.data?.editor).toEqual(expect.objectContaining({ isStatic: true }));
     expect(ground?.components.find((component) => component.type === 'pixl.physics')?.data.colliders).toEqual([
-      expect.objectContaining({ type: 'cuboid', hx: 36, hy: 0.1, hz: 36 }),
+      expect.objectContaining({ type: 'cuboid', hx: 80, hy: 0.1, hz: 80 }),
     ]);
     expect(doc.assets.entries.map((asset) => asset.path)).toEqual(expect.arrayContaining(['/models/manequin/mixamo/xbot.glb']));
   });

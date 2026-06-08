@@ -56,7 +56,12 @@ describe('editor project adapter', () => {
     expect(project.scenes[0].rootObjects).toHaveLength(1);
     expect(project.scenes[0].rootObjects[0].data?.editorObject).toBeUndefined();
     expect(project.scenes[0].rootObjects[0].data?.editor).toEqual({ color: '#ffffff' });
+    expect(project.assets.entries[0].name).toBe('tree.glb');
     expect(project.assets.entries[0].url).toBe('/models/tree.glb');
+    expect(project.assets.entries[0].metadata).toMatchObject({
+      sourceObjectId: 'tree-01',
+      sourceObjectName: 'Tree 01',
+    });
     expect(snapshot.objects[0].color).toBe('#ffffff');
     expect(snapshot.objects[0].animationSettings?.modelUrl).toBe('/models/tree.glb');
     expect(snapshot.snapTranslate).toBe(0.5);
@@ -90,6 +95,30 @@ describe('editor project adapter', () => {
     expect(snapshot.objects[0].type).toBe('box');
     expect(snapshot.objects[0].position).toEqual([2, 0, -3]);
     expect(snapshot.objects[0].animationSettings?.modelUrl).toBe('/models/tree.glb');
+  });
+
+  it('uses file names for scene-derived Project assets in the editor', () => {
+    const project = createProjectDocumentFromEditorState({
+      gameScript: '// test',
+      transformSpace: 'world',
+      snapEnabled: true,
+      snapTranslate: 0.5,
+      snapRotate: 15,
+      snapScale: 0.1,
+      objects: [modelObject],
+    }, {
+      name: 'Asset Display Name',
+    });
+
+    project.assets.entries[0].name = 'Tree 01';
+    delete project.assets.entries[0].metadata?.sourceObjectName;
+
+    const snapshot = createEditorSnapshotFromProjectDocument(project);
+
+    expect(snapshot.projectAssets[0].name).toBe('tree.glb');
+    expect(snapshot.projectAssets[0].metadata).toMatchObject({
+      sourceObjectName: 'Tree 01',
+    });
   });
 
   it('migrates legacy flat project files into version 2', () => {
@@ -162,6 +191,52 @@ describe('editor project adapter', () => {
       type: 'group',
       components: [expect.objectContaining({ type: 'pixl.primitive' })],
     });
+  });
+
+  it('upgrades old starter arena scale and mannequin facing on load', () => {
+    const normalized = normalizeProjectDocument({
+      format: 'pixlplayground-project',
+      version: 2,
+      id: 'starter',
+      slug: 'starter',
+      name: 'Starter',
+      activeSceneId: 'main',
+      engine: { name: 'PixlPlayground', version: '0.2.0' },
+      runtime: { primary: 'three-3d', renderers: ['three'], physics: ['rapier'] },
+      game: { templateId: null },
+      scenes: [{
+        id: 'main',
+        name: 'Main',
+        kind: '3d',
+        rootObjects: [
+          {
+            id: 'ground-1',
+            name: 'Ground',
+            type: 'box',
+            transform: { position: [0, -0.1, 0], rotation: [0, 0, 0], scale: [72, 0.2, 72] },
+            components: [{ id: 'physics', type: 'pixl.physics', enabled: true, data: { colliders: [{ type: 'cuboid', hx: 36, hy: 0.1, hz: 36 }] } }],
+          },
+          {
+            id: 'main-player',
+            name: 'Player',
+            type: 'player',
+            transform: { position: [0, 1, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+            components: [
+              { id: 'entity', type: 'pixl.entity', enabled: true, data: { modelRotationOffset: [0, 0, 0] } },
+              { id: 'anim', type: 'pixl.animation', enabled: true, data: { modelUrl: '/models/manequin/mixamo/xbot.glb' } },
+            ],
+          },
+        ],
+      }],
+    } as any);
+    const ground = normalized.scenes[0].rootObjects.find((object) => object.id === 'ground-1');
+    const player = normalized.scenes[0].rootObjects.find((object) => object.id === 'main-player');
+
+    expect(ground?.transform.scale).toEqual([160, 0.2, 160]);
+    expect(ground?.components.find((component) => component.type === 'pixl.physics')?.data.colliders).toEqual([
+      expect.objectContaining({ hx: 80, hy: 0.1, hz: 80 }),
+    ]);
+    expect(player?.components.find((component) => component.type === 'pixl.entity')?.data.modelRotationOffset).toEqual([0, Math.PI, 0]);
   });
 
   it('preserves 2D schema objects, raw render data, components and project assets', () => {

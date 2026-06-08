@@ -42,6 +42,25 @@ const isSurfaceLikeObject = (object: SceneObject) => (
   getObjectSelectionRole(object) === 'background'
 );
 
+const isPixllandMixamoModelUrl = (url?: string) => (
+  typeof url === 'string' && url.includes('/models/manequin/mixamo/')
+);
+
+const isZeroModelRotation = (rotation: [number, number, number]) => (
+  rotation.every((value) => Math.abs(value) < 0.0001)
+);
+
+const getModelRotationOffset = (
+  url: string,
+  entitySettings?: EntitySettings,
+): [number, number, number] => {
+  const rotation = entitySettings?.modelRotationOffset ?? [0, 0, 0];
+  if (isPixllandMixamoModelUrl(url) && isZeroModelRotation(rotation)) {
+    return [0, Math.PI, 0];
+  }
+  return rotation;
+};
+
 const gltfNodeIndexCache = new WeakMap<THREE.Object3D, Map<string, THREE.Object3D>>();
 
 const getGltfNodeIndex = (scene: THREE.Object3D) => {
@@ -887,7 +906,7 @@ const GLTFModelLoader = ({
   // Apply entity model offsets
   const modelScale = entitySettings?.modelScale ?? 1;
   const modelOffset = entitySettings?.modelOffset ?? [0, 0, 0];
-  const modelRotation = entitySettings?.modelRotationOffset ?? [0, 0, 0];
+  const modelRotation = getModelRotationOffset(url, entitySettings);
   
   return (
     <group

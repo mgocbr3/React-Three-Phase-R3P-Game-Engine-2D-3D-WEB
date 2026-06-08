@@ -10,10 +10,11 @@ import type {
   GameObjectJSON,
   SceneCameraJSON,
   SceneJSON,
+  SceneSunJSON,
   Vector3Data,
 } from '../types.js';
 
-export const DEFAULT_THREE_SKYBOX_TEXTURE_URL = '/skybox/clear_blue_sky.jpg';
+export const DEFAULT_THREE_SKYBOX_TEXTURE_URL = '/skybox/kloppenheim_05_puresky_4k.jpg';
 
 // Loose mirrors of the PixlPlayground schema. We can't import directly
 // from engine/apps/studio because that's a separate package; instead we
@@ -146,8 +147,12 @@ const mapComponent = (instance: PixlComponentInstance): ComponentJSON | null => 
     }
     case 'pixl.light3d':
     case 'pixl.light': {
-      const lightType = (data.lightType ?? data.kind ?? 'PointLight') as string;
-      return { type: 'light', name: instance.id, lightType, ...data };
+      const lightType = typeof data.lightType === 'string'
+        ? data.lightType
+        : typeof data.kind === 'string'
+          ? data.kind
+          : undefined;
+      return { type: 'light', name: instance.id, ...(lightType ? { lightType } : {}), ...data };
     }
     case 'pixl.audio': {
       const assetPath = (data.url ?? data.assetPath) as string | undefined;
@@ -210,6 +215,74 @@ const numberOrUndefined = (value: unknown): number | undefined => (
   typeof value === 'number' && Number.isFinite(value) ? value : undefined
 );
 
+const numberOr = (value: unknown, fallback: number): number => numberOrUndefined(value) ?? fallback;
+
+const vec3FromUnknown = (value: unknown): Vector3Data | undefined => {
+  if (!Array.isArray(value) || value.length < 3) return undefined;
+  const [x, y, z] = value;
+  if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number') return undefined;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return undefined;
+  return { x, y, z };
+};
+
+const isZeroVec3 = (value: Vector3Data | undefined): boolean => (
+  Boolean(value)
+  && Math.abs(value?.x ?? 0) < 0.0001
+  && Math.abs(value?.y ?? 0) < 0.0001
+  && Math.abs(value?.z ?? 0) < 0.0001
+);
+
+const isPixllandMixamoModel = (assetPath: unknown): boolean => (
+  typeof assetPath === 'string' && assetPath.includes('/models/manequin/mixamo/')
+);
+
+const getLightTypeForObject = (
+  object: PixlSceneObject,
+  data: Record<string, unknown>,
+): string => {
+  if (typeof data.lightType === 'string') return data.lightType;
+  if (typeof data.kind === 'string') return data.kind;
+  if (object.type === 'sunlight') return 'DirectionalLight';
+  if (object.type === 'spotlight') return 'SpotLight';
+  return 'PointLight';
+};
+
+const getSunLightPosition = (data: Record<string, unknown>): Vector3Data => {
+  const elevation = (numberOr(data.sunElevation, 45) * Math.PI) / 180;
+  const azimuth = (numberOr(data.sunAzimuth, 180) * Math.PI) / 180;
+  const distance = 50;
+  return {
+    x: Math.cos(azimuth) * Math.cos(elevation) * distance,
+    y: Math.sin(elevation) * distance,
+    z: Math.sin(azimuth) * Math.cos(elevation) * distance,
+  };
+};
+
+const applyLightPresentation = (
+  object: PixlSceneObject,
+  components: ComponentJSON[],
+): ComponentJSON[] => components.map((component) => {
+  if (component.type !== 'light') return component;
+
+  const data = { ...component } as Record<string, unknown>;
+  const lightType = getLightTypeForObject(object, data);
+  const editorColor = getEditorColor(object);
+  const light = {
+    ...component,
+    lightType,
+    ...(editorColor ? { color: editorColor } : {}),
+  } as ComponentJSON;
+
+  if (object.type === 'sunlight' || lightType === 'DirectionalLight') {
+    return {
+      ...light,
+      position: getSunLightPosition(data),
+    } as ComponentJSON;
+  }
+
+  return light;
+});
+
 const getPlayerControllerOptions = (object: PixlSceneObject): CharacterControllerOptions | null => {
   if (object.type !== 'player') return null;
   const player = getComponentData(object, 'pixl.player');
@@ -238,6 +311,33 @@ const getPlayerControllerOptions = (object: PixlSceneObject): CharacterControlle
       restitution: numberOrUndefined(capsule.restitution),
     } : undefined,
   };
+};
+
+const applyModelPresentationTransforms = (
+  object: PixlSceneObject,
+  components: ComponentJSON[],
+): ComponentJSON[] => {
+  const entity = getComponentData(object, 'pixl.entity');
+  const position = vec3FromUnknown(entity.modelOffset);
+  const configuredRotation = vec3FromUnknown(entity.modelRotationOffset);
+  const modelScale = numberOrUndefined(entity.modelScale);
+
+  return components.map((component) => {
+    if (component.type !== 'model') return component;
+
+    const rotation = isPixllandMixamoModel(component.assetPath) && (!configuredRotation || isZeroVec3(configuredRotation))
+      ? { x: 0, y: Math.PI, z: 0 }
+      : configuredRotation;
+
+    return {
+      ...component,
+      ...(position && !isZeroVec3(position) ? { position } : {}),
+      ...(rotation ? { rotation } : {}),
+      ...(typeof modelScale === 'number' && modelScale !== 1 ? {
+        scale: { x: modelScale, y: modelScale, z: modelScale },
+      } : {}),
+    };
+  });
 };
 
 const synthesizePrimitiveComponent = (
@@ -344,8 +444,9 @@ const buildGameObjectJSON = (
   const mapped = object.type === 'player'
     ? mappedWithAnimationFilter.filter((component) => component.type !== 'rigidBody')
     : mappedWithAnimationFilter;
-  const primitive = synthesizePrimitiveComponent(object, [...synthesized, ...mapped]);
-  const components = [...synthesized, ...primitive, ...mapped];
+  const lightMapped = applyLightPresentation(object, mapped);
+  const primitive = synthesizePrimitiveComponent(object, [...synthesized, ...lightMapped]);
+  const components = applyModelPresentationTransforms(object, [...synthesized, ...primitive, ...lightMapped]);
   const controllerOptions = getPlayerControllerOptions(object);
 
   return {
@@ -433,10 +534,47 @@ const getRuntimeCamera = (
   };
 };
 
+const hasAuthoredDirectionalLight = (objects: PixlSceneObject[]): boolean => objects.some((object) => {
+  if (object.visible === false) return false;
+  if (object.type === 'sunlight') return true;
+  return (object.components ?? []).some((component) => {
+    if (component.enabled === false || component.type !== 'pixl.light3d') return false;
+    const lightType = getLightTypeForObject(object, component.data ?? {});
+    return lightType === 'DirectionalLight';
+  });
+});
+
+const getAuthoredSkySun = (objects: PixlSceneObject[]): SceneSunJSON | null => {
+  for (const object of objects) {
+    if (object.visible === false) continue;
+    const lightComponent = (object.components ?? []).find((component) => (
+      component.enabled !== false &&
+      (component.type === 'pixl.light3d' || component.type === 'pixl.light')
+    ));
+    if (object.type !== 'sunlight' && !lightComponent) continue;
+
+    const data = lightComponent?.data ?? {};
+    if (getLightTypeForObject(object, data) !== 'DirectionalLight') continue;
+
+    return {
+      enabled: true,
+      color: getEditorColor(object) ?? (typeof data.color === 'string' ? data.color : '#fff7cf'),
+      intensity: numberOr(data.intensity, 1),
+      position: getSunLightPosition(data),
+      size: numberOr(data.sunDiskSize, 44),
+      distance: 760,
+      opacity: 0.96,
+    };
+  }
+
+  return null;
+};
+
 // Pixl's scene.environment packs ambient + sun + ambient intensity into one
 // flat block. Wes' Scene expects SceneLightJSON[] with `type` + props. Map them.
 const synthesizeEnvironmentLights = (
   env: PixlSceneEnvironment | undefined,
+  options: { includeDirectional: boolean } = { includeDirectional: true },
 ): import('../types.js').SceneLightJSON[] => {
   if (!env) return [];
   const lights: import('../types.js').SceneLightJSON[] = [];
@@ -454,7 +592,7 @@ const synthesizeEnvironmentLights = (
       intensity: Math.min(0.22, ambient * 0.18),
     });
   }
-  if (env.sunColor || typeof env.sunIntensity === 'number') {
+  if (options.includeDirectional && (env.sunColor || typeof env.sunIntensity === 'number')) {
     lights.push({
       type: 'DirectionalLight',
       color: env.sunColor ?? '#fffaf0',
@@ -474,6 +612,8 @@ const synthesizeEnvironmentLights = (
 export const pixlSceneToWesScene = (scene: PixlSceneDocument): SceneJSON => {
   const sceneObjects = flattenPixlSceneObjects(scene.rootObjects);
   const roots = getRoots(sceneObjects);
+  const authoredDirectionalLight = hasAuthoredDirectionalLight(sceneObjects);
+  const authoredSkySun = getAuthoredSkySun(sceneObjects);
   const gameObjects = roots.map((root) => (
     buildGameObjectJSON(root, getChildren(root.id, sceneObjects), sceneObjects)
   ));
@@ -486,10 +626,11 @@ export const pixlSceneToWesScene = (scene: PixlSceneDocument): SceneJSON => {
       horizonColor: scene.environment?.background ?? '#bfe0f4',
       zenithColor: '#6ea8dc',
       groundColor: '#6f855d',
+      sun: authoredSkySun,
     } : { enabled: false },
     gravity: triplet(scene.physics?.gravity),
     gameObjects,
-    lights: synthesizeEnvironmentLights(scene.environment),
+    lights: synthesizeEnvironmentLights(scene.environment, { includeDirectional: !authoredDirectionalLight }),
     camera: getRuntimeCamera(scene, sceneObjects),
   };
 };

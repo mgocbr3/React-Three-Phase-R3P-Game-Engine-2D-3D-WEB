@@ -6,6 +6,7 @@ import {
   createThreeNativePostProcessingOptions,
   getEditorObjectIdForNativeSelection,
   getThreeAddObjectPosition,
+  getThreeViewportDropPosition,
   getThreeCameraTarget,
   getThreeNativePixelRatio,
   getThreeNativePostProcessingEffects,
@@ -14,7 +15,9 @@ import {
   getThreeTransformShortcutMode,
   getThreeEditorGridConfig,
   hasEditorObjectId,
+  parseThreeViewportAssetDrop,
   resolveThreeRuntimeAssetBaseUrl,
+  shouldDeferThreeRuntimeDispose,
   shouldEnableThreeEditorTools,
   shouldRunThreeEditorRenderLoop,
   shouldRunThreeRuntimeSimulation,
@@ -36,6 +39,12 @@ describe('ThreeRuntimeMount', () => {
     expect(shouldRunThreeEditorRenderLoop({ visible: true, editorToolsEnabled: true, loadStatus: 'ready' })).toBe(true);
     expect(shouldRunThreeEditorRenderLoop({ visible: true, editorToolsEnabled: false, loadStatus: 'ready' })).toBe(false);
     expect(shouldRunThreeEditorRenderLoop({ visible: false, editorToolsEnabled: true, loadStatus: 'ready' })).toBe(false);
+  });
+
+  it('defers native runtime disposal while a scene is still loading', () => {
+    expect(shouldDeferThreeRuntimeDispose({ loadingScene: true })).toBe(true);
+    expect(shouldDeferThreeRuntimeDispose({ loadingScene: false })).toBe(false);
+    expect(shouldDeferThreeRuntimeDispose(null)).toBe(false);
   });
 
   it('keeps native Three play mode direct by default', () => {
@@ -228,6 +237,48 @@ describe('ThreeRuntimeMount', () => {
     expect(position).not.toBeUndefined();
     expect(position?.[1]).toBeCloseTo(1.99, 2);
     expect(position?.[2]).toBeCloseTo(3.30, 2);
+  });
+
+  it('parses Project asset drag payloads for native 3D viewport drops', () => {
+    expect(parseThreeViewportAssetDrop(JSON.stringify({
+      type: 'pixlland-asset',
+      name: 'Farm Gate',
+      url: '/Assets/3D_Models/gate.glb',
+      assetType: 'model',
+      thumbnailUrl: '/thumbs/gate.webp',
+      assetId: 'asset-gate',
+      assetPath: 'Assets/3D_Models/gate.glb',
+    }))).toEqual({
+      name: 'Farm Gate',
+      url: '/Assets/3D_Models/gate.glb',
+      assetType: 'model',
+      thumbnailUrl: '/thumbs/gate.webp',
+      assetId: 'asset-gate',
+      assetPath: 'Assets/3D_Models/gate.glb',
+    });
+
+    expect(parseThreeViewportAssetDrop('')).toBeNull();
+    expect(parseThreeViewportAssetDrop('{bad json')).toBeNull();
+    expect(parseThreeViewportAssetDrop(JSON.stringify({ type: 'pixlland-asset', name: 'Missing URL' }))).toBeNull();
+    expect(parseThreeViewportAssetDrop(JSON.stringify({ type: 'other', name: 'Gate', url: '/gate.glb' }))).toBeNull();
+  });
+
+  it('places native 3D viewport drops on the ground plane under the cursor', () => {
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+    camera.position.set(0, 10, 10);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+
+    const position = getThreeViewportDropPosition({
+      clientX: 100,
+      clientY: 100,
+      rect: { left: 0, top: 0, width: 200, height: 200 },
+      camera,
+    });
+
+    expect(position?.[0]).toBeCloseTo(0, 4);
+    expect(position?.[1]).toBeCloseTo(0, 4);
+    expect(position?.[2]).toBeCloseTo(0, 4);
   });
 
   it('reads camera targets from Pixl array and object formats', () => {

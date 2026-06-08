@@ -197,6 +197,11 @@ const getAssetFormat = (asset: ProjectAsset) => {
 
 const getAssetFolderLabel = (asset: ProjectAsset) => asset.folder.replace(/^Assets\//, '') || 'Project';
 
+const getAssetFileSubtitle = (asset: ProjectAsset): string | null => {
+  const fileName = getAssetFileName(asset);
+  return fileName !== asset.name ? fileName : null;
+};
+
 const getAssetMetadataLabel = (asset: ProjectAsset) => {
   const tags = Array.isArray(asset.metadata?.sourceTags)
     ? asset.metadata.sourceTags.filter((tag): tag is string => typeof tag === 'string')
@@ -204,8 +209,11 @@ const getAssetMetadataLabel = (asset: ProjectAsset) => {
   const role = typeof asset.metadata?.role === 'string' ? asset.metadata.role : undefined;
   const cropId = typeof asset.metadata?.cropId === 'string' ? asset.metadata.cropId : undefined;
   const runtimeArray = typeof asset.metadata?.runtimeArray === 'string' ? asset.metadata.runtimeArray : undefined;
+  const sourceObjectName = typeof asset.metadata?.sourceObjectName === 'string'
+    ? asset.metadata.sourceObjectName
+    : undefined;
 
-  return role || cropId || tags.find((tag) => tag !== 'harvest-rush') || runtimeArray || getAssetFileName(asset);
+  return role || cropId || sourceObjectName || tags.find((tag) => tag !== 'harvest-rush') || runtimeArray || getAssetFileName(asset);
 };
 
 const consoleToneClass: Record<ConsoleMessage['type'], string> = {
@@ -317,7 +325,15 @@ export const BottomPanel = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderTreeResizeRef = useRef({ startX: 0, startWidth: CONTENT_BROWSER_SIDEBAR_DEFAULT_WIDTH });
-  const { projectAssets, loadingAssets, addProjectAsset, removeProjectAsset, updateProjectAsset } = useAssetStore();
+  const {
+    projectAssets,
+    loadingAssets,
+    selectedAssetId,
+    addProjectAsset,
+    removeProjectAsset,
+    updateProjectAsset,
+    selectAsset,
+  } = useAssetStore();
   const localProjectId = useProjectStore((s) => s.currentProjectId);
   const localProject = useProjectStore((s) => s.projects.find((project) => project.id === localProjectId));
   const activeSceneKind = useEditorStore((s) => s.activeSceneKind);
@@ -544,6 +560,20 @@ export const BottomPanel = () => {
   const handleDragEnd = () => {
     endDrag();
   };
+
+  const handleProjectAssetSelect = useCallback((assetId: string) => {
+    selectAsset(assetId);
+    useEditorStore.setState({ selectedObjectId: null });
+  }, [selectAsset]);
+
+  const handleProjectAssetKeyDown = useCallback((
+    event: React.KeyboardEvent<HTMLElement>,
+    assetId: string,
+  ) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleProjectAssetSelect(assetId);
+  }, [handleProjectAssetSelect]);
 
   const handleFileImport = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -918,16 +948,30 @@ export const BottomPanel = () => {
               {filteredProjectAssets.length > 0 ? (
                 <div className="flex-1 overflow-y-auto p-3">
                   {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(116px,132px))] content-start gap-2.5">
+                    <div
+                      role="listbox"
+                      aria-label="Project assets"
+                      className="grid grid-cols-[repeat(auto-fill,minmax(116px,132px))] content-start gap-2.5"
+                    >
                       {filteredProjectAssets.map((asset, index) => {
                         return (
                           <div 
                             key={`${asset.id}-${index}`}
+                            role="option"
+                            tabIndex={0}
+                            aria-selected={selectedAssetId === asset.id}
                             draggable={!!asset.url}
+                            onClick={() => handleProjectAssetSelect(asset.id)}
+                            onKeyDown={(event) => handleProjectAssetKeyDown(event, asset.id)}
                             onDragStart={(event) => handleDragStart(event, asset.name, asset.url, asset.type, asset.thumbnail, asset.id, asset.path)}
                             onDragEnd={handleDragEnd}
                             data-asset-id={asset.id}
-                            className="group relative flex h-[126px] min-w-0 cursor-pointer flex-col border border-border bg-[var(--editor-panel-raised)] p-2 transition-colors hover:border-[var(--editor-border-light)] hover:bg-[var(--editor-row-hover)]"
+                            className={cn(
+                              'group relative flex h-[126px] min-w-0 cursor-pointer flex-col border bg-[var(--editor-panel-raised)] p-2 transition-colors hover:border-[var(--editor-border-light)] hover:bg-[var(--editor-row-hover)] focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]',
+                              selectedAssetId === asset.id
+                                ? 'border-[var(--editor-command-highlight)] bg-[var(--editor-row-selected)]'
+                                : 'border-border',
+                            )}
                             title={`${asset.name}\n${asset.url}`}
                           >
                             <AssetPreview asset={asset} />
@@ -958,7 +1002,11 @@ export const BottomPanel = () => {
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <div className="min-w-[760px] overflow-hidden border border-border bg-[var(--editor-panel)]">
+                      <div
+                        role="listbox"
+                        aria-label="Project assets"
+                        className="min-w-[760px] overflow-hidden border border-border bg-[var(--editor-panel)]"
+                      >
                         <div className="grid grid-cols-[56px_minmax(180px,1fr)_88px_minmax(150px,0.55fr)_minmax(140px,0.55fr)_36px] items-center border-b border-border bg-[var(--editor-panel-header)] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
                           <span>Preview</span>
                           <span>Nome</span>
@@ -968,26 +1016,40 @@ export const BottomPanel = () => {
                           <span />
                         </div>
                         {filteredProjectAssets.map((asset, index) => {
+                          const fileSubtitle = getAssetFileSubtitle(asset);
                           return (
                             <div
                               key={`${asset.id}-${index}`}
+                              role="option"
+                              tabIndex={0}
+                              aria-selected={selectedAssetId === asset.id}
                               draggable={!!asset.url}
+                              onClick={() => handleProjectAssetSelect(asset.id)}
+                              onKeyDown={(event) => handleProjectAssetKeyDown(event, asset.id)}
                               onDragStart={(event) => handleDragStart(event, asset.name, asset.url, asset.type, asset.thumbnail, asset.id, asset.path)}
                               onDragEnd={handleDragEnd}
                               data-asset-id={asset.id}
-                              className="grid h-11 grid-cols-[56px_minmax(180px,1fr)_88px_minmax(150px,0.55fr)_minmax(140px,0.55fr)_36px] items-center border-b border-border px-2 text-xs transition-colors last:border-b-0 hover:bg-[var(--editor-row-hover)]"
+                              className={cn(
+                                'grid h-11 grid-cols-[56px_minmax(180px,1fr)_88px_minmax(150px,0.55fr)_minmax(140px,0.55fr)_36px] items-center border-b border-border px-2 text-xs transition-colors last:border-b-0 hover:bg-[var(--editor-row-hover)] focus:outline-none focus:ring-1 focus:ring-[var(--editor-command-highlight)]',
+                                selectedAssetId === asset.id && 'bg-[var(--editor-row-selected)]',
+                              )}
                               title={`${asset.name}\n${asset.url}`}
                             >
                               <AssetPreview asset={asset} size="sm" />
                               <div className="min-w-0 pr-3">
                                 <div className="truncate font-medium text-foreground">{asset.name}</div>
-                                <div className="truncate text-[10px] text-muted-foreground">{getAssetFileName(asset)}</div>
+                                {fileSubtitle && (
+                                  <div className="truncate text-[10px] text-muted-foreground">{fileSubtitle}</div>
+                                )}
                               </div>
                               <span className="truncate text-[10px] uppercase text-muted-foreground">{asset.type}</span>
                               <span className="truncate text-[10px] text-muted-foreground">{getAssetFolderLabel(asset)}</span>
                               <span className="truncate text-[10px] text-muted-foreground">{getAssetMetadataLabel(asset)}</span>
                               <button
-                                onClick={() => removeProjectAsset(asset.id)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  removeProjectAsset(asset.id);
+                                }}
                                 className="justify-self-end rounded-sm p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
                                 title="Remover asset"
                               >

@@ -17,7 +17,7 @@ export function getBlankTemplateObjects(): SceneObject[] {
   return [
     // Sun Light - Iluminação principal
     {
-      id: 'sun-main',
+      id: 'sunlight-main',
       name: 'Sun Light',
       type: 'sunlight' as const,
       position: [50, 100, 50] as [number, number, number],
@@ -36,7 +36,7 @@ export function getBlankTemplateObjects(): SceneObject[] {
         angle: Math.PI / 6,
         penumbra: 0.5,
         sunElevation: 45,
-        sunAzimuth: 180,
+        sunAzimuth: 270,
         castShadow: true,
         shadowMapSize: 2048,
         shadowBias: -0.0001,
@@ -51,7 +51,7 @@ export function getBlankTemplateObjects(): SceneObject[] {
 
     // Main Camera - Câmera que segue o player
     {
-      id: 'camera-main',
+      id: 'main-camera',
       name: 'Main Camera',
       type: 'camera' as const,
       position: [0, 10, 15] as [number, number, number],
@@ -66,7 +66,7 @@ export function getBlankTemplateObjects(): SceneObject[] {
         height: 10,
         fov: 60,
         followPlayer: true,
-        targetId: 'player-1',
+        targetId: 'main-player',
         lockedZ: false,
         lockedY: false,
         smoothing: 0.1,
@@ -75,7 +75,7 @@ export function getBlankTemplateObjects(): SceneObject[] {
 
     // Player - Personagem controlável
     {
-      id: 'player-1',
+      id: 'main-player',
       name: 'Player',
       type: 'player' as const,
       position: [0, 1, 0] as [number, number, number],
@@ -147,7 +147,7 @@ export function getBlankTemplateObjects(): SceneObject[] {
     // Ground - Chão
     {
       id: 'ground-1',
-      name: 'Chão',
+      name: 'Ground',
       type: 'plane' as const,
       position: [0, 0, 0] as [number, number, number],
       rotation: [0, 0, 0] as [number, number, number],

@@ -35,6 +35,7 @@ import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { AtmosphericLighting } from './AtmosphericLighting';
 import { Skybox } from './primitives/Skybox';
+import { SunDisk } from './primitives/SunDisk';
 import { ActiveTerrain } from '@/components/terrain/ActiveTerrain';
 import { useTerrainStore } from '@/stores/terrainStore';
 import { toast } from 'sonner';
@@ -92,8 +93,8 @@ const isBackgroundSelectionRole = (role: string | undefined, type: string | unde
   type === 'platform'
 );
 
-// Editor-time scene lighting. Neutral fill + the UE4 sky GLB so the
-// designer sees the same horizon their players will see at runtime.
+// Editor-time scene lighting. Neutral fill + the pure skybox so the
+// designer sees the same sky their players will see at runtime.
 // The Suspense fallback paints a flat sky-ish blue (matches the avg
 // of the GLB texture) so we don't flash grey while the GLB streams in
 // — but we deliberately skip `<color attach="background">` because
@@ -105,6 +106,7 @@ const MavonEditorLighting = () => (
     <Suspense fallback={<color attach="background" args={['#a4bdd2']} />}>
       <Skybox />
     </Suspense>
+    <SunDisk />
     <ambientLight color="#ffffff" intensity={0.35} />
     <hemisphereLight color="#aaaaaa" groundColor="#3a3a3a" intensity={0.45} />
   </>

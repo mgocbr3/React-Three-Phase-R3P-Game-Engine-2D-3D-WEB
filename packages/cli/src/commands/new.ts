@@ -1,7 +1,14 @@
 import { mkdir, writeFile, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { EngineVersionsManifest, PixlProjectShape, PixlRuntimeKind, PixlSceneKind, PixlSceneShape } from '../schema.js';
+import type {
+  EngineVersionsManifest,
+  PixlProjectShape,
+  PixlRuntimeKind,
+  PixlSceneKind,
+  PixlSceneObjectShape,
+  PixlSceneShape,
+} from '../schema.js';
 import { PIXL_PROJECT_FORMAT, PIXL_PROJECT_VERSION } from '../schema.js';
 import { findEngineManifest } from './manifest-loader.js';
 
@@ -66,7 +73,7 @@ const buildSceneFor = (kind: ProjectKind, sceneId: string): PixlSceneShape => {
       id: sceneId,
       name: 'Main',
       kind: '3d' as PixlSceneKind,
-      rootObjects: [],
+      rootObjects: buildBlank3DObjects(),
       camera: {
         id: 'main-camera',
         name: 'Main Camera',
@@ -116,6 +123,118 @@ const buildRuntime = (kind: ProjectKind): { primary: PixlRuntimeKind; renderers:
   }
   return { primary: 'phaser-2d', renderers: ['phaser'], physics: ['arcade'] };
 };
+
+const component = (id: string, type: string, data: Record<string, unknown>) => ({
+  id,
+  type,
+  enabled: true,
+  data,
+});
+
+const buildBlank3DObjects = (): PixlSceneObjectShape[] => [
+  {
+    id: 'sunlight-main',
+    name: 'Sun Light',
+    type: 'sunlight',
+    transform: {
+      position: [50, 100, 50],
+      rotation: [-Math.PI / 3, Math.PI / 4, 0],
+      scale: [1, 1, 1],
+    },
+    visible: true,
+    locked: false,
+    components: [
+      component('sunlight-main-light', 'pixl.light3d', {
+        intensity: 1.5,
+        castShadow: true,
+        sunElevation: 45,
+        sunAzimuth: 180,
+      }),
+    ],
+    data: { editor: { color: '#ffffff', isStatic: true } },
+  },
+  {
+    id: 'main-camera',
+    name: 'Main Camera',
+    type: 'camera',
+    transform: {
+      position: [0, 10, 15],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+    },
+    visible: true,
+    locked: false,
+    components: [
+      component('main-camera-camera', 'pixl.camera3d', {
+        mode: 'third-person',
+        distance: 15,
+        height: 10,
+        fov: 60,
+        followPlayer: true,
+        targetId: 'main-player',
+        smoothing: 0.1,
+      }),
+    ],
+    data: { editor: { color: '#ffffff' } },
+  },
+  {
+    id: 'main-player',
+    name: 'Player',
+    type: 'player',
+    tags: ['player'],
+    transform: {
+      position: [0, 1, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 2, 1],
+    },
+    visible: true,
+    locked: false,
+    components: [
+      component('main-player-player', 'pixl.player', {
+        movementMode: 'free',
+        speed: 10,
+        jumpForce: 12,
+        gravity: 30,
+        maxHealth: 100,
+      }),
+      component('main-player-primitive', 'pixl.primitive', {
+        shape: 'box',
+        size: { x: 1, y: 2, z: 1 },
+        color: '#4a90e2',
+      }),
+    ],
+    data: { editor: { color: '#4a90e2', isStatic: false } },
+  },
+  {
+    id: 'ground-1',
+    name: 'Ground',
+    type: 'box',
+    transform: {
+      position: [0, -0.1, 0],
+      rotation: [0, 0, 0],
+      scale: [100, 0.2, 100],
+    },
+    visible: true,
+    locked: false,
+    components: [
+      component('ground-1-primitive', 'pixl.primitive', {
+        shape: 'box',
+        size: { x: 100, y: 0.2, z: 100 },
+        color: '#3d3d3d',
+        receiveShadow: true,
+      }),
+      component('ground-1-physics', 'pixl.physics', {
+        bodyType: 'fixed',
+        colliderShape: 'cuboid',
+        mass: 0,
+        friction: 0.85,
+        restitution: 0.05,
+        colliders: [{ type: 'cuboid', hx: 50, hy: 0.1, hz: 50 }],
+      }),
+    ],
+    data: { editor: { color: '#3d3d3d', isStatic: true } },
+  },
+];
 
 export const buildProjectDocument = (
   options: NewProjectOptions,
@@ -210,4 +329,3 @@ export const printNewResult = (result: NewProjectResult): void => {
   console.log(`  - pixl-engine validate ${result.projectFile}`);
   console.log(`  - abrir o projeto no editor PixlPlayground`);
 };
-

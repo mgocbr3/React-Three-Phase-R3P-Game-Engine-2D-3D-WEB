@@ -40,7 +40,7 @@ describe('pixlSceneToWesScene', () => {
     const out = pixlSceneToWesScene(scene);
     expect(out.sky).toMatchObject({
       enabled: true,
-      textureUrl: '/skybox/clear_blue_sky.jpg',
+      textureUrl: '/skybox/kloppenheim_05_puresky_4k.jpg',
       horizonColor: '#9fd5df',
       zenithColor: '#6ea8dc',
     });
@@ -234,6 +234,14 @@ describe('pixlSceneToWesScene', () => {
               speed: 1,
             },
           },
+          {
+            id: 'entity',
+            type: 'pixl.entity',
+            enabled: true,
+            data: {
+              modelRotationOffset: [0, 0, 0],
+            },
+          },
         ],
       }),
     ]);
@@ -241,7 +249,11 @@ describe('pixlSceneToWesScene', () => {
     const out = pixlSceneToWesScene(scene);
 
     expect(out.gameObjects![0].components).toEqual([
-      expect.objectContaining({ type: 'model', assetPath: '/models/manequin/mixamo/xbot.glb' }),
+      expect.objectContaining({
+        type: 'model',
+        assetPath: '/models/manequin/mixamo/xbot.glb',
+        rotation: { x: 0, y: Math.PI, z: 0 },
+      }),
       expect.objectContaining({
         type: 'animation',
         assetPath: '/models/manequin/mixamo/xbot.glb',
@@ -252,6 +264,60 @@ describe('pixlSceneToWesScene', () => {
         autoPlay: true,
       }),
     ]);
+  });
+
+  it('maps authored Sun Light settings to a real directional light', () => {
+    const scene = makeScene([
+      makeObject({
+        id: 'sunlight-main',
+        name: 'Sun Light',
+        type: 'sunlight',
+        data: { editor: { color: '#fffaf0' } },
+        components: [
+          {
+            id: 'sunlight-main-pixl-light3d',
+            type: 'pixl.light3d',
+            enabled: true,
+            data: {
+              intensity: 3.9,
+              sunElevation: 0,
+              sunAzimuth: 270,
+              castShadow: true,
+              shadowMapSize: 4096,
+              shadowCameraSize: 90,
+            },
+          },
+        ],
+      }),
+    ]);
+
+    const out = pixlSceneToWesScene(scene);
+    const sunlight = out.gameObjects![0].components?.find((component) => component.type === 'light');
+
+    expect(sunlight).toMatchObject({
+      type: 'light',
+      lightType: 'DirectionalLight',
+      color: '#fffaf0',
+      intensity: 3.9,
+      position: {
+        x: expect.closeTo(0, 5),
+        y: expect.closeTo(0, 5),
+        z: expect.closeTo(-50, 5),
+      },
+      shadowMapSize: 4096,
+      shadowCameraSize: 90,
+    });
+    expect(out.sky?.sun).toMatchObject({
+      enabled: true,
+      color: '#fffaf0',
+      intensity: 3.9,
+      position: {
+        x: expect.closeTo(0, 5),
+        y: expect.closeTo(0, 5),
+        z: expect.closeTo(-50, 5),
+      },
+    });
+    expect(out.lights?.map((light) => light.type)).not.toContain('DirectionalLight');
   });
 
   it('routes player physics and movement settings into the native KCC instead of a duplicate rigid body', () => {

@@ -19,6 +19,7 @@ import type {
   SceneJSON,
   SceneSkyJSON,
   SceneLightJSON,
+  SceneSunJSON,
   SceneSoundJSON,
 } from './types.js';
 
@@ -96,6 +97,135 @@ export const createSkyDome = (sky: SceneSkyJSON | null | undefined, background?:
   return dome;
 };
 
+const createSunTexture = (): THREE.Texture | null => {
+  if (typeof document === 'undefined') return null;
+
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  const center = size / 2;
+  const gradient = ctx.createRadialGradient(center, center, 0, center, center, center);
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  gradient.addColorStop(0.18, 'rgba(255, 250, 214, 1)');
+  gradient.addColorStop(0.38, 'rgba(255, 209, 115, 0.72)');
+  gradient.addColorStop(0.72, 'rgba(255, 176, 66, 0.16)');
+  gradient.addColorStop(1, 'rgba(255, 176, 66, 0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+};
+
+const getSunDirection = (sun: SceneSunJSON): THREE.Vector3 => {
+  const position = sun.position;
+  const direction = new THREE.Vector3(
+    position?.x ?? -0.45,
+    position?.y ?? 0.82,
+    position?.z ?? -0.35,
+  );
+  if (!Number.isFinite(direction.lengthSq()) || direction.lengthSq() < 0.0001) {
+    direction.set(-0.45, 0.82, -0.35);
+  }
+  return direction.normalize();
+};
+
+const getCameraVisibleSkyPosition = (
+  camera: THREE.Camera,
+  direction: THREE.Vector3,
+  distance: number,
+): THREE.Vector3 => {
+  const target = camera.position.clone().addScaledVector(direction, distance);
+  const projected = target.clone().project(camera);
+  const isProjectedVisible = (
+    Number.isFinite(projected.x) &&
+    Number.isFinite(projected.y) &&
+    Number.isFinite(projected.z) &&
+    projected.z >= -1 &&
+    projected.z <= 1 &&
+    Math.abs(projected.x) <= 0.82 &&
+    Math.abs(projected.y) <= 0.78
+  );
+
+  if (isProjectedVisible) return target;
+
+  const localDirection = direction.clone().applyQuaternion(camera.quaternion.clone().invert());
+  const x = Number.isFinite(projected.x)
+    ? clamp(projected.x, -0.72, 0.72)
+    : clamp(localDirection.x * 1.4, -0.72, 0.72);
+  const y = Number.isFinite(projected.y)
+    ? clamp(projected.y, -0.24, 0.72)
+    : clamp(localDirection.y * 1.2, -0.12, 0.72);
+  const fallback = new THREE.Vector3(x, y, 0.5).unproject(camera);
+  return camera.position.clone().addScaledVector(
+    fallback.sub(camera.position).normalize(),
+    distance,
+  );
+};
+
+export const createSkySun = (sun: SceneSunJSON | null | undefined): THREE.Group | null => {
+  if (!sun || sun.enabled === false) return null;
+
+  const direction = getSunDirection(sun);
+  const distance = Math.max(100, Math.min(4000, sun.distance ?? 760));
+  const size = Math.max(8, Math.min(180, sun.size ?? 42));
+  const opacity = clamp((sun.opacity ?? 0.96) * Math.max(0.35, Math.min(1.35, sun.intensity ?? 1)), 0, 1);
+  const texture = createSunTexture();
+  const material = new THREE.SpriteMaterial({
+    ...(texture ? { map: texture } : {}),
+    color: safeColor(sun.color, '#fff7cf'),
+    opacity,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    fog: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.name = 'Pixl Sky Sun Sprite';
+
+  const group = new THREE.Group();
+  group.name = 'Pixl Sky Sun';
+  group.frustumCulled = false;
+  group.renderOrder = -900;
+  group.userData.pixlSkySun = true;
+  group.userData.pixlSkySunDirection = direction.toArray();
+  group.raycast = () => undefined;
+  group.add(sprite);
+  group.onBeforeRender = (_renderer, _scene, camera) => {
+    const cameraFar = (camera as THREE.Camera & { far?: number }).far;
+    const maxDistance = typeof cameraFar === 'number' && Number.isFinite(cameraFar)
+      ? Math.max(10, cameraFar * 0.72)
+      : distance;
+    const effectiveDistance = Math.min(distance, maxDistance);
+    group.position.copy(getCameraVisibleSkyPosition(camera, direction, effectiveDistance));
+    const effectiveSize = size * (effectiveDistance / distance);
+    sprite.scale.set(effectiveSize, effectiveSize, 1);
+  };
+  return group;
+};
+
+const disposeObject3D = (object: THREE.Object3D): void => {
+  object.traverse((child) => {
+    const mesh = child as THREE.Object3D & {
+      geometry?: THREE.BufferGeometry;
+      material?: THREE.Material | THREE.Material[];
+    };
+    mesh.geometry?.dispose();
+    const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+    materials.forEach((material) => {
+      const withMap = material as THREE.Material & { map?: THREE.Texture | null };
+      withMap.map?.dispose();
+      material.dispose();
+    });
+  });
+};
+
 class Scene {
   name: string;
   threeJSScene: THREE.Scene;
@@ -108,6 +238,7 @@ class Scene {
   rapierWorld: RAPIER.World | null;
   private physicsStepWarningShown: boolean;
   private skyTexture: THREE.Texture | null;
+  private skySun: THREE.Group | null;
 
   constructor(game: Game, jsonAssetPath?: string) {
     this.game = game;
@@ -121,6 +252,7 @@ class Scene {
     this.rapierWorld = null;
     this.physicsStepWarningShown = false;
     this.skyTexture = null;
+    this.skySun = null;
   }
 
   async load(): Promise<void> {
@@ -141,13 +273,18 @@ class Scene {
     await this.loadSounds(data.sounds ?? []);
 
     if (!this.game.gameOptions.disablePhysics) {
-      await initRapier();
       this.initialGravity = {
         x: data.gravity?.x ?? 0,
         y: data.gravity?.y ?? -9.8,
         z: data.gravity?.z ?? 0,
       };
-      this.rapierWorld = new RAPIER.World(this.initialGravity);
+      try {
+        await initRapier();
+        this.rapierWorld = new RAPIER.World(this.initialGravity);
+      } catch (error) {
+        console.warn('Scene.load: Rapier world creation failed; loading scene without physics.', error);
+        this.rapierWorld = null;
+      }
     }
 
     this.gameObjects = [];
@@ -236,6 +373,7 @@ class Scene {
   async setBackground(data: SceneJSON): Promise<void> {
     const background = data.background ?? '#9fd5df';
     this.threeJSScene.background = safeColor(background, '#9fd5df');
+    this.setSkySun(null);
     if (data.sky?.enabled === false) return;
 
     if (data.sky?.textureUrl) {
@@ -244,6 +382,7 @@ class Scene {
         this.skyTexture = await this.loadSkyTexture(data.sky.textureUrl);
         this.threeJSScene.background = this.skyTexture;
         this.threeJSScene.userData.pixlSkyboxTextureUrl = data.sky.textureUrl;
+        this.setSkySun(data.sky.sun);
         return;
       } catch (error) {
         console.warn(`Scene.setBackground: unable to load sky texture "${data.sky.textureUrl}"`, error);
@@ -251,6 +390,19 @@ class Scene {
     }
 
     this.threeJSScene.add(createSkyDome(data.sky, background));
+    this.setSkySun(data.sky?.sun);
+  }
+
+  setSkySun(sun: SceneSunJSON | null | undefined): void {
+    if (this.skySun) {
+      this.threeJSScene.remove(this.skySun);
+      disposeObject3D(this.skySun);
+      this.skySun = null;
+    }
+    const skySun = createSkySun(sun);
+    if (!skySun) return;
+    this.skySun = skySun;
+    this.threeJSScene.add(skySun);
   }
 
   setFog(fog: FogJSON | THREE.Fog | null): void {
@@ -386,6 +538,7 @@ class Scene {
 
   afterLoaded(): void {}
   beforeUnloaded(): void {
+    this.setSkySun(null);
     this.skyTexture?.dispose();
     this.skyTexture = null;
   }

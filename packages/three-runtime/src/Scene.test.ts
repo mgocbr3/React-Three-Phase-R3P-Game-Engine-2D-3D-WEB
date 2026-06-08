@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
-import { createSkyDome } from './Scene.js';
+import { createSkyDome, createSkySun } from './Scene.js';
 import Scene from './Scene.js';
 import GameObject from './GameObject.js';
 import KinematicCharacterController from './util/KinematicCharacterController.js';
@@ -29,17 +29,73 @@ describe('Scene sky dome', () => {
     try {
       await scene.setBackground({
         background: '#123456',
-        sky: { enabled: true, textureUrl: '/skybox/clear_blue_sky.jpg' },
+        sky: { enabled: true, textureUrl: '/skybox/kloppenheim_05_puresky_4k.jpg' },
       });
 
-      expect(loadAsync).toHaveBeenCalledWith('/skybox/clear_blue_sky.jpg');
+      expect(loadAsync).toHaveBeenCalledWith('/skybox/kloppenheim_05_puresky_4k.jpg');
       expect(scene.threeJSScene.background).toBe(texture);
       expect(texture.mapping).toBe(THREE.EquirectangularReflectionMapping);
       expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
-      expect(scene.threeJSScene.userData.pixlSkyboxTextureUrl).toBe('/skybox/clear_blue_sky.jpg');
+      expect(scene.threeJSScene.userData.pixlSkyboxTextureUrl).toBe('/skybox/kloppenheim_05_puresky_4k.jpg');
     } finally {
       loadAsync.mockRestore();
     }
+  });
+
+  it('adds a non-selectable sun disk over texture skyboxes', async () => {
+    const texture = new THREE.Texture();
+    const loadAsync = vi.spyOn(THREE.TextureLoader.prototype, 'loadAsync').mockResolvedValue(texture);
+    const scene = new Scene({ getGameObjectClass: () => null } as unknown as ConstructorParameters<typeof Scene>[0]);
+
+    try {
+      await scene.setBackground({
+        sky: {
+          enabled: true,
+          textureUrl: '/skybox/kloppenheim_05_puresky_4k.jpg',
+          sun: {
+            enabled: true,
+            color: '#fffaf0',
+            position: { x: 0, y: 50, z: 0 },
+          },
+        },
+      });
+
+      const skySun = scene.threeJSScene.children.find((child) => child.userData.pixlSkySun);
+      expect(skySun?.name).toBe('Pixl Sky Sun');
+      expect(skySun?.frustumCulled).toBe(false);
+      expect(skySun?.raycast({} as THREE.Raycaster, [])).toBeUndefined();
+    } finally {
+      loadAsync.mockRestore();
+    }
+  });
+
+  it('creates a camera-following sky sun aligned to the authored light direction', () => {
+    const skySun = createSkySun({ position: { x: 0, y: 50, z: 0 } });
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(1, 2, 3);
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+
+    expect(skySun).not.toBeNull();
+    skySun!.onBeforeRender({} as THREE.WebGLRenderer, {} as THREE.Scene, camera, new THREE.BufferGeometry(), new THREE.Material(), null);
+    const projected = skySun!.position.clone().project(camera);
+    expect(Number.isFinite(projected.x)).toBe(true);
+    expect(Number.isFinite(projected.y)).toBe(true);
+  });
+
+  it('keeps the sky sun visible when the authored direction is outside the camera frustum', () => {
+    const skySun = createSkySun({ position: { x: 0, y: 50, z: 50 } });
+    const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 1000);
+    camera.position.set(0, 0, 0);
+    camera.lookAt(0, 0, -1);
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+
+    expect(skySun).not.toBeNull();
+    skySun!.onBeforeRender({} as THREE.WebGLRenderer, {} as THREE.Scene, camera, new THREE.BufferGeometry(), new THREE.Material(), null);
+    const projected = skySun!.position.clone().project(camera);
+    expect(Math.abs(projected.x)).toBeLessThanOrEqual(0.82);
+    expect(Math.abs(projected.y)).toBeLessThanOrEqual(0.78);
   });
 });
 

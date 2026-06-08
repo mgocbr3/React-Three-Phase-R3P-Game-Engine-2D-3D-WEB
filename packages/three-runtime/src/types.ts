@@ -35,6 +35,17 @@ export interface SceneSkyJSON {
   groundColor?: string;
   radius?: number;
   exponent?: number;
+  sun?: SceneSunJSON | null;
+}
+
+export interface SceneSunJSON {
+  enabled?: boolean;
+  color?: string;
+  intensity?: number;
+  position?: Vector3Data;
+  size?: number;
+  distance?: number;
+  opacity?: number;
 }
 
 export interface SceneCameraJSON {
